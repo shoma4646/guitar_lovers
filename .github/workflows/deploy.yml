@@ -20,14 +20,14 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: "3.24.0"
+          channel: "stable"
 
       - name: Install dependencies
         run: flutter pub get
 
       - name: Build web
-        run: flutter build web --release --base-href "/guiter_lovers/"
+        run: flutter build web --release --base-href "/guitar-lovers/"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
