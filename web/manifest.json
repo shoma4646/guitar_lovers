@@ -1,11 +1,11 @@
 {
-    "name": "guiter_lovers",
-    "short_name": "guiter_lovers",
+    "name": "Guitar Lovers",
+    "short_name": "Guitar Lovers",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Guitar Lovers - ギター愛好家向けのオールインワンアプリケーション",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
