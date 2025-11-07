@@ -2,6 +2,14 @@
 
 ギター愛好家向けモバイルアプリケーション(Flutter版)
 
+## 🌐 デモサイト
+
+ブラウザでアプリのUIを確認できます:
+
+**https://shoma4646.github.io/guitar-lovers/**
+
+※実際のGitHubユーザー名に応じてURLが変わります。mainブランチへのpush後、数分でデプロイされます。
+
 ## 概要
 
 Guitar Loversはギタリストのためのオールインワンアプリケーションです。チューナー、練習支援、コミュニティ、ニュース機能を提供します。
@@ -334,6 +342,37 @@ rm -rf ios/Pods ios/Podfile.lock
 flutter pub get
 cd ios && pod install && cd ..
 ```
+
+## GitHub Pagesへのデプロイ
+
+このプロジェクトはGitHub Actionsで自動的にGitHub Pagesにデプロイされます。
+
+### 自動デプロイ
+
+mainブランチへのpush時に自動的に以下が実行されます:
+
+1. Flutter Webアプリのビルド
+2. `gh-pages`ブランチへのデプロイ
+3. GitHub Pagesでの公開
+
+### 手動デプロイ
+
+GitHub Actionsタブから手動でデプロイを実行することもできます:
+
+1. リポジトリの「Actions」タブを開く
+2. 「Deploy to GitHub Pages」ワークフローを選択
+3. 「Run workflow」ボタンをクリック
+
+### GitHub Pages設定
+
+初回のみ、以下の設定が必要です:
+
+1. リポジトリの「Settings」タブを開く
+2. 左メニューから「Pages」を選択
+3. 「Source」で`gh-pages`ブランチを選択
+4. 「Save」をクリック
+
+数分後、デモサイトが公開されます。
 
 ## ライセンス
 

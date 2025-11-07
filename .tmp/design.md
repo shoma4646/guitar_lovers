@@ -244,3 +244,63 @@ lib/
 2. 依存パッケージの調査と選定
 3. 基本的なプロジェクト構造の構築
 4. 段階的な機能実装
+
+---
+
+## GitHub PagesによるFlutter WebアプリのUIプレビュー
+
+### 要件
+
+- mainブランチへのpush時に自動的にFlutter Webアプリをビルド
+- GitHub Pagesにデプロイして、ブラウザでUIを確認可能にする
+- 完全無料でコストゼロ
+- URLを共有するだけで誰でもアクセス可能
+
+### 設計
+
+#### ビルド対象
+
+**Flutter Web**
+- `flutter build web`でWebアプリとしてビルド
+- HTML/CSS/JavaScriptに変換されてブラウザで動作
+- iOS/Android両方のUIを確認可能（レスポンシブ対応）
+
+#### ワークフロー設計
+
+**トリガー条件**
+- mainブランチへのpush時
+- 手動トリガー（workflow_dispatch）
+
+**ビルドとデプロイジョブ**
+1. Flutterのセットアップ
+2. 依存関係のインストール（`flutter pub get`）
+3. Webアプリのビルド（`flutter build web --release`）
+4. GitHub Pagesへのデプロイ
+
+#### GitHub Pages設定
+
+- デプロイ先: `gh-pages`ブランチ
+- 公開URL: `https://<username>.github.io/<repository>/`
+- ベースパス設定: `--base-href "/<repository>/"`
+
+#### 使用方法
+
+1. mainブランチにコードをpush
+2. GitHub Actionsが自動的にビルド・デプロイ
+3. 公開URLにアクセスしてUIを確認
+4. スマートフォンのブラウザでアクセスすればモバイルUIを確認可能
+
+### メリット
+
+- **完全無料**: GitHub Pagesは無料で利用可能
+- **即座に確認**: URLにアクセスするだけ
+- **共有が簡単**: URLを共有すれば誰でもアクセス可能
+- **実機不要**: ブラウザの開発者ツールでモバイル表示を確認
+- **iOS/Android両対応**: レスポンシブデザインで両方のUIを確認
+
+### 実装方針
+
+1. GitHub Actionsワークフローファイルを作成
+2. Flutter Webビルドとgh-pagesブランチへのデプロイを設定
+3. READMEにデモサイトのURLを追加
+4. モバイル表示の最適化（必要に応じて）
