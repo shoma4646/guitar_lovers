@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_audio_capture/flutter_audio_capture.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pitch_detector_dart/pitch_detector.dart';
@@ -20,6 +21,10 @@ class PitchDetectorImpl implements PitchDetectorService {
 
   /// バッファサイズ
   static const int bufferSize = 4096;
+
+  /// ギター音として認識する最小確率閾値
+  /// 低すぎると雑音を拾い、高すぎると弱い音を検出できない
+  static const double _minProbabilityThreshold = 0.22;
 
   /// スムージング用の過去の周波数データ（移動平均フィルタ）
   final List<double> _frequencyHistory = [];
@@ -93,46 +98,35 @@ class PitchDetectorImpl implements PitchDetectorService {
     if (!_isDetecting) return;
 
     try {
-      // ピッチ検出を実行
+      List<double>? doubleBuffer;
+
+      // audioDataの型に応じて変換
       if (audioData is List<int> && audioData.isNotEmpty) {
-        // List<int>をList<double>に変換
-        final doubleBuffer = audioData.map((e) => e.toDouble()).toList();
-        final result =
-            await _pitchDetector.getPitchFromFloatBuffer(doubleBuffer);
-
-        // ギター専用：確率閾値を調整してバランスを取る
-        final isPitched = result.pitched && result.probability > 0.22;
-
-        // 周波数のスムージングで音の変化を滑らかに
-        final smoothedFrequency =
-            isPitched ? _smoothFrequency(result.pitch) : 0.0;
-
-        final pitchData = PitchData(
-          frequency: smoothedFrequency,
-          probability: result.probability,
-          isPitched: isPitched && smoothedFrequency > 0,
-        );
-
-        _pitchController.add(pitchData);
+        doubleBuffer = audioData.map((e) => e.toDouble()).toList();
       } else if (audioData is List<double> && audioData.length >= bufferSize) {
-        // List<double>の場合
-        final result = await _pitchDetector.getPitchFromFloatBuffer(audioData);
-
-        // ギター専用：確率閾値を調整してバランスを取る
-        final isPitched = result.pitched && result.probability > 0.22;
-
-        // 周波数のスムージングで音の変化を滑らかに
-        final smoothedFrequency =
-            isPitched ? _smoothFrequency(result.pitch) : 0.0;
-
-        final pitchData = PitchData(
-          frequency: smoothedFrequency,
-          probability: result.probability,
-          isPitched: isPitched && smoothedFrequency > 0,
-        );
-
-        _pitchController.add(pitchData);
+        doubleBuffer = audioData;
+      } else {
+        return; // 無効なデータ形式の場合は早期リターン
       }
+
+      // ピッチ検出を実行
+      final result = await _pitchDetector.getPitchFromFloatBuffer(doubleBuffer);
+
+      // ギター専用：確率閾値を調整してバランスを取る
+      final isPitched =
+          result.pitched && result.probability > _minProbabilityThreshold;
+
+      // 周波数のスムージングで音の変化を滑らかに
+      final smoothedFrequency =
+          isPitched ? _smoothFrequency(result.pitch) : 0.0;
+
+      final pitchData = PitchData(
+        frequency: smoothedFrequency,
+        probability: result.probability,
+        isPitched: isPitched && smoothedFrequency > 0,
+      );
+
+      _pitchController.add(pitchData);
     } catch (e) {
       // エラーが発生しても検出を続行
       _pitchController.add(PitchData.empty);
@@ -141,8 +135,10 @@ class PitchDetectorImpl implements PitchDetectorService {
 
   /// エラーが発生したときのコールバック
   void _onError(Object error) {
-    // エラーをログ出力（デバッグ用）
-    print('PitchDetector Error: $error');
+    // エラーをログ出力（デバッグビルドのみ）
+    if (kDebugMode) {
+      print('PitchDetector Error: $error');
+    }
     // エラーの代わりに空のデータを送信
     _pitchController.add(PitchData.empty);
   }
@@ -155,8 +151,12 @@ class PitchDetectorImpl implements PitchDetectorService {
 
   @override
   void dispose() {
+    // disposeは同期メソッドなので、asyncメソッドをawaitできない
+    // そのため、リソースを直接クリーンアップする
     if (_isDetecting) {
-      stop();
+      _audioCapture.stop();
+      _isDetecting = false;
+      _frequencyHistory.clear();
     }
     _pitchController.close();
   }
