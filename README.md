@@ -6,7 +6,7 @@
 
 ブラウザでアプリのUIを確認できます:
 
-**https://shoma4646.github.io/guitar-lovers/**
+**https://shoma4646.github.io/guitar_lovers/**
 
 ※実際のGitHubユーザー名に応じてURLが変わります。mainブランチへのpush後、数分でデプロイされます。
 
