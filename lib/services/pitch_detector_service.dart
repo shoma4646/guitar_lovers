@@ -54,7 +54,8 @@ class PitchDetectorService {
 
     // 音名とオクターブを分離
     final String note = noteName.substring(0, noteName.length - 1);
-    final int octave = int.tryParse(noteName.substring(noteName.length - 1)) ?? 4;
+    final int octave =
+        int.tryParse(noteName.substring(noteName.length - 1)) ?? 4;
 
     // 音名からインデックスを取得
     int noteIndex = noteNames.indexOf(note);

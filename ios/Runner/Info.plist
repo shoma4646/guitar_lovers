@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ギターの音程を検出してチューニングを支援するため、マイクへのアクセスが必要です。</string>
 </dict>
 </plist>

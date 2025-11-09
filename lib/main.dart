@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/tuner/tuner_screen.dart';
 // import 'features/practice/practice_screen.dart';
-import 'features/community/community_screen.dart';
+import 'features/history/history_screen.dart';
 import 'features/news/news_screen.dart';
 import 'shared/constants/app_colors.dart';
 
@@ -42,7 +42,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = const [
     TunerScreen(),
     _PracticePlaceholder(),
-    CommunityScreen(),
+    HistoryScreen(),
     NewsScreen(),
   ];
 
@@ -58,9 +58,9 @@ class _MainScreenState extends State<MainScreen> {
       label: '練習',
     ),
     NavigationDestination(
-      icon: Icon(Icons.people_outline),
-      selectedIcon: Icon(Icons.people),
-      label: 'コミュニティ',
+      icon: Icon(Icons.history_outlined),
+      selectedIcon: Icon(Icons.history),
+      label: '記録',
     ),
     NavigationDestination(
       icon: Icon(Icons.article_outlined),

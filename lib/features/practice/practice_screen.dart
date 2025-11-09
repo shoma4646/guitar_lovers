@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../../shared/constants/app_colors.dart';
 import '../../providers/practice_provider.dart';
 
@@ -15,60 +15,107 @@ class PracticeScreen extends ConsumerStatefulWidget {
 class _PracticeScreenState extends ConsumerState<PracticeScreen> {
   final TextEditingController _urlController = TextEditingController();
   YoutubePlayerController? _youtubeController;
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _urlController.dispose();
-    _youtubeController?.dispose();
+    _youtubeController?.close();
     super.dispose();
   }
 
-  void _loadVideo() {
+  Future<void> _loadVideo() async {
     final url = _urlController.text.trim();
     if (url.isEmpty) return;
 
     final videoId = ref.read(practiceProvider.notifier).extractVideoId(url);
     if (videoId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('無効なYouTube URLです')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('無効なYouTube URLです')),
+        );
+      }
       return;
     }
 
-    ref.read(practiceProvider.notifier).setVideoId(url);
-
     setState(() {
-      _youtubeController?.dispose();
-      _youtubeController = YoutubePlayerController(
-        initialVideoId: videoId,
-        flags: const YoutubePlayerFlags(
-          autoPlay: false,
-          mute: false,
-        ),
-      )..addListener(_videoListener);
+      _isLoading = true;
+      _youtubeController?.close();
+      _youtubeController = null;
     });
-  }
 
-  void _videoListener() {
-    if (_youtubeController == null) return;
+    // 少し待機してからコントローラーを作成
+    await Future.delayed(const Duration(milliseconds: 500));
 
-    final state = ref.read(practiceProvider);
-    final currentTime = _youtubeController!.value.position.inSeconds.toDouble();
+    if (!mounted) return;
 
-    ref.read(practiceProvider.notifier).updateCurrentTime(currentTime);
+    try {
+      ref.read(practiceProvider.notifier).setVideoId(url);
 
-    // ABループ処理
-    if (state.isLooping && currentTime >= state.loopEnd && state.loopEnd > 0) {
-      _youtubeController!.seekTo(Duration(seconds: state.loopStart.toInt()));
-    }
+      setState(() {
+        _youtubeController = YoutubePlayerController.fromVideoId(
+          videoId: videoId,
+          autoPlay: false,
+          params: const YoutubePlayerParams(
+            showFullscreenButton: true,
+            mute: false,
+            showControls: true,
+            strictRelatedVideos: true,
+          ),
+        );
+        _isLoading = false;
+      });
 
-    // 動画の長さを更新
-    if (state.duration == 0) {
-      final duration = _youtubeController!.metadata.duration.inSeconds.toDouble();
-      if (duration > 0) {
-        ref.read(practiceProvider.notifier).setDuration(duration);
+      // 動画読み込み後に監視を開始
+      _startMonitoring();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('動画の読み込みに失敗しました: $e')),
+        );
       }
     }
+  }
+
+  void _startMonitoring() {
+    // 定期的に再生位置をチェック
+    Future.doWhile(() async {
+      if (_youtubeController == null || !mounted) return false;
+
+      try {
+        final currentTime = await _youtubeController!.currentTime;
+        final duration = await _youtubeController!.duration;
+
+        if (mounted) {
+          ref
+              .read(practiceProvider.notifier)
+              .updateCurrentTime(currentTime.toDouble());
+
+          if (ref.read(practiceProvider).duration == 0) {
+            ref
+                .read(practiceProvider.notifier)
+                .setDuration(duration.toDouble());
+          }
+
+          // ABループ処理
+          final state = ref.read(practiceProvider);
+          if (state.isLooping &&
+              currentTime >= state.loopEnd &&
+              state.loopEnd > 0) {
+            await _youtubeController!
+                .seekTo(seconds: state.loopStart.toDouble());
+          }
+        }
+
+        await Future.delayed(const Duration(milliseconds: 100));
+        return mounted && _youtubeController != null;
+      } catch (e) {
+        return false;
+      }
+    });
   }
 
   String _formatTime(double seconds) {
@@ -107,14 +154,22 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
             ),
             const SizedBox(height: 16),
 
+            // ローディングインジケーター
+            if (_isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+
             // YouTubeプレーヤー
-            if (_youtubeController != null) ...[
+            if (_youtubeController != null && !_isLoading) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: YoutubePlayer(
                   controller: _youtubeController!,
-                  showVideoProgressIndicator: true,
-                  progressIndicatorColor: AppColors.primary,
+                  aspectRatio: 16 / 9,
                 ),
               ),
               const SizedBox(height: 16),
@@ -140,9 +195,9 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
                             value: state.currentTime.clamp(0.0, state.duration),
                             max: state.duration > 0 ? state.duration : 1.0,
                             activeColor: AppColors.primary,
-                            onChanged: (value) {
-                              _youtubeController?.seekTo(
-                                Duration(seconds: value.toInt()),
+                            onChanged: (value) async {
+                              await _youtubeController?.seekTo(
+                                seconds: value,
                               );
                             },
                           ),
@@ -162,10 +217,11 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
                         IconButton(
                           icon: const Icon(Icons.replay_10, size: 32),
                           color: AppColors.textWhite,
-                          onPressed: () {
-                            final newTime = (state.currentTime - 10).clamp(0.0, state.duration);
-                            _youtubeController?.seekTo(
-                              Duration(seconds: newTime.toInt()),
+                          onPressed: () async {
+                            final newTime = (state.currentTime - 10)
+                                .clamp(0.0, state.duration);
+                            await _youtubeController?.seekTo(
+                              seconds: newTime,
                             );
                           },
                         ),
@@ -177,17 +233,21 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
                           ),
                           child: IconButton(
                             icon: Icon(
-                              _youtubeController!.value.isPlaying
-                                  ? Icons.pause
-                                  : Icons.play_arrow,
+                              state.isPlaying ? Icons.pause : Icons.play_arrow,
                               size: 36,
                             ),
                             color: AppColors.textWhite,
-                            onPressed: () {
-                              if (_youtubeController!.value.isPlaying) {
-                                _youtubeController!.pause();
+                            onPressed: () async {
+                              if (state.isPlaying) {
+                                await _youtubeController?.pauseVideo();
+                                ref
+                                    .read(practiceProvider.notifier)
+                                    .togglePlaying();
                               } else {
-                                _youtubeController!.play();
+                                await _youtubeController?.playVideo();
+                                ref
+                                    .read(practiceProvider.notifier)
+                                    .togglePlaying();
                               }
                             },
                           ),
@@ -196,10 +256,11 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
                         IconButton(
                           icon: const Icon(Icons.forward_10, size: 32),
                           color: AppColors.textWhite,
-                          onPressed: () {
-                            final newTime = (state.currentTime + 10).clamp(0.0, state.duration);
-                            _youtubeController?.seekTo(
-                              Duration(seconds: newTime.toInt()),
+                          onPressed: () async {
+                            final newTime = (state.currentTime + 10)
+                                .clamp(0.0, state.duration);
+                            await _youtubeController?.seekTo(
+                              seconds: newTime,
                             );
                           },
                         ),
@@ -215,10 +276,12 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
                         return ChoiceChip(
                           label: Text('${speed}x'),
                           selected: state.playbackRate == speed,
-                          onSelected: (selected) {
+                          onSelected: (selected) async {
                             if (selected) {
-                              _youtubeController?.setPlaybackRate(speed);
-                              ref.read(practiceProvider.notifier).setPlaybackRate(speed);
+                              await _youtubeController?.setPlaybackRate(speed);
+                              ref
+                                  .read(practiceProvider.notifier)
+                                  .setPlaybackRate(speed);
                             }
                           },
                           selectedColor: AppColors.primary,
@@ -247,11 +310,13 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
                             children: [
                               Text(
                                 'A: ${_formatTime(state.loopStart)}',
-                                style: const TextStyle(color: AppColors.textGray),
+                                style:
+                                    const TextStyle(color: AppColors.textGray),
                               ),
                               Text(
                                 'B: ${_formatTime(state.loopEnd)}',
-                                style: const TextStyle(color: AppColors.textGray),
+                                style:
+                                    const TextStyle(color: AppColors.textGray),
                               ),
                             ],
                           ),
@@ -261,7 +326,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
                             children: [
                               IconButton(
                                 icon: Icon(
-                                  Icons.settings,
+                                  Icons.loop,
                                   color: state.isLooping
                                       ? AppColors.textWhite
                                       : AppColors.primary,
@@ -272,26 +337,34 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
                                       : AppColors.backgroundLightDark,
                                 ),
                                 onPressed: () {
-                                  ref.read(practiceProvider.notifier).toggleLoop();
+                                  ref
+                                      .read(practiceProvider.notifier)
+                                      .toggleLoop();
                                 },
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton(
                                 onPressed: () {
-                                  ref.read(practiceProvider.notifier).setLoopStart();
+                                  ref
+                                      .read(practiceProvider.notifier)
+                                      .setLoopStart();
                                 },
                                 style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: AppColors.primary),
+                                  side: const BorderSide(
+                                      color: AppColors.primary),
                                 ),
                                 child: const Text('A'),
                               ),
                               const SizedBox(width: 8),
                               OutlinedButton(
                                 onPressed: () {
-                                  ref.read(practiceProvider.notifier).setLoopEnd();
+                                  ref
+                                      .read(practiceProvider.notifier)
+                                      .setLoopEnd();
                                 },
                                 style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: AppColors.primary),
+                                  side: const BorderSide(
+                                      color: AppColors.primary),
                                 ),
                                 child: const Text('B'),
                               ),
@@ -300,7 +373,9 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen> {
                                 icon: const Icon(Icons.clear),
                                 color: AppColors.error,
                                 onPressed: () {
-                                  ref.read(practiceProvider.notifier).clearLoop();
+                                  ref
+                                      .read(practiceProvider.notifier)
+                                      .clearLoop();
                                 },
                               ),
                             ],
