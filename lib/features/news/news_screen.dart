@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+// import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/news_provider.dart';
 import '../../shared/constants/app_colors.dart';
 
@@ -33,22 +33,30 @@ class NewsScreen extends ConsumerWidget {
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(10),
                     ),
-                    child: CachedNetworkImage(
-                      imageUrl: article.image,
+                    child: Image.network(
+                      article.image,
                       height: 200,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        height: 200,
-                        color: AppColors.backgroundGray,
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 200,
+                          color: AppColors.backgroundGray,
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                            ),
                           ),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.error),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 200,
+                          color: AppColors.backgroundGray,
+                          child: const Icon(Icons.broken_image),
+                        );
+                      },
                     ),
                   ),
                   Padding(

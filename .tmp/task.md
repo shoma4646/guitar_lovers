@@ -176,44 +176,88 @@
 
 ---
 
-### 3.4 チューナー機能(優先度: 低、難易度: 最高)
+### 3.4 チューナー機能本実装(優先度: 高、難易度: 最高)
 
-#### 3.4.1 パーミッション管理
-- [ ] `permission_handler`を使ったマイク権限リクエスト
-- [ ] iOS: `Info.plist`にマイク使用許可の記述追加
-- [ ] Android: `AndroidManifest.xml`に権限追加
-- [ ] 権限拒否時のUI表示
+#### 3.4.0 前提調査
+- [x] `flutter_pitch_detection`パッケージの詳細調査
+  - [x] pub.devでのパッケージ情報確認
+  - [x] サンプルコードの確認
+  - [x] プラットフォーム対応状況の確認(iOS未対応)
+- [x] 代替パッケージの調査
+  - [x] `pitch_detector_dart` + `flutter_audio_capture`を選択
 
-#### 3.4.2 チューニングプリセット
-- [ ] チューニングモデル作成
-  - [ ] Standard, Half Step Down, Drop Dの定義
-- [ ] プリセット選択UI
-  - [ ] 選択ボタン群
-  - [ ] アクティブ状態の表示
+#### 3.4.1 パッケージ追加
+- [x] `pubspec.yaml`にパッケージ追加
+  - [x] `pitch_detector_dart: ^0.0.7`
+  - [x] `flutter_audio_capture: ^1.1.11`
+  - [x] `permission_handler: ^11.3.1`
+- [x] `flutter pub get`実行
 
-#### 3.4.3 オーディオ録音と解析
-- [ ] `record`パッケージでオーディオ録音
-- [ ] 音声データのストリーム取得
-- [ ] FFT(高速フーリエ変換)による周波数解析
-  - [ ] 適切なライブラリの選定と実装
-- [ ] 基本周波数(ピッチ)の検出
-- [ ] 音名の判定ロジック
-- [ ] セント単位のずれ計算
+#### 3.4.2 プラットフォーム権限設定
+- [x] iOS設定
+  - [x] `ios/Runner/Info.plist`に`NSMicrophoneUsageDescription`追加
+  - [x] 使用理由の説明文を日本語で記載
+- [x] Android設定
+  - [x] `android/app/src/main/AndroidManifest.xml`に`RECORD_AUDIO`権限追加
+- [ ] Web設定(実機テスト時に確認)
 
-#### 3.4.4 チューナーディスプレイUI
-- [ ] 現在の音名表示(大きなテキスト)
-- [ ] セント値表示
-- [ ] ビジュアルメーター実装
-  - [ ] 中央を基準とした左右へのインジケーター
-  - [ ] セント値に応じた位置調整
-- [ ] Start/Stop録音ボタン
-- [ ] 録音中の状態表示
+#### 3.4.3 データモデル作成
+- [x] `lib/features/tuner/domain/models/pitch_data.dart`作成
+  - [x] 周波数、音名、オクターブ、セント、精度フィールド
+  - [x] copyWithメソッド
+  - [x] 周波数から音名への変換メソッド
+  - [x] セント計算メソッド
 
-#### 3.4.5 状態管理
-- [ ] 録音状態管理
-- [ ] 現在の音名とセント値の状態管理
-- [ ] 選択中のチューニングプリセット状態管理
-- [ ] リアルタイム更新のストリーム管理
+#### 3.4.4 ピッチ検出サービス作成
+- [x] `lib/features/tuner/domain/services/pitch_detector_service.dart`インターフェース作成
+  - [x] start()メソッド
+  - [x] stop()メソッド
+  - [x] pitchStreamゲッター(Stream<PitchData>)
+- [x] `lib/features/tuner/data/pitch_detector_impl.dart`実装クラス作成
+  - [x] `pitch_detector_dart` + `flutter_audio_capture`の統合
+  - [x] マイク入力の開始/停止
+  - [x] ピッチデータのストリーム提供
+  - [x] エラーハンドリング
+
+#### 3.4.5 Riverpodプロバイダー作成
+- [x] `lib/features/tuner/providers/pitch_detector_provider.dart`作成
+  - [x] ピッチ検出サービスのプロバイダー
+  - [x] ピッチデータのStreamProvider
+  - [x] 録音状態のStateProvider
+
+#### 3.4.6 TunerScreenの更新
+- [x] モックロジックの削除
+  - [x] `_startMockDetection()`メソッド削除
+  - [x] `_stopMockDetection()`メソッド削除
+  - [x] `_mockTimer`関連コード削除
+- [x] 実際のピッチ検出サービスとの連携
+  - [x] プロバイダーからのデータ購読
+  - [x] UIへのデータ反映
+- [x] 権限リクエストの実装
+  - [x] 権限リクエストはサービス内で処理
+  - [x] 権限拒否時のエラーメッセージ表示
+- [x] エラーハンドリング
+  - [x] マイクアクセスエラー
+  - [x] ピッチ検出エラー
+
+#### 3.4.7 UI調整
+- [x] デモモード注意書きの削除
+- [x] エラー状態の表示
+- [x] ローディング状態の表示
+- [ ] パフォーマンス最適化(実機テスト後)
+
+#### 3.4.8 テスト
+- [ ] Android実機テスト
+  - [ ] 権限リクエストの動作確認
+  - [ ] ギター音の検出精度確認
+  - [ ] UI更新のスムーズさ確認
+- [ ] iOS実機テスト(可能であれば)
+  - [ ] 権限リクエストの動作確認
+  - [ ] ギター音の検出精度確認
+- [ ] エッジケーステスト
+  - [ ] マイク権限拒否時
+  - [ ] バックグラウンド時
+  - [ ] 複数音同時発生時
 
 ---
 
