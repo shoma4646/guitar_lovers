@@ -248,7 +248,7 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
           boxShadow: isTuned
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.5),
+                    color: AppColors.primary.withOpacity(0.5),
                     blurRadius: 8,
                     spreadRadius: 2,
                   ),
@@ -625,7 +625,7 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.2),
+        color: AppColors.error.withOpacity(0.2),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
