@@ -78,11 +78,11 @@ class AppTheme {
         ),
         hintStyle: const TextStyle(color: AppColors.textGray),
       ),
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         color: AppColors.backgroundLightDark,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(10)),
+          borderRadius: BorderRadius.circular(10),
         ),
       ),
     );
