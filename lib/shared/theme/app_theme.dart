@@ -78,13 +78,6 @@ class AppTheme {
         ),
         hintStyle: const TextStyle(color: AppColors.textGray),
       ),
-      cardTheme: CardThemeData(
-        color: AppColors.backgroundLightDark,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
     );
   }
 }
