@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
+
 /// ニュース記事モデル
+@immutable
 class NewsArticle {
   final String id;
   final String title;

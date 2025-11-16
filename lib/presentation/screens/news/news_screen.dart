@@ -116,7 +116,42 @@ class NewsScreen extends ConsumerWidget {
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
         error: (error, stack) => Center(
-          child: Text('エラーが発生しました: $error'),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: AppColors.textGray,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'エラーが発生しました',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppColors.textWhite,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$error',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textGray,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(newsArticlesProvider),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.textWhite,
+                ),
+                child: const Text('再試行'),
+              ),
+            ],
+          ),
         ),
       ),
     );
