@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
-import '../../shared/constants/app_colors.dart';
-import '../../providers/practice_provider.dart';
+import '../../../shared/constants/app_colors.dart';
+import '../../../features/practice/application/practice_provider.dart';
 
 /// 練習画面
 class PracticeScreen extends ConsumerStatefulWidget {

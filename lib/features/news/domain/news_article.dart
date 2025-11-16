@@ -7,7 +7,7 @@ class NewsArticle {
   final String date;
   final String category;
 
-  NewsArticle({
+  const NewsArticle({
     required this.id,
     required this.title,
     required this.excerpt,

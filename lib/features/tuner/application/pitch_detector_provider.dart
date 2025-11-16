@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/pitch_detector_impl.dart';
-import '../domain/models/pitch_data.dart';
+import '../domain/pitch_data.dart';
 import '../domain/services/pitch_detector_service.dart';
 
 part 'pitch_detector_provider.g.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/practice_state.dart';
+import '../domain/practice_state.dart';
 
 /// 練習機能の状態管理
 class PracticeNotifier extends StateNotifier<PracticeState> {

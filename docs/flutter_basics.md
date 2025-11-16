@@ -12,6 +12,8 @@
 6. [ナビゲーション](#ナビゲーション)
 7. [アニメーション](#アニメーション)
 8. [非同期処理](#非同期処理)
+9. [デザインパターン](#デザインパターン)
+10. [よく使うパターン](#よく使うパターン)
 
 ---
 
@@ -274,9 +276,136 @@ TextField(
 すべての画面が同じ状態にアクセス可能
 ```
 
-### Provider(読み取り専用)
+### Riverpod Generator(推奨)
 
-変更されないデータを提供します。
+**Riverpod Generator**は、アノテーションを使ってプロバイダーを自動生成するツールです。このプロジェクトでは**Riverpod Generatorを使用することを推奨**します。
+
+#### セットアップ
+
+```yaml
+# pubspec.yaml
+dependencies:
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+dev_dependencies:
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.4.0
+```
+
+#### 基本的な使い方
+
+```dart
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+// part文を追加(ファイル名と同じ)
+part 'counter_provider.g.dart';
+
+// シンプルなプロバイダー
+@riverpod
+String greeting(Ref ref) {
+  return 'Hello, World!';
+}
+
+// 非同期プロバイダー
+@riverpod
+Future<String> userName(Ref ref) async {
+  await Future.delayed(Duration(seconds: 1));
+  return 'Alice';
+}
+
+// 状態を持つプロバイダー(クラスベース)
+@riverpod
+class Counter extends _$Counter {
+  @override
+  int build() {
+    return 0;  // 初期値
+  }
+
+  void increment() {
+    state++;
+  }
+
+  void decrement() {
+    state--;
+  }
+
+  void reset() {
+    state = 0;
+  }
+}
+```
+
+#### コード生成コマンド
+
+```bash
+# 1回だけ生成
+flutter pub run build_runner build
+
+# 変更を監視して自動生成(開発中に便利)
+flutter pub run build_runner watch
+
+# 既存の生成ファイルを削除して再生成
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
+#### 実際の使用例
+
+```dart
+class CounterScreen extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 自動生成されたプロバイダー名: 元の名前 + Provider
+    final count = ref.watch(counterProvider);
+
+    return Column(
+      children: [
+        Text('Count: $count'),
+        ElevatedButton(
+          onPressed: () {
+            // notifierを取得してメソッドを呼び出す
+            ref.read(counterProvider.notifier).increment();
+          },
+          child: Text('Increment'),
+        ),
+      ],
+    );
+  }
+}
+```
+
+#### パラメータを受け取るプロバイダー
+
+```dart
+@riverpod
+Future<User> user(Ref ref, String userId) async {
+  // userIdを使ってユーザー情報を取得
+  return await fetchUser(userId);
+}
+
+// 使用例
+class UserProfile extends ConsumerWidget {
+  final String userId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // パラメータを渡して使用
+    final userAsync = ref.watch(userProvider(userId));
+
+    return userAsync.when(
+      data: (user) => Text(user.name),
+      loading: () => CircularProgressIndicator(),
+      error: (err, stack) => Text('Error: $err'),
+    );
+  }
+}
+```
+
+### 従来の方法(Provider、StateNotifierProvider)
+
+Riverpod Generatorを使わない場合の従来の書き方です。
+
+#### Provider(読み取り専用)
 
 ```dart
 // プロバイダーの定義
@@ -288,25 +417,21 @@ final greetingProvider = Provider<String>((ref) {
 class GreetingScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // プロバイダーから値を取得
     final greeting = ref.watch(greetingProvider);
-
-    return Text(greeting);  // Hello, World!
+    return Text(greeting);
   }
 }
 ```
 
-### StateNotifierProvider(状態変更可能)
-
-ユーザーの操作で変化する状態を管理します。
+#### StateNotifierProvider(状態変更可能)
 
 ```dart
 // 状態を管理するクラス
 class CounterNotifier extends StateNotifier<int> {
-  CounterNotifier() : super(0);  // 初期値0
+  CounterNotifier() : super(0);
 
   void increment() {
-    state++;  // 状態を更新
+    state++;
   }
 
   void decrement() {
@@ -327,7 +452,6 @@ final counterProvider = StateNotifierProvider<CounterNotifier, int>((ref) {
 class CounterScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 状態を取得(変更を監視)
     final count = ref.watch(counterProvider);
 
     return Column(
@@ -335,7 +459,6 @@ class CounterScreen extends ConsumerWidget {
         Text('Count: $count'),
         ElevatedButton(
           onPressed: () {
-            // 状態を変更
             ref.read(counterProvider.notifier).increment();
           },
           child: Text('Increment'),
@@ -661,18 +784,367 @@ StreamBuilder<int>(
 
 ---
 
+## デザインパターン
+
+このプロジェクトで実際に使用しているデザインパターンを紹介します。
+
+### 1. Clean Architecture - Presentation完全分離構成
+
+このプロジェクトの基本構造です。**Presentation層を完全に分離**し、Clean Architectureのベストプラクティスに従っています。
+
+```
+lib/
+├── features/                     # ビジネスロジック層（UI非依存）
+│   ├── tuner/
+│   │   ├── domain/              # ドメイン層
+│   │   │   ├── pitch_data.dart
+│   │   │   └── services/
+│   │   ├── data/                # データ層
+│   │   │   └── pitch_detector_impl.dart
+│   │   └── application/         # アプリケーション層
+│   │       └── pitch_detector_provider.dart
+│   │
+│   ├── history/
+│   │   ├── domain/
+│   │   ├── data/
+│   │   └── application/
+│   │
+│   ├── practice/
+│   └── news/
+│
+├── presentation/                 # UI層（完全分離）
+│   ├── screens/
+│   │   ├── tuner/
+│   │   │   └── tuner_screen.dart
+│   │   ├── history/
+│   │   │   └── history_screen.dart
+│   │   ├── news/
+│   │   │   └── news_screen.dart
+│   │   └── practice/
+│   │       └── practice_screen.dart
+│   └── widgets/
+│       ├── tuner/
+│       ├── history/
+│       ├── news/
+│       └── common/              # 共通UIコンポーネント
+│
+├── shared/                       # インフラストラクチャ層
+│   ├── constants/
+│   ├── theme/
+│   └── widgets/
+│
+└── main.dart
+```
+
+**各層の役割:**
+- **features/**: ビジネスロジック（UI非依存、テスタブル）
+  - **domain/**: ドメインモデルとビジネスルール
+  - **data/**: データアクセス（Repository実装）
+  - **application/**: ユースケースと状態管理（Provider）
+- **presentation/**: UI層（完全に分離、再利用可能）
+  - **screens/**: 各画面
+  - **widgets/**: UIコンポーネント
+- **shared/**: 共通インフラストラクチャ
+
+**メリット:**
+- **UI層が完全に独立** → デザイン変更が容易
+- **ビジネスロジックの再利用** → 複数のUI（Web/Mobile等）で共有可能
+- **テスタビリティ** → UI無しでロジックをテスト可能
+- **チーム開発** → UI担当とロジック担当で完全分離
+- **Clean Architecture準拠** → 業界標準のベストプラクティス
+- **依存関係の方向が一方向** → presentation → features（逆は禁止）
+
+### 2. Repository Pattern(リポジトリパターン)
+
+データの取得・保存のロジックを分離するパターンです。
+
+**実際の例: 練習履歴機能**
+
+```dart
+// lib/features/history/data/practice_history_repository.dart
+class PracticeHistoryRepository {
+  final SharedPreferences _prefs;
+
+  PracticeHistoryRepository(this._prefs);
+
+  /// セッション一覧を取得
+  Future<List<PracticeSession>> getSessions() async {
+    final jsonString = _prefs.getString('practice_sessions') ?? '[]';
+    final List<dynamic> jsonList = json.decode(jsonString);
+    return jsonList.map((json) => PracticeSession.fromJson(json)).toList();
+  }
+
+  /// セッションを追加
+  Future<void> addSession(PracticeSession session) async {
+    final sessions = await getSessions();
+    sessions.add(session);
+    final jsonString = json.encode(sessions.map((s) => s.toJson()).toList());
+    await _prefs.setString('practice_sessions', jsonString);
+  }
+
+  /// 統計情報を計算
+  Future<PracticeStats> calculateStats() async {
+    final sessions = await getSessions();
+    // 統計計算のロジック
+    return PracticeStats(...);
+  }
+}
+
+// Riverpodでの使用
+@riverpod
+Future<PracticeHistoryRepository> practiceHistoryRepository(Ref ref) async {
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  return PracticeHistoryRepository(prefs);
+}
+```
+
+**メリット:**
+- データの保存先(SharedPreferences、API等)を変更してもUI側のコードは変更不要
+- データアクセスのロジックが一箇所にまとまる
+- テストが書きやすい
+
+### 3. Dependency Injection(依存性注入)
+
+Riverpodを使った依存性の注入パターンです。
+
+**実際の例: 練習履歴機能の層構造**
+
+```dart
+// lib/features/history/application/practice_history_provider.dart
+
+// 依存関係: SharedPreferences（インフラ層）
+@riverpod
+Future<SharedPreferences> sharedPreferences(Ref ref) async {
+  return await SharedPreferences.getInstance();
+}
+
+// 依存関係: Repository（データ層）
+@riverpod
+Future<PracticeHistoryRepository> practiceHistoryRepository(Ref ref) async {
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  return PracticeHistoryRepository(prefs);
+}
+
+// アプリケーション層: ビジネスロジックと状態管理
+@riverpod
+class PracticeSessions extends _$PracticeSessions {
+  @override
+  Future<List<PracticeSession>> build() async {
+    // データ層（repository）の実装詳細を知る必要がない
+    final repository = await ref.watch(practiceHistoryRepositoryProvider.future);
+    return await repository.getSessions();
+  }
+
+  // ビジネスロジック：セッション追加
+  Future<void> addSession({
+    required int durationMinutes,
+    String? notes,
+  }) async {
+    final repository = await ref.read(practiceHistoryRepositoryProvider.future);
+    final session = PracticeSession.create(
+      durationMinutes: durationMinutes,
+      notes: notes,
+    );
+    await repository.addSession(session);
+
+    // 関連する状態を無効化（自動再取得）
+    ref.invalidateSelf();
+    ref.invalidate(practiceStatsProvider);
+  }
+}
+```
+
+**プレゼンテーション層での使用**
+
+```dart
+// lib/presentation/screens/history/history_screen.dart
+
+class HistoryScreen extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // features層のプロバイダーを監視（presentation → features）
+    final sessionsAsync = ref.watch(practiceSessionsProvider);
+
+    return sessionsAsync.when(
+      data: (sessions) => ListView.builder(...),
+      loading: () => CircularProgressIndicator(),
+      error: (error, stack) => Text('Error: $error'),
+    );
+  }
+}
+```
+
+**重要な依存関係の方向:**
+```
+presentation/screens/history/history_screen.dart
+    ↓ import
+features/history/application/practice_history_provider.dart
+    ↓
+features/history/data/practice_history_repository.dart
+    ↓
+features/history/domain/practice_session.dart
+```
+
+**メリット:**
+- **完全な層分離** → UI変更がビジネスロジックに影響しない
+- **テスタビリティ** → features層をUI無しでテスト可能
+- **データソース変更が容易** → SharedPreferences→Supabase等
+- **UI層の再利用** → 同じfeatures層で複数のUI（Web/Mobile）を作成可能
+- **依存関係が一方向** → presentation → features（逆は禁止）
+
+### 4. State Management Patterns(状態管理パターン)
+
+#### AsyncValue(非同期状態の処理)
+
+Riverpodの`AsyncValue`を使って、ローディング・成功・エラーを統一的に処理します。
+
+**実際の例: 練習統計の表示**
+
+```dart
+// Provider
+@riverpod
+Future<PracticeStats> practiceStats(Ref ref) async {
+  final repository = await ref.watch(practiceHistoryRepositoryProvider.future);
+  return await repository.calculateStats();
+}
+
+// UI側での使用
+class StatsWidget extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(practiceStatsProvider);
+
+    return statsAsync.when(
+      data: (stats) => Column(
+        children: [
+          Text('総練習時間: ${stats.totalMinutes}分'),
+          Text('平均時間: ${stats.averageMinutes}分'),
+        ],
+      ),
+      loading: () => CircularProgressIndicator(),
+      error: (error, stack) => Text('エラー: $error'),
+    );
+  }
+}
+```
+
+#### State Invalidation(状態の更新)
+
+データが変更されたときに他のプロバイダーを更新します。
+
+**実際の例: セッション追加時の更新**
+
+```dart
+@riverpod
+class PracticeSessions extends _$PracticeSessions {
+  @override
+  Future<List<PracticeSession>> build() async {
+    final repository = await ref.watch(practiceHistoryRepositoryProvider.future);
+    return await repository.getSessions();
+  }
+
+  Future<void> addSession({
+    required int durationMinutes,
+    String? notes,
+  }) async {
+    final repository = await ref.read(practiceHistoryRepositoryProvider.future);
+    final session = PracticeSession.create(durationMinutes: durationMinutes, notes: notes);
+    await repository.addSession(session);
+
+    // 自分自身を無効化して再読み込み
+    ref.invalidateSelf();
+
+    // 関連する他のプロバイダーも無効化(統計情報も更新される)
+    ref.invalidate(practiceStatsProvider);
+    ref.invalidate(weeklyDataProvider);
+  }
+}
+```
+
+### 5. Domain Model Pattern(ドメインモデルパターン)
+
+ビジネスロジックをモデルクラスに持たせるパターンです。
+
+**実際の例: 練習セッション**
+
+```dart
+// lib/features/history/domain/practice_session.dart
+class PracticeSession {
+  final String id;
+  final DateTime dateTime;
+  final int durationMinutes;
+  final String? notes;
+  final String? tuning;
+
+  const PracticeSession({
+    required this.id,
+    required this.dateTime,
+    required this.durationMinutes,
+    this.notes,
+    this.tuning,
+  });
+
+  /// セッションを作成(ファクトリーメソッド)
+  factory PracticeSession.create({
+    required int durationMinutes,
+    String? notes,
+    String? tuning,
+  }) {
+    return PracticeSession(
+      id: const Uuid().v4(),
+      dateTime: DateTime.now(),
+      durationMinutes: durationMinutes,
+      notes: notes,
+      tuning: tuning,
+    );
+  }
+
+  /// JSONから復元
+  factory PracticeSession.fromJson(Map<String, dynamic> json) {
+    return PracticeSession(
+      id: json['id'] as String,
+      dateTime: DateTime.parse(json['dateTime'] as String),
+      durationMinutes: json['durationMinutes'] as int,
+      notes: json['notes'] as String?,
+      tuning: json['tuning'] as String?,
+    );
+  }
+
+  /// JSONに変換
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'dateTime': dateTime.toIso8601String(),
+      'durationMinutes': durationMinutes,
+      'notes': notes,
+      'tuning': tuning,
+    };
+  }
+}
+```
+
+**メリット:**
+- データとそれに関連するロジックが一箇所にまとまる
+- コードの再利用性が高い
+- ビジネスルールが明確になる
+
+---
+
 ## よく使うパターン
 
 ### リストの表示
 
 ```dart
+// lib/presentation/screens/news/news_screen.dart
 class NewsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final articles = ref.watch(newsProvider);
+    // features層のプロバイダーを使用
+    final articlesAsync = ref.watch(newsArticlesProvider);
 
-    return ListView.builder(
-      itemCount: articles.length,
+    return articlesAsync.when(
+      data: (articles) => ListView.builder(
+        itemCount: articles.length,
       itemBuilder: (context, index) {
         final article = articles[index];
         return ListTile(

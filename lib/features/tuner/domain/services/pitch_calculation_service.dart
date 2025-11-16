@@ -1,7 +1,7 @@
 import 'dart:math';
 
-/// 音高検出サービス
-class PitchDetectorService {
+/// 音高計算サービス
+class PitchCalculationService {
   /// 音名のリスト
   static const List<String> noteNames = [
     'C',
