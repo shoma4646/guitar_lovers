@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'shared/theme/app_theme.dart';
-import 'features/tuner/tuner_screen.dart';
-// import 'features/practice/practice_screen.dart';
-import 'features/history/history_screen.dart';
-import 'features/news/news_screen.dart';
+import 'presentation/screens/tuner/tuner_screen.dart';
+// import 'presentation/screens/practice/practice_screen.dart';
+import 'presentation/screens/history/history_screen.dart';
+import 'presentation/screens/news/news_screen.dart';
 import 'shared/constants/app_colors.dart';
 
 void main() {

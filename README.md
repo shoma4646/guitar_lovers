@@ -130,62 +130,86 @@ flutter pub run build_runner watch --delete-conflicting-outputs
 ```
 lib/
 ├── main.dart                    # アプリのエントリーポイント
-│                                # ProviderScopeとMainScreenを含む
 │
-├── features/                    # 機能別のUI画面(Feature-First設計)
+├── features/                    # ビジネスロジック層（UI非依存）
 │   ├── tuner/                  # チューナー機能
-│   │   ├── data/              # Data層（外部ライブラリとの連携）
-│   │   │   └── pitch_detector_impl.dart  # ピッチ検出の実装
-│   │   ├── domain/            # Domain層（ビジネスロジック）
-│   │   │   ├── models/
-│   │   │   │   └── pitch_data.dart  # ピッチデータモデル
+│   │   ├── domain/            # ドメイン層
+│   │   │   ├── pitch_data.dart  # ピッチデータモデル
+│   │   │   ├── tuning.dart     # チューニングプリセット
 │   │   │   └── services/
-│   │   │       └── pitch_detector_service.dart  # インターフェース
-│   │   ├── providers/         # Presentation層（状態管理）
-│   │   │   ├── pitch_detector_provider.dart  # Riverpod Generator使用
-│   │   │   └── pitch_detector_provider.g.dart  # 自動生成ファイル
-│   │   └── tuner_screen.dart  # チューナー画面UI
-│   ├── practice/               # 練習機能(現在プレースホルダー)
-│   │   └── practice_screen.dart
+│   │   │       ├── pitch_detector_service.dart     # インターフェース
+│   │   │       └── pitch_calculation_service.dart  # 音高計算ユーティリティ
+│   │   ├── data/              # データ層
+│   │   │   └── pitch_detector_impl.dart  # ピッチ検出の実装
+│   │   └── application/       # アプリケーション層
+│   │       ├── pitch_detector_provider.dart  # Riverpod Generator
+│   │       └── pitch_detector_provider.g.dart  # 自動生成
+│   │
 │   ├── history/                # 練習記録機能
-│   │   ├── data/              # Data層（ローカルストレージ）
+│   │   ├── domain/
+│   │   │   ├── practice_session.dart  # セッションモデル
+│   │   │   └── practice_stats.dart    # 統計モデル
+│   │   ├── data/
 │   │   │   └── practice_history_repository.dart  # データ永続化
-│   │   ├── domain/            # Domain層（ビジネスロジック）
-│   │   │   └── models/
-│   │   │       ├── practice_session.dart  # 練習セッションモデル
-│   │   │       └── practice_stats.dart    # 統計情報モデル
-│   │   ├── providers/         # Presentation層（状態管理）
-│   │   │   ├── practice_history_provider.dart  # Riverpod Generator使用
-│   │   │   └── practice_history_provider.g.dart  # 自動生成ファイル
-│   │   └── history_screen.dart  # 練習記録画面UI
-│   └── news/                   # ニュース機能
-│       └── news_screen.dart
+│   │   └── application/
+│   │       ├── practice_history_provider.dart
+│   │       └── practice_history_provider.g.dart
+│   │
+│   ├── news/                   # ニュース機能
+│   │   ├── domain/
+│   │   ├── data/
+│   │   └── application/
+│   │
+│   └── practice/               # 練習機能
+│       ├── domain/
+│       ├── data/
+│       └── application/
 │
-├── models/                      # データモデル(Immutableクラス)
-│   ├── news_article.dart       # ニュース記事モデル
-│   ├── practice_state.dart     # 練習画面の状態モデル
-│   └── tuning.dart             # チューニングプリセットモデル
+├── presentation/                # UI層（完全分離）
+│   ├── screens/
+│   │   ├── tuner/
+│   │   │   └── tuner_screen.dart
+│   │   ├── history/
+│   │   │   └── history_screen.dart
+│   │   ├── news/
+│   │   │   └── news_screen.dart
+│   │   └── practice/
+│   │       └── practice_screen.dart
+│   └── widgets/
+│       ├── tuner/
+│       ├── history/
+│       ├── news/
+│       ├── practice/
+│       └── common/             # 共通UIコンポーネント
 │
-├── providers/                   # Riverpod状態管理
-│   ├── news_provider.dart      # Provider(読み取り専用)
-│   └── practice_provider.dart  # StateNotifierProvider
-│
-└── shared/                      # 共通リソース
+└── shared/                      # インフラストラクチャ層
     ├── theme/
-    │   └── app_theme.dart      # Material Design 3テーマ定義
+    │   └── app_theme.dart      # Material Design 3テーマ
     └── constants/
-        └── app_colors.dart     # カラーパレット定数
+        └── app_colors.dart     # カラーパレット
 ```
 
-### アーキテクチャ設計
+### アーキテクチャ設計（Clean Architecture準拠）
 
-チューナー機能では**Clean Architecture + Riverpod Generator**パターンを採用しています：
+このプロジェクトは**Clean Architecture + Presentation完全分離**パターンを採用しています：
 
-- **Domain層**: ビジネスロジックとインターフェース定義（他の層に依存しない）
-- **Data層**: 外部ライブラリ（音声キャプチャ、ピッチ検出）との連携
-- **Presentation層**: UI表示と状態管理（Riverpod Generator使用）
+**依存関係の方向:**
+```
+presentation → features/application → features/data → features/domain
+   (UI層)         (状態管理)           (データ層)      (ビジネスロジック)
+```
 
-このパターンにより、実用性とメンテナンス性を両立しています。
+**各層の役割:**
+- **features/domain**: ビジネスロジックとドメインモデル（最も重要、他の層に依存しない）
+- **features/data**: データアクセス（API、DB、SharedPreferences等）
+- **features/application**: 状態管理とユースケース（Riverpod Provider）
+- **presentation**: UI（画面とウィジェット、完全に分離）
+
+**メリット:**
+- UI変更がビジネスロジックに影響しない
+- features層をUI無しでテスト可能
+- 同じビジネスロジックで複数のUI（Web/Mobile）を作成可能
+- チーム開発で役割分担が明確（UI担当/ロジック担当）
 
 ## 設計方針(初学者向け)
 
@@ -193,20 +217,37 @@ lib/
 
 ### アーキテクチャパターン
 
-**Feature-First設計**を採用しています。これは、機能ごとにフォルダを分け、関連するファイルをまとめる方法です。
+**Clean Architecture + Presentation完全分離**を採用しています。
 
-```
-features/
-├── tuner/          # チューナー機能のすべて
-├── practice/       # 練習機能のすべて
-├── community/      # コミュニティ機能のすべて
-└── news/           # ニュース機能のすべて
-```
+**特徴:**
+1. **features層（ビジネスロジック）とpresentation層（UI）を完全分離**
+   - features層はUIライブラリに依存しない
+   - presentation層はビジネスロジックを持たない
 
-**メリット**:
-- 機能を追加・削除しやすい
-- 関連するコードが近くにあるため理解しやすい
-- チーム開発時に機能ごとに分担しやすい
+2. **依存関係が一方向**
+   ```
+   presentation → features
+   ```
+   - presentationはfeaturesに依存できる
+   - featuresはpresentationを知らない（逆方向は禁止）
+
+3. **機能ごとに4層構造**
+   ```
+   features/tuner/
+   ├── domain/        # ドメインモデル（最重要）
+   ├── data/          # データアクセス
+   ├── application/   # 状態管理
+   ```
+   ```
+   presentation/screens/tuner/
+   └── tuner_screen.dart  # UI（完全分離）
+   ```
+
+**メリット:**
+- **テスタビリティ**: UI無しでビジネスロジックをテスト可能
+- **保守性**: UI変更がビジネスロジックに影響しない
+- **再利用性**: 同じfeatures層で異なるUI（Web/Mobile/Desktop）を作成可能
+- **チーム開発**: UI担当とロジック担当で完全分離できる
 
 ### 状態管理: Riverpod
 
@@ -241,22 +282,30 @@ features/
 #### 使い方の例
 
 ```dart
-// 画面でプロバイダーを使う
+// lib/presentation/screens/news/news_screen.dart
 class NewsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // プロバイダーからデータを取得
-    final articles = ref.watch(newsProvider);
+    // features層のプロバイダーを監視
+    final articlesAsync = ref.watch(newsArticlesProvider);
 
-    return ListView.builder(
-      itemCount: articles.length,
-      itemBuilder: (context, index) {
-        return ArticleCard(article: articles[index]);
-      },
+    return articlesAsync.when(
+      data: (articles) => ListView.builder(
+        itemCount: articles.length,
+        itemBuilder: (context, index) {
+          return ArticleCard(article: articles[index]);
+        },
+      ),
+      loading: () => CircularProgressIndicator(),
+      error: (error, _) => Text('Error: $error'),
     );
   }
 }
 ```
+
+**ポイント:**
+- **presentation層からfeatures層のプロバイダーを使用**
+- **AsyncValue.when()でローディング/エラー状態を統一的に処理**
 
 ### モデルクラス
 

@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
+
 /// ニュース記事モデル
+@immutable
 class NewsArticle {
   final String id;
   final String title;
@@ -7,7 +10,7 @@ class NewsArticle {
   final String date;
   final String category;
 
-  NewsArticle({
+  const NewsArticle({
     required this.id,
     required this.title,
     required this.excerpt,

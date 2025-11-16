@@ -1,4 +1,4 @@
-import '../models/pitch_data.dart';
+import '../pitch_data.dart';
 
 /// ピッチ検出サービスのインターフェース
 abstract class PitchDetectorService {

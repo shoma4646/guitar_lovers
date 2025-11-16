@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../domain/models/practice_session.dart';
-import '../domain/models/practice_stats.dart';
+import '../domain/practice_session.dart';
+import '../domain/practice_stats.dart';
 
 /// 練習履歴のリポジトリ（データ永続化）
 class PracticeHistoryRepository {

@@ -13,18 +13,18 @@ void main() {
     // 4つのナビゲーションアイテムが表示されることを確認
     expect(find.text('チューナー'), findsOneWidget);
     expect(find.text('練習'), findsOneWidget);
-    expect(find.text('コミュニティ'), findsOneWidget);
+    expect(find.text('記録'), findsOneWidget);
     expect(find.text('ニュース'), findsOneWidget);
   });
 
-  testWidgets('コミュニティタブへの遷移', (WidgetTester tester) async {
+  testWidgets('記録タブへの遷移', (WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: MyApp()));
 
-    // コミュニティタブをタップ
-    await tester.tap(find.text('コミュニティ'));
-    await tester.pump();
+    // 記録タブをタップ
+    await tester.tap(find.text('記録'));
+    await tester.pumpAndSettle();
 
-    // コミュニティ画面が表示されることを確認
-    expect(find.text('投稿を作成...'), findsOneWidget);
+    // 記録画面が表示されることを確認(練習履歴のタイトルが表示される)
+    expect(find.text('練習履歴'), findsOneWidget);
   });
 }

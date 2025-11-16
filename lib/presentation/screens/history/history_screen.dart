@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
-import '../../shared/constants/app_colors.dart';
-import 'providers/practice_history_provider.dart';
+import '../../../shared/constants/app_colors.dart';
+import '../../../features/history/application/practice_history_provider.dart';
 
 /// 練習記録画面
 class HistoryScreen extends ConsumerWidget {

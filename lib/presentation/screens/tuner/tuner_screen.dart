@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../shared/constants/app_colors.dart';
-import '../../models/tuning.dart';
-import 'providers/pitch_detector_provider.dart';
-import 'domain/models/pitch_data.dart';
+import '../../../shared/constants/app_colors.dart';
+import '../../../features/tuner/domain/tuning.dart';
+import '../../../features/tuner/application/pitch_detector_provider.dart';
+import '../../../features/tuner/domain/pitch_data.dart';
 
 /// チューナー画面
 class TunerScreen extends ConsumerStatefulWidget {
@@ -51,24 +51,21 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
   /// チューニング完了とみなすための継続カウント数（約0.5秒 = 6カウント）
   static const int _tuneCompleteThreshold = 6;
 
-  @override
-  void dispose() {
-    // disposeではrefを使用できないため、サービスは自動的にクリーンアップされる
-    super.dispose();
-  }
-
   Future<void> _toggleListening() async {
     final service = ref.read(pitchDetectorServiceProvider);
+    // 現在の検出状態を取得
     final isDetecting = ref.read(isDetectingProvider);
 
     try {
       if (isDetecting) {
+        // 検出中にトグルされた場合
         await service.stop();
         ref.read(isDetectingProvider.notifier).toggle(false);
         setState(() {
           _errorMessage = null;
         });
       } else {
+        // 検出されていない場合にトグルされた場合
         // 開始時にチューニング状態をリセット
         _resetAllTuning();
         await service.start();

@@ -2,8 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/practice_history_repository.dart';
-import '../domain/models/practice_session.dart';
-import '../domain/models/practice_stats.dart';
+import '../domain/practice_session.dart';
+import '../domain/practice_stats.dart';
 
 part 'practice_history_provider.g.dart';
 
