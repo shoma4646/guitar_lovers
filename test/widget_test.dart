@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:guitar_lovers_flutter/main.dart';
 
 void main() {
   testWidgets('アプリが正常に起動する', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const ProviderScope(child: MyApp()));
 
     // アプリタイトルが表示されることを確認
@@ -18,11 +20,16 @@ void main() {
   });
 
   testWidgets('記録タブへの遷移', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const ProviderScope(child: MyApp()));
 
     // 記録タブをタップ
     await tester.tap(find.text('記録'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    // スクロールして表示を確認
+    await tester.scrollUntilVisible(find.text('練習履歴'), 500);
 
     // 記録画面が表示されることを確認(練習履歴のタイトルが表示される)
     expect(find.text('練習履歴'), findsOneWidget);
