@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
@@ -25,6 +26,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   bool _isLoading = false;
   late TabController _tabController;
   String? _currentVideoId;
+  Timer? _monitoringTimer;
 
   @override
   void initState() {
@@ -34,6 +36,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
   @override
   void dispose() {
+    _monitoringTimer?.cancel();
     _urlController.dispose();
     _bookmarkLabelController.dispose();
     _youtubeController?.close();
@@ -109,8 +112,12 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   }
 
   void _startMonitoring() {
-    Future.doWhile(() async {
-      if (_youtubeController == null || !mounted) return false;
+    _monitoringTimer?.cancel();
+    _monitoringTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+      if (!mounted || _youtubeController == null) {
+        _monitoringTimer?.cancel();
+        return;
+      }
 
       try {
         final currentTime = await _youtubeController!.currentTime;
@@ -135,11 +142,8 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
                 .seekTo(seconds: state.loopStart.toDouble());
           }
         }
-
-        await Future.delayed(const Duration(milliseconds: 100));
-        return mounted && _youtubeController != null;
       } catch (e) {
-        return false;
+        _monitoringTimer?.cancel();
       }
     });
   }
@@ -665,7 +669,6 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   }
 
   Widget _buildPresetTab() {
-    final presets = ref.watch(presetVideosProvider);
     final videosByCategory = ref.watch(videosByCategoryProvider);
 
     return SingleChildScrollView(

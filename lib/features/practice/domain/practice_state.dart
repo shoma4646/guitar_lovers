@@ -46,6 +46,7 @@ class PracticeState {
     double? loopEnd,
     bool? isLooping,
     DateTime? practiceStartTime,
+    bool clearPracticeStartTime = false,
     int? accumulatedPracticeSeconds,
     int? metronomeBpm,
     bool? isMetronomeEnabled,
@@ -59,7 +60,9 @@ class PracticeState {
       loopStart: loopStart ?? this.loopStart,
       loopEnd: loopEnd ?? this.loopEnd,
       isLooping: isLooping ?? this.isLooping,
-      practiceStartTime: practiceStartTime ?? this.practiceStartTime,
+      practiceStartTime: clearPracticeStartTime
+          ? null
+          : (practiceStartTime ?? this.practiceStartTime),
       accumulatedPracticeSeconds:
           accumulatedPracticeSeconds ?? this.accumulatedPracticeSeconds,
       metronomeBpm: metronomeBpm ?? this.metronomeBpm,
