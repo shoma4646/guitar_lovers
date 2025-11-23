@@ -88,14 +88,14 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
   Color _getMeterColor(double cents) {
     final absCents = cents.abs();
     if (absCents < 10) {
-      // チューニング完了範囲（緑）
+      // チューニング完了範囲（緑 -> Primary）
       return AppColors.primary;
     } else if (cents > 0) {
-      // 高い（赤系）
+      // 高い（赤 -> Error）
       return AppColors.error;
     } else {
-      // 低い（青系）
-      return Colors.blue;
+      // 低い（青 -> Secondary）
+      return AppColors.secondary;
     }
   }
 
@@ -210,23 +210,20 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
     required bool isCurrent,
     required bool isTuned,
   }) {
-    Color backgroundColor;
+    // Color backgroundColor; // Removed unused variable
     Color textColor;
     double scale = 1.0;
 
     if (isTuned) {
       // チューニング完了（緑色）
-      backgroundColor = AppColors.primary;
       textColor = AppColors.textWhite;
       scale = 1.1;
     } else if (isCurrent) {
       // 現在チューニング中（黄色）
-      backgroundColor = Colors.yellow.shade700;
       textColor = AppColors.backgroundDark;
       scale = 1.15;
     } else {
       // 未チューニング（グレー）
-      backgroundColor = AppColors.backgroundDark;
       textColor = AppColors.textGray;
     }
 
@@ -239,21 +236,33 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
         width: 48,
         height: 64,
         decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(8),
+          color: isTuned
+              ? AppColors.primary.withValues(alpha: 0.8)
+              : (isCurrent
+                  ? AppColors.secondary.withValues(alpha: 0.2)
+                  : AppColors.glassSurface),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isCurrent ? Colors.yellow.shade700 : Colors.transparent,
-            width: 2,
+            color: isCurrent ? AppColors.secondary : AppColors.glassBorder,
+            width: isCurrent ? 2 : 1,
           ),
           boxShadow: isTuned
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.5),
-                    blurRadius: 8,
+                    color: AppColors.primary.withValues(alpha: 0.5),
+                    blurRadius: 12,
                     spreadRadius: 2,
                   ),
                 ]
-              : null,
+              : (isCurrent
+                  ? [
+                      BoxShadow(
+                        color: AppColors.secondary.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

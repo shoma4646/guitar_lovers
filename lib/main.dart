@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/tuner/tuner_screen.dart';
-// import 'features/practice/practice_screen.dart';
+import 'features/practice/practice_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/news/news_screen.dart';
-import 'shared/constants/app_colors.dart';
 
 void main() {
   runApp(
@@ -24,6 +24,14 @@ class MyApp extends StatelessWidget {
       title: 'Guitar Lovers',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ja', 'JP'),
+      ],
       home: const MainScreen(),
     );
   }
@@ -41,7 +49,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = const [
     TunerScreen(),
-    _PracticePlaceholder(),
+    PracticeScreen(),
     HistoryScreen(),
     NewsScreen(),
   ];
@@ -83,49 +91,7 @@ class _MainScreenState extends State<MainScreen> {
             _currentIndex = index;
           });
         },
-        backgroundColor: AppColors.backgroundDark,
         destinations: _destinations,
-      ),
-    );
-  }
-}
-
-class _PracticePlaceholder extends StatelessWidget {
-  const _PracticePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.play_circle_outline,
-              size: 80,
-              color: AppColors.textGray,
-            ),
-            SizedBox(height: 20),
-            Text(
-              '練習機能',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textWhite,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'YouTube Player パッケージの互換性の問題により\n一時的に無効化されています',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textGray,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
       ),
     );
   }
