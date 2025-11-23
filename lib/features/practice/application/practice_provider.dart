@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/practice_state.dart';
+import '../domain/practice_state.dart';
 
 /// 練習機能の状態管理
 class PracticeNotifier extends StateNotifier<PracticeState> {
@@ -32,7 +32,55 @@ class PracticeNotifier extends StateNotifier<PracticeState> {
 
   /// 再生状態を切り替え
   void togglePlaying() {
-    state = state.copyWith(isPlaying: !state.isPlaying);
+    if (state.isPlaying) {
+      // 再生停止時：累積時間を更新
+      if (state.practiceStartTime != null) {
+        final elapsed =
+            DateTime.now().difference(state.practiceStartTime!).inSeconds;
+        state = state.copyWith(
+          isPlaying: false,
+          accumulatedPracticeSeconds:
+              state.accumulatedPracticeSeconds + elapsed,
+          practiceStartTime: null,
+        );
+      } else {
+        state = state.copyWith(isPlaying: false);
+      }
+    } else {
+      // 再生開始時：開始時刻を記録
+      state = state.copyWith(
+        isPlaying: true,
+        practiceStartTime: DateTime.now(),
+      );
+    }
+  }
+
+  /// 練習時間をリセット
+  void resetPracticeTime() {
+    state = state.copyWith(
+      accumulatedPracticeSeconds: 0,
+      practiceStartTime: state.isPlaying ? DateTime.now() : null,
+    );
+  }
+
+  /// 練習時間を取得（分）
+  int getPracticeMinutes() {
+    int totalSeconds = state.accumulatedPracticeSeconds;
+    if (state.practiceStartTime != null && state.isPlaying) {
+      totalSeconds +=
+          DateTime.now().difference(state.practiceStartTime!).inSeconds;
+    }
+    return (totalSeconds / 60).floor();
+  }
+
+  /// メトロノームBPMを設定
+  void setMetronomeBpm(int bpm) {
+    state = state.copyWith(metronomeBpm: bpm.clamp(40, 240));
+  }
+
+  /// メトロノームのON/OFF切り替え
+  void toggleMetronome() {
+    state = state.copyWith(isMetronomeEnabled: !state.isMetronomeEnabled);
   }
 
   /// 再生速度を設定

@@ -1,0 +1,159 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../features/news/application/news_provider.dart';
+import '../../../shared/constants/app_colors.dart';
+
+/// ニュース画面
+class NewsScreen extends ConsumerWidget {
+  const NewsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final newsAsync = ref.watch(newsArticlesProvider);
+
+    return Scaffold(
+      body: newsAsync.when(
+        data: (news) => RefreshIndicator(
+          onRefresh: () async {
+            // プロバイダーを無効化して再取得
+            ref.invalidate(newsArticlesProvider);
+          },
+          color: AppColors.primary,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: news.length,
+            itemBuilder: (context, index) {
+              final article = news[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(10),
+                      ),
+                      child: Image.network(
+                        article.image,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            height: 200,
+                            color: AppColors.backgroundGray,
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 200,
+                            color: AppColors.backgroundGray,
+                            child: const Icon(Icons.broken_image),
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  article.category,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textWhite,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                              ),
+                              Text(
+                                article.date,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            article.title,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            article.excerpt,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: AppColors.textGray,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'エラーが発生しました',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppColors.textWhite,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$error',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textGray,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(newsArticlesProvider),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.textWhite,
+                ),
+                child: const Text('再試行'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

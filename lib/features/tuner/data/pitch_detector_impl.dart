@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_audio_capture/flutter_audio_capture.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pitch_detector_dart/pitch_detector.dart';
-import '../domain/models/pitch_data.dart';
+import '../domain/pitch_data.dart';
 import '../domain/services/pitch_detector_service.dart';
 
 /// ピッチ検出サービスの実装

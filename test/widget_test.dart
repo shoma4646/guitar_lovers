@@ -22,9 +22,9 @@ void main() {
 
     // 記録タブをタップ
     await tester.tap(find.text('記録'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    // 記録画面が表示されることを確認
+    // 記録画面が表示されることを確認(練習履歴のタイトルが表示される)
     expect(find.text('練習履歴'), findsOneWidget);
   });
 }
