@@ -6,6 +6,7 @@ import '../../../shared/constants/app_colors.dart';
 import '../../../features/practice/application/practice_provider.dart';
 import '../../../features/practice/application/practice_video_provider.dart';
 import '../../../features/practice/domain/practice_video.dart';
+import '../../../features/practice/domain/practice_state.dart';
 import '../../../features/history/application/practice_history_provider.dart';
 import '../../widgets/metronome_widget.dart';
 
@@ -113,7 +114,8 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
 
   void _startMonitoring() {
     _monitoringTimer?.cancel();
-    _monitoringTimer = Timer.periodic(const Duration(milliseconds: 100), (_) async {
+    _monitoringTimer =
+        Timer.periodic(const Duration(milliseconds: 100), (_) async {
       if (!mounted || _youtubeController == null) {
         _monitoringTimer?.cancel();
         return;
@@ -210,7 +212,9 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
     );
 
     if (label != null && label.isNotEmpty) {
-      await ref.read(videoBookmarksProvider(_currentVideoId!).notifier).addBookmark(
+      await ref
+          .read(videoBookmarksProvider(_currentVideoId!).notifier)
+          .addBookmark(
             timestamp: state.currentTime,
             label: label,
           );
@@ -218,8 +222,8 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text('ブックマーク "$label" を ${_formatTime(state.currentTime)} に追加しました')),
+              content: Text(
+                  'ブックマーク "$label" を ${_formatTime(state.currentTime)} に追加しました')),
         );
       }
     }
@@ -492,13 +496,11 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
                           children: [
                             Text(
                               'A: ${_formatTime(state.loopStart)}',
-                              style:
-                                  const TextStyle(color: AppColors.textGray),
+                              style: const TextStyle(color: AppColors.textGray),
                             ),
                             Text(
                               'B: ${_formatTime(state.loopEnd)}',
-                              style:
-                                  const TextStyle(color: AppColors.textGray),
+                              style: const TextStyle(color: AppColors.textGray),
                             ),
                           ],
                         ),
@@ -532,8 +534,8 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
                                     .setLoopStart();
                               },
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                    color: AppColors.primary),
+                                side:
+                                    const BorderSide(color: AppColors.primary),
                               ),
                               child: const Text('A'),
                             ),
@@ -545,8 +547,8 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
                                     .setLoopEnd();
                               },
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(
-                                    color: AppColors.primary),
+                                side:
+                                    const BorderSide(color: AppColors.primary),
                               ),
                               child: const Text('B'),
                             ),
@@ -555,9 +557,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
                               icon: const Icon(Icons.clear),
                               color: AppColors.error,
                               onPressed: () {
-                                ref
-                                    .read(practiceProvider.notifier)
-                                    .clearLoop();
+                                ref.read(practiceProvider.notifier).clearLoop();
                               },
                             ),
                           ],
@@ -584,8 +584,7 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
             const SizedBox(height: 16),
 
             // ブックマークリスト
-            if (_currentVideoId != null)
-              _buildBookmarksList(),
+            if (_currentVideoId != null) _buildBookmarksList(),
 
             const SizedBox(height: 16),
 
@@ -648,8 +647,8 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
                       color: AppColors.error,
                       onPressed: () {
                         ref
-                            .read(
-                                videoBookmarksProvider(_currentVideoId!).notifier)
+                            .read(videoBookmarksProvider(_currentVideoId!)
+                                .notifier)
                             .removeBookmark(bookmark.id);
                       },
                     ),
@@ -806,13 +805,10 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
             IconButton(
               icon: Icon(
                 video.isFavorite ? Icons.favorite : Icons.favorite_border,
-                color:
-                    video.isFavorite ? AppColors.error : AppColors.textGray,
+                color: video.isFavorite ? AppColors.error : AppColors.textGray,
               ),
               onPressed: () {
-                ref
-                    .read(favoriteVideosProvider.notifier)
-                    .toggleFavorite(video);
+                ref.read(favoriteVideosProvider.notifier).toggleFavorite(video);
               },
             ),
             const Icon(

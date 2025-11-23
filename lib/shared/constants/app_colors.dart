@@ -4,17 +4,23 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // 背景色
-  static const Color backgroundDark = Color(0xFF1A1A1A);
-  static const Color backgroundLightDark = Color(0xFF262626);
-  static const Color backgroundGray = Color(0xFF333333);
+  // Backgrounds
+  static const Color backgroundDark = Color(0xFF0B0F19); // Deep Navy
+  static const Color backgroundLightDark =
+      Color(0xFF151A26); // Slightly lighter navy
+  static const Color backgroundGray = Color(0xFF2A3040); // Blue-gray for inputs
 
-  // アクセントカラー
-  static const Color primary = Color(0xFF4CAF50);
-  static const Color error = Color(0xFFF44336);
+  // Accents
+  static const Color primary = Color(0xFF6C63FF); // Indigo/Violet
+  static const Color secondary = Color(0xFF00E5FF); // Cyan accent
+  static const Color error = Color(0xFFFF5252); // Soft Red
 
-  // テキストカラー
+  // Text
   static const Color textWhite = Color(0xFFFFFFFF);
-  static const Color textGray = Color(0xFF888888);
-  static const Color textLightGray = Color(0xFFCCCCCC);
+  static const Color textGray = Color(0xFF8F9BB3);
+  static const Color textLightGray = Color(0xFFC5CEE0);
+
+  // Glassmorphism
+  static const Color glassBorder = Color(0x33FFFFFF);
+  static const Color glassSurface = Color(0x1AFFFFFF);
 }

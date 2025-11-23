@@ -7,7 +7,7 @@ part of 'practice_video_provider.dart';
 // **************************************************************************
 
 String _$practiceVideoRepositoryHash() =>
-    r'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0';
+    r'd7c4bcf63d238a55b4f66d2344cb29e254260e64';
 
 /// 練習動画リポジトリのプロバイダー
 ///
@@ -28,7 +28,7 @@ final practiceVideoRepositoryProvider =
 // ignore: unused_element
 typedef PracticeVideoRepositoryRef
     = AutoDisposeFutureProviderRef<PracticeVideoRepository>;
-String _$presetVideosHash() => r'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1';
+String _$presetVideosHash() => r'c6f241a1b19441d1ecf246040a0fb4200ad2b01a';
 
 /// プリセット動画のプロバイダー
 ///
@@ -46,7 +46,7 @@ final presetVideosProvider = AutoDisposeProvider<List<PracticeVideo>>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PresetVideosRef = AutoDisposeProviderRef<List<PracticeVideo>>;
-String _$videosByCategoryHash() => r'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2';
+String _$videosByCategoryHash() => r'1a32c53f9212041e3eaa1e5bf3da14883d2a12fa';
 
 /// カテゴリ別動画のプロバイダー
 ///
@@ -67,7 +67,7 @@ final videosByCategoryProvider =
 // ignore: unused_element
 typedef VideosByCategoryRef
     = AutoDisposeProviderRef<Map<PracticeCategory, List<PracticeVideo>>>;
-String _$favoriteVideosHash() => r'd4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3';
+String _$favoriteVideosHash() => r'8d3daaca2b8821d948a71d5163a8ffbe2dff860e';
 
 /// お気に入り動画のプロバイダー
 ///
@@ -85,7 +85,7 @@ final favoriteVideosProvider = AutoDisposeAsyncNotifierProvider<FavoriteVideos,
 );
 
 typedef _$FavoriteVideos = AutoDisposeAsyncNotifier<List<PracticeVideo>>;
-String _$recentVideosHash() => r'e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4';
+String _$recentVideosHash() => r'bc256bc9f86ad58d00214ea1a0a545cb64defd1b';
 
 /// 最近視聴した動画のプロバイダー
 ///
@@ -102,23 +102,184 @@ final recentVideosProvider = AutoDisposeAsyncNotifierProvider<RecentVideos,
 );
 
 typedef _$RecentVideos = AutoDisposeAsyncNotifier<List<PracticeVideo>>;
-String _$videoBookmarksHash() => r'f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5';
+String _$videoBookmarksHash() => r'91046205cce47934740d5133db3d6ea9369b065b';
+
+/// Copied from Dart SDK
+class _SystemHash {
+  _SystemHash._();
+
+  static int combine(int hash, int value) {
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + value);
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
+    return hash ^ (hash >> 6);
+  }
+
+  static int finish(int hash) {
+    // ignore: parameter_assignments
+    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
+    // ignore: parameter_assignments
+    hash = hash ^ (hash >> 11);
+    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  }
+}
+
+abstract class _$VideoBookmarks
+    extends BuildlessAutoDisposeAsyncNotifier<List<VideoBookmark>> {
+  late final String videoId;
+
+  FutureOr<List<VideoBookmark>> build(
+    String videoId,
+  );
+}
 
 /// ブックマークのプロバイダー
 ///
 /// Copied from [VideoBookmarks].
 @ProviderFor(VideoBookmarks)
-final videoBookmarksProvider = AutoDisposeAsyncNotifierProviderFamily<
-    VideoBookmarks, List<VideoBookmark>, String>.internal(
-  VideoBookmarks.new,
-  name: r'videoBookmarksProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$videoBookmarksHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+const videoBookmarksProvider = VideoBookmarksFamily();
 
-typedef _$VideoBookmarks = AutoDisposeFamilyAsyncNotifier<List<VideoBookmark>, String>;
+/// ブックマークのプロバイダー
+///
+/// Copied from [VideoBookmarks].
+class VideoBookmarksFamily extends Family<AsyncValue<List<VideoBookmark>>> {
+  /// ブックマークのプロバイダー
+  ///
+  /// Copied from [VideoBookmarks].
+  const VideoBookmarksFamily();
+
+  /// ブックマークのプロバイダー
+  ///
+  /// Copied from [VideoBookmarks].
+  VideoBookmarksProvider call(
+    String videoId,
+  ) {
+    return VideoBookmarksProvider(
+      videoId,
+    );
+  }
+
+  @override
+  VideoBookmarksProvider getProviderOverride(
+    covariant VideoBookmarksProvider provider,
+  ) {
+    return call(
+      provider.videoId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'videoBookmarksProvider';
+}
+
+/// ブックマークのプロバイダー
+///
+/// Copied from [VideoBookmarks].
+class VideoBookmarksProvider extends AutoDisposeAsyncNotifierProviderImpl<
+    VideoBookmarks, List<VideoBookmark>> {
+  /// ブックマークのプロバイダー
+  ///
+  /// Copied from [VideoBookmarks].
+  VideoBookmarksProvider(
+    String videoId,
+  ) : this._internal(
+          () => VideoBookmarks()..videoId = videoId,
+          from: videoBookmarksProvider,
+          name: r'videoBookmarksProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$videoBookmarksHash,
+          dependencies: VideoBookmarksFamily._dependencies,
+          allTransitiveDependencies:
+              VideoBookmarksFamily._allTransitiveDependencies,
+          videoId: videoId,
+        );
+
+  VideoBookmarksProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.videoId,
+  }) : super.internal();
+
+  final String videoId;
+
+  @override
+  FutureOr<List<VideoBookmark>> runNotifierBuild(
+    covariant VideoBookmarks notifier,
+  ) {
+    return notifier.build(
+      videoId,
+    );
+  }
+
+  @override
+  Override overrideWith(VideoBookmarks Function() create) {
+    return ProviderOverride(
+      origin: this,
+      override: VideoBookmarksProvider._internal(
+        () => create()..videoId = videoId,
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        videoId: videoId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeAsyncNotifierProviderElement<VideoBookmarks, List<VideoBookmark>>
+      createElement() {
+    return _VideoBookmarksProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is VideoBookmarksProvider && other.videoId == videoId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, videoId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin VideoBookmarksRef
+    on AutoDisposeAsyncNotifierProviderRef<List<VideoBookmark>> {
+  /// The parameter `videoId` of this provider.
+  String get videoId;
+}
+
+class _VideoBookmarksProviderElement
+    extends AutoDisposeAsyncNotifierProviderElement<VideoBookmarks,
+        List<VideoBookmark>> with VideoBookmarksRef {
+  _VideoBookmarksProviderElement(super.provider);
+
+  @override
+  String get videoId => (origin as VideoBookmarksProvider).videoId;
+}
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
