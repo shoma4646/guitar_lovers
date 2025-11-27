@@ -241,9 +241,9 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
         height: 64,
         decoration: BoxDecoration(
           color: isTuned
-              ? AppColors.primary.withValues(alpha: 0.8)
+              ? AppColors.primary.withOpacity(0.8)
               : (isCurrent
-                  ? AppColors.secondary.withValues(alpha: 0.2)
+                  ? AppColors.secondary.withOpacity(0.2)
                   : AppColors.glassSurface),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -253,7 +253,7 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
           boxShadow: isTuned
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.5),
+                    color: AppColors.primary.withOpacity(0.5),
                     blurRadius: 12,
                     spreadRadius: 2,
                   ),
@@ -261,7 +261,7 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
               : (isCurrent
                   ? [
                       BoxShadow(
-                        color: AppColors.secondary.withValues(alpha: 0.3),
+                        color: AppColors.secondary.withOpacity(0.3),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
