@@ -28,13 +28,14 @@ final practiceVideoRepositoryProvider =
 // ignore: unused_element
 typedef PracticeVideoRepositoryRef
     = AutoDisposeFutureProviderRef<PracticeVideoRepository>;
-String _$presetVideosHash() => r'c6f241a1b19441d1ecf246040a0fb4200ad2b01a';
+String _$presetVideosHash() => r'542b4daede090384188a1cf2e85a4cfed9e6fc81';
 
 /// プリセット動画のプロバイダー
 ///
 /// Copied from [presetVideos].
 @ProviderFor(presetVideos)
-final presetVideosProvider = AutoDisposeProvider<List<PracticeVideo>>.internal(
+final presetVideosProvider =
+    AutoDisposeFutureProvider<List<PracticeVideo>>.internal(
   presetVideos,
   name: r'presetVideosProvider',
   debugGetCreateSourceHash:
@@ -45,15 +46,15 @@ final presetVideosProvider = AutoDisposeProvider<List<PracticeVideo>>.internal(
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef PresetVideosRef = AutoDisposeProviderRef<List<PracticeVideo>>;
-String _$videosByCategoryHash() => r'1a32c53f9212041e3eaa1e5bf3da14883d2a12fa';
+typedef PresetVideosRef = AutoDisposeFutureProviderRef<List<PracticeVideo>>;
+String _$videosByCategoryHash() => r'fc546b1a62af0cc6ed748af2fd1d0d9aa94b703a';
 
 /// カテゴリ別動画のプロバイダー
 ///
 /// Copied from [videosByCategory].
 @ProviderFor(videosByCategory)
-final videosByCategoryProvider =
-    AutoDisposeProvider<Map<PracticeCategory, List<PracticeVideo>>>.internal(
+final videosByCategoryProvider = AutoDisposeFutureProvider<
+    Map<PracticeCategory, List<PracticeVideo>>>.internal(
   videosByCategory,
   name: r'videosByCategoryProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -66,7 +67,7 @@ final videosByCategoryProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef VideosByCategoryRef
-    = AutoDisposeProviderRef<Map<PracticeCategory, List<PracticeVideo>>>;
+    = AutoDisposeFutureProviderRef<Map<PracticeCategory, List<PracticeVideo>>>;
 String _$favoriteVideosHash() => r'8d3daaca2b8821d948a71d5163a8ffbe2dff860e';
 
 /// お気に入り動画のプロバイダー

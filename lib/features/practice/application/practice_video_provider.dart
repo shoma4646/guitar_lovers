@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -103,14 +106,20 @@ class VideoBookmarks extends _$VideoBookmarks {
 
 /// プリセット動画のプロバイダー
 @riverpod
-List<PracticeVideo> presetVideos(Ref ref) {
-  return PresetVideos.videos;
+Future<List<PracticeVideo>> presetVideos(Ref ref) async {
+  final jsonString =
+      await rootBundle.loadString('assets/json/practice_presets.json');
+  final List<dynamic> jsonList = json.decode(jsonString);
+  return jsonList
+      .map((json) => PracticeVideo.fromJson(json as Map<String, dynamic>))
+      .toList();
 }
 
 /// カテゴリ別動画のプロバイダー
 @riverpod
-Map<PracticeCategory, List<PracticeVideo>> videosByCategory(Ref ref) {
-  final presets = ref.watch(presetVideosProvider);
+Future<Map<PracticeCategory, List<PracticeVideo>>> videosByCategory(
+    Ref ref) async {
+  final presets = await ref.watch(presetVideosProvider.future);
   final Map<PracticeCategory, List<PracticeVideo>> categorized = {};
 
   for (final video in presets) {

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import '../domain/news_article.dart';
 
 /// ニュース記事のリポジトリ
@@ -6,29 +9,12 @@ class NewsRepository {
   NewsRepository();
 
   /// ニュース記事一覧を取得
-  /// 現在はダミーデータを返す
   Future<List<NewsArticle>> getArticles() async {
-    // TODO: Supabase連携またはAPI通信を実装
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    return [
-      NewsArticle(
-        id: '1',
-        title: 'Fender新製品発表',
-        excerpt: '新しいStratocasterシリーズが登場',
-        image: 'https://via.placeholder.com/400x200',
-        date: '2025-11-15',
-        category: '新製品',
-      ),
-      NewsArticle(
-        id: '2',
-        title: 'ギター練習の効果的な方法',
-        excerpt: 'プロが教える上達のコツ',
-        image: 'https://via.placeholder.com/400x200',
-        date: '2025-11-14',
-        category: 'レビュー',
-      ),
-    ];
+    final jsonString = await rootBundle.loadString('assets/json/news.json');
+    final List<dynamic> jsonList = json.decode(jsonString);
+    return jsonList
+        .map((json) => NewsArticle.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
 
   /// カテゴリ別にニュース記事を取得

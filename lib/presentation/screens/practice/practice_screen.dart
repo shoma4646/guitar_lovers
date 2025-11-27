@@ -668,44 +668,48 @@ class _PracticeScreenState extends ConsumerState<PracticeScreen>
   }
 
   Widget _buildPresetTab() {
-    final videosByCategory = ref.watch(videosByCategoryProvider);
+    final videosByCategoryAsync = ref.watch(videosByCategoryProvider);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'おすすめ練習動画',
-            style: TextStyle(
-              color: AppColors.textWhite,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+    return videosByCategoryAsync.when(
+      data: (videosByCategory) => SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'おすすめ練習動画',
+              style: TextStyle(
+                color: AppColors.textWhite,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // カテゴリ別に表示
-          ...videosByCategory.entries.map((entry) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  entry.key.displayName,
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+            // カテゴリ別に表示
+            ...videosByCategory.entries.map((entry) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.key.displayName,
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                ...entry.value.map((video) => _buildVideoCard(video)),
-                const SizedBox(height: 16),
-              ],
-            );
-          }),
-        ],
+                  const SizedBox(height: 8),
+                  ...entry.value.map((video) => _buildVideoCard(video)),
+                  const SizedBox(height: 16),
+                ],
+              );
+            }),
+          ],
+        ),
       ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text('エラーが発生しました: $error')),
     );
   }
 
