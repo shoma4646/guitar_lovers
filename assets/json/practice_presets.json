@@ -1,0 +1,38 @@
+[
+  {
+    "id": "preset-1",
+    "videoId": "BBz-Jyr23M4",
+    "title": "初心者向けコード練習 - G, C, D",
+    "category": "chord"
+  },
+  {
+    "id": "preset-2",
+    "videoId": "jJxGCwrs1Ac",
+    "title": "ペンタトニックスケール入門",
+    "category": "scale"
+  },
+  {
+    "id": "preset-3",
+    "videoId": "0xXjlGGFlHs",
+    "title": "フィンガーピッキング基礎",
+    "category": "fingerpicking"
+  },
+  {
+    "id": "preset-4",
+    "videoId": "aD5-rwrbYrE",
+    "title": "ストローク パターン集",
+    "category": "strumming"
+  },
+  {
+    "id": "preset-5",
+    "videoId": "rgaTLrZGlk0",
+    "title": "ハンマリング＆プリング練習",
+    "category": "technique"
+  },
+  {
+    "id": "preset-6",
+    "videoId": "5dlXEfDjq-0",
+    "title": "メジャースケール完全攻略",
+    "category": "scale"
+  }
+]

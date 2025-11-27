@@ -19,8 +19,8 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
   String _lastStableNote = '';
   int _lastStableString = 0;
   int _emptyCount = 0;
-  final List<double> _centsHistory = [];
-  static const int _centsHistorySize = 3;
+  double _smoothedCents = 0.0;
+  static const double _emaAlpha = 0.15; // Smoothing factor (0.0 - 1.0)
   int _lastDetectedString = 0;
   int _sameStringCount = 0;
 
@@ -111,14 +111,15 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
     return '$stringNum弦 (${stringNames[stringNum]})';
   }
 
-  double _smoothCents(double cents) {
-    _centsHistory.add(cents);
-    if (_centsHistory.length > _centsHistorySize) {
-      _centsHistory.removeAt(0);
+  double _smoothCents(double currentCents) {
+    // If the difference is huge (e.g. new note), reset smoothing
+    if ((currentCents - _smoothedCents).abs() > 50) {
+      _smoothedCents = currentCents;
+    } else {
+      _smoothedCents =
+          _emaAlpha * currentCents + (1 - _emaAlpha) * _smoothedCents;
     }
-
-    final sum = _centsHistory.fold<double>(0, (a, b) => a + b);
-    return sum / _centsHistory.length;
+    return _smoothedCents;
   }
 
   /// チューニング状態を更新
@@ -466,7 +467,7 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
         _lastStableString = 0;
         _lastDetectedString = 0;
         _sameStringCount = 0;
-        _centsHistory.clear();
+        _smoothedCents = 0.0;
         cents = 0;
         isActuallyDetecting = false;
 
@@ -476,7 +477,7 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
         // 保持期間中（減衰中）
         currentNote = _lastStableNote;
         currentString = _lastStableString;
-        cents = _centsHistory.isNotEmpty ? _centsHistory.last : 0;
+        cents = _smoothedCents;
         isActuallyDetecting = false; // 保持期間中はセント数を非表示にする
       }
     }
