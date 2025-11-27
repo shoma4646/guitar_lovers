@@ -107,17 +107,12 @@ class VideoBookmarks extends _$VideoBookmarks {
 /// プリセット動画のプロバイダー
 @riverpod
 Future<List<PracticeVideo>> presetVideos(Ref ref) async {
-  try {
-    final jsonString =
-        await rootBundle.loadString('assets/json/practice_presets.json');
-    final List<dynamic> jsonList = json.decode(jsonString);
-    return jsonList
-        .map((json) => PracticeVideo.fromJson(json as Map<String, dynamic>))
-        .toList();
-  } catch (e) {
-    debugPrint('Error loading practice presets: $e');
-    return [];
-  }
+  final jsonString =
+      await rootBundle.loadString('assets/json/practice_presets.json');
+  final List<dynamic> jsonList = json.decode(jsonString);
+  return jsonList
+      .map((json) => PracticeVideo.fromJson(json as Map<String, dynamic>))
+      .toList();
 }
 
 /// カテゴリ別動画のプロバイダー

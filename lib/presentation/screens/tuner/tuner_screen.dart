@@ -20,7 +20,13 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
   int _lastStableString = 0;
   int _emptyCount = 0;
   double _smoothedCents = 0.0;
-  static const double _emaAlpha = 0.15; // Smoothing factor (0.0 - 1.0)
+
+  /// EMAスムージング係数 (0.0-1.0: 値が小さいほどスムーズだが反応が遅い)
+  static const double _emaAlpha = 0.15;
+
+  /// セント差がこの値を超えたらスムージングをリセット (新しい音符と判断)
+  static const double _centsResetThreshold = 50.0;
+
   int _lastDetectedString = 0;
   int _sameStringCount = 0;
 
@@ -112,8 +118,8 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
   }
 
   double _smoothCents(double currentCents) {
-    // If the difference is huge (e.g. new note), reset smoothing
-    if ((currentCents - _smoothedCents).abs() > 50) {
+    // セント差が大きい場合（新しい音符）、スムージングをリセット
+    if ((currentCents - _smoothedCents).abs() > _centsResetThreshold) {
       _smoothedCents = currentCents;
     } else {
       _smoothedCents =
