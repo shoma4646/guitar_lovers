@@ -35,6 +35,9 @@ class _MetronomeWidgetState extends State<MetronomeWidget>
   /// オーディオプレーヤー（アクセント音用）
   final AudioPlayer _accentPlayer = AudioPlayer();
 
+  /// オーディオ初期化完了フラグ
+  bool _isAudioReady = false;
+
   /// 現在のビート位置（0-3）
   int _currentBeat = 0;
 
@@ -44,6 +47,17 @@ class _MetronomeWidgetState extends State<MetronomeWidget>
   /// アクセント（1拍目を強調するか）
   bool _accentEnabled = true;
 
+  /// 利用可能な拍子
+  static const List<int> _availableBeats = [2, 3, 4, 6];
+
+  /// プリセットBPM
+  static const List<int> _presetBPMs = [60, 80, 100, 120, 140, 160];
+
+  /// BPM範囲
+  static const int _minBPM = 40;
+  static const int _maxBPM = 240;
+  static const int _bpmStep = 5;
+
   @override
   void initState() {
     super.initState();
@@ -51,21 +65,30 @@ class _MetronomeWidgetState extends State<MetronomeWidget>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _initAudioPlayers();
-    if (widget.isEnabled) {
-      _startMetronome();
-    }
+    // 非同期初期化完了後にメトロノームを開始
+    _initAudioPlayers().then((_) {
+      if (widget.isEnabled && mounted) {
+        _startMetronome();
+      }
+    });
   }
 
   /// オーディオプレーヤーの初期化
   Future<void> _initAudioPlayers() async {
-    // ソースをプリロード
-    await _clickPlayer.setSource(AssetSource('audio/metronome_click.wav'));
-    await _accentPlayer.setSource(AssetSource('audio/metronome_accent.wav'));
+    try {
+      // ソースをプリロード
+      await _clickPlayer.setSource(AssetSource('audio/metronome_click.wav'));
+      await _accentPlayer.setSource(AssetSource('audio/metronome_accent.wav'));
 
-    // リリースモードを設定（再生後もソースを保持）
-    await _clickPlayer.setReleaseMode(ReleaseMode.stop);
-    await _accentPlayer.setReleaseMode(ReleaseMode.stop);
+      // リリースモードを設定（再生後もソースを保持）
+      await _clickPlayer.setReleaseMode(ReleaseMode.stop);
+      await _accentPlayer.setReleaseMode(ReleaseMode.stop);
+
+      _isAudioReady = true;
+    } catch (e) {
+      debugPrint('Failed to initialize audio players: $e');
+      // 音声初期化に失敗しても、触覚フィードバックのみで動作継続
+    }
   }
 
   @override
@@ -102,7 +125,7 @@ class _MetronomeWidgetState extends State<MetronomeWidget>
     _startMetronome();
   }
 
-  Future<void> _beat() async {
+  void _beat() {
     setState(() {
       _isBeating = true;
     });
@@ -114,20 +137,9 @@ class _MetronomeWidgetState extends State<MetronomeWidget>
       });
     });
 
-    // 音を再生
-    try {
-      if (_accentEnabled && _currentBeat == 0) {
-        // 1拍目はアクセント音
-        await _accentPlayer.stop();
-        await _accentPlayer.resume();
-      } else {
-        // 通常のクリック音
-        await _clickPlayer.stop();
-        await _clickPlayer.resume();
-      }
-    } catch (e) {
-      // 音声再生エラーは無視（触覚フィードバックのみ）
-      debugPrint('Metronome audio error: $e');
+    // 音を再生（非ブロッキング）
+    if (_isAudioReady) {
+      _playSound();
     }
 
     // 触覚フィードバック
@@ -135,6 +147,21 @@ class _MetronomeWidgetState extends State<MetronomeWidget>
 
     // ビート位置を更新
     _currentBeat = (_currentBeat + 1) % _beatsPerMeasure;
+  }
+
+  /// 音声再生（非ブロッキング）
+  void _playSound() {
+    try {
+      if (_accentEnabled && _currentBeat == 0) {
+        // 1拍目はアクセント音
+        _accentPlayer.stop().then((_) => _accentPlayer.resume());
+      } else {
+        // 通常のクリック音
+        _clickPlayer.stop().then((_) => _clickPlayer.resume());
+      }
+    } catch (e) {
+      debugPrint('Metronome audio error: $e');
+    }
   }
 
   @override
@@ -231,8 +258,8 @@ class _MetronomeWidgetState extends State<MetronomeWidget>
                 icon: const Icon(Icons.remove),
                 color: AppColors.textGray,
                 onPressed: () {
-                  if (widget.bpm > 40) {
-                    widget.onBpmChanged(widget.bpm - 5);
+                  if (widget.bpm > _minBPM) {
+                    widget.onBpmChanged(widget.bpm - _bpmStep);
                   }
                 },
               ),
@@ -267,8 +294,8 @@ class _MetronomeWidgetState extends State<MetronomeWidget>
                 icon: const Icon(Icons.add),
                 color: AppColors.textGray,
                 onPressed: () {
-                  if (widget.bpm < 240) {
-                    widget.onBpmChanged(widget.bpm + 5);
+                  if (widget.bpm < _maxBPM) {
+                    widget.onBpmChanged(widget.bpm + _bpmStep);
                   }
                 },
               ),
@@ -287,31 +314,34 @@ class _MetronomeWidgetState extends State<MetronomeWidget>
                   fontSize: 12,
                 ),
               ),
-              ...([2, 3, 4, 6].map((beats) {
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _beatsPerMeasure = beats;
-                      _currentBeat = 0;
-                    });
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _beatsPerMeasure == beats
-                          ? AppColors.primary
-                          : AppColors.backgroundLightDark,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '$beats/4',
-                      style: TextStyle(
+              ...(_availableBeats.map((beats) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _beatsPerMeasure = beats;
+                        _currentBeat = 0;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
                         color: _beatsPerMeasure == beats
-                            ? AppColors.textWhite
-                            : AppColors.textGray,
-                        fontSize: 12,
+                            ? AppColors.primary
+                            : AppColors.backgroundLightDark,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '$beats/4',
+                        style: TextStyle(
+                          color: _beatsPerMeasure == beats
+                              ? AppColors.textWhite
+                              : AppColors.textGray,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -324,9 +354,10 @@ class _MetronomeWidgetState extends State<MetronomeWidget>
           // プリセットBPM
           Wrap(
             spacing: 8,
-            children: [60, 80, 100, 120, 140, 160].map((bpm) {
-              return GestureDetector(
+            children: _presetBPMs.map((bpm) {
+              return InkWell(
                 onTap: () => widget.onBpmChanged(bpm),
+                borderRadius: BorderRadius.circular(4),
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
