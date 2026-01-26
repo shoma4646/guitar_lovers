@@ -217,8 +217,7 @@ class _MetronomeWidgetState extends State<MetronomeWidget>
                   Switch(
                     value: widget.isEnabled,
                     onChanged: (_) => widget.onToggle(),
-                    activeTrackColor: AppColors.primary,
-                    activeThumbColor: AppColors.textWhite,
+                    activeColor: AppColors.primary,
                   ),
                 ],
               ),
