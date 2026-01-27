@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'shared/theme/app_theme.dart';
 import 'presentation/screens/tuner/tuner_screen.dart';
+import 'presentation/screens/metronome/metronome_screen.dart';
 import 'presentation/screens/practice/practice_screen.dart';
 import 'presentation/screens/history/history_screen.dart';
 import 'presentation/screens/news/news_screen.dart';
@@ -49,6 +50,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = const [
     TunerScreen(),
+    MetronomeScreen(),
     PracticeScreen(),
     HistoryScreen(),
     NewsScreen(),
@@ -59,6 +61,11 @@ class _MainScreenState extends State<MainScreen> {
       icon: Icon(Icons.music_note_outlined),
       selectedIcon: Icon(Icons.music_note),
       label: 'チューナー',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.timer_outlined),
+      selectedIcon: Icon(Icons.timer),
+      label: 'メトロノーム',
     ),
     NavigationDestination(
       icon: Icon(Icons.play_circle_outline),
