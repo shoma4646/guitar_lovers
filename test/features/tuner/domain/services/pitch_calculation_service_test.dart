@@ -43,7 +43,7 @@ void main() {
 
       test('E2 が約82.41Hzを返す', () {
         final freq = PitchCalculationService.noteToFrequency('E2');
-        expect(freq, closeTo(82.41, 1.0));
+        expect(freq, closeTo(82.41, 0.5));
       });
 
       test('空文字は0を返す', () {

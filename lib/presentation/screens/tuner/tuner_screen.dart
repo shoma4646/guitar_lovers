@@ -28,6 +28,9 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
   /// セント差がこの値を超えたらスムージングをリセット (新しい音符と判断)
   static const double _centsResetThreshold = 50.0;
 
+  /// チューニング完了とみなすセント閾値（±15セント以内）
+  static const double _tuningThresholdCents = 15.0;
+
   int _lastDetectedString = 0;
   int _sameStringCount = 0;
 
@@ -330,7 +333,8 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
                         if (selected && _selectedTuning != tuning.name) {
                           setState(() {
                             _selectedTuning = tuning.name;
-                            // チューニング変更時に状態をリセット
+                            // チューニング変更時は以前の検出状態が無効になるためリセット
+                            // （異なるチューニングでは弦の基準周波数が変わるため）
                             _resetAllTuning();
                             _lastStableString = 0;
                             _lastDetectedString = 0;
@@ -481,8 +485,8 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
         cents = _smoothCents(pitchData.cents);
       }
 
-      // チューニング状態の更新（±15セント以内でチューニング完了とみなす）
-      final isInTune = cents.abs() < 15;
+      // チューニング状態の更新
+      final isInTune = cents.abs() < _tuningThresholdCents;
       _updateTuningStatus(currentString, isInTune, pitchData.probability);
     } else {
       _emptyCount++;
