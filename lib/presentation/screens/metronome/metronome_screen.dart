@@ -6,6 +6,16 @@ import 'package:audioplayers/audioplayers.dart';
 import '../../../shared/constants/app_colors.dart';
 import '../../../features/metronome/application/metronome_provider.dart';
 
+/// メトロノーム画面の定数
+class _ScreenConstants {
+  _ScreenConstants._();
+
+  static const double mainCircleSize = 200.0;
+  static const double borderWidth = 4.0;
+  static const Duration beatAnimationDuration = Duration(milliseconds: 100);
+  static const Duration glowAnimationDuration = Duration(milliseconds: 100);
+}
+
 /// メトロノーム画面
 class MetronomeScreen extends ConsumerStatefulWidget {
   const MetronomeScreen({super.key});
@@ -15,46 +25,73 @@ class MetronomeScreen extends ConsumerStatefulWidget {
 }
 
 class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   Timer? _timer;
   bool _isBeating = false;
   late AnimationController _animationController;
 
   /// オーディオプレーヤー
-  final AudioPlayer _clickPlayer = AudioPlayer();
-  final AudioPlayer _accentPlayer = AudioPlayer();
+  AudioPlayer? _clickPlayer;
+  AudioPlayer? _accentPlayer;
 
   /// オーディオ初期化完了フラグ
   bool _isAudioReady = false;
 
+  /// オーディオ初期化失敗フラグ
+  bool _audioInitFailed = false;
+
   /// 現在のビート位置
   int _currentBeat = 0;
-
-  /// 利用可能な拍子
-  static const List<int> _availableBeats = [2, 3, 4, 6];
-
-  /// プリセットBPM
-  static const List<int> _presetBPMs = [60, 80, 100, 120, 140, 160];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 100),
+      duration: _ScreenConstants.beatAnimationDuration,
     );
     _initAudioPlayers();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // アプリがバックグラウンドに移行した際にメトロノームを停止
+    if (state == AppLifecycleState.paused) {
+      ref.read(metronomeProvider.notifier).stop();
+    }
+  }
+
   Future<void> _initAudioPlayers() async {
     try {
-      await _clickPlayer.setSource(AssetSource('audio/metronome_click.wav'));
-      await _accentPlayer.setSource(AssetSource('audio/metronome_accent.wav'));
-      await _clickPlayer.setReleaseMode(ReleaseMode.stop);
-      await _accentPlayer.setReleaseMode(ReleaseMode.stop);
-      _isAudioReady = true;
+      _clickPlayer = AudioPlayer();
+      _accentPlayer = AudioPlayer();
+
+      await _clickPlayer!.setSource(AssetSource('audio/metronome_click.wav'));
+      await _accentPlayer!.setSource(AssetSource('audio/metronome_accent.wav'));
+      await _clickPlayer!.setReleaseMode(ReleaseMode.stop);
+      await _accentPlayer!.setReleaseMode(ReleaseMode.stop);
+
+      if (mounted) {
+        setState(() {
+          _isAudioReady = true;
+          _audioInitFailed = false;
+        });
+      }
     } catch (e) {
       debugPrint('Failed to initialize audio players: $e');
+      // プレイヤーをクリーンアップ
+      await _clickPlayer?.dispose();
+      await _accentPlayer?.dispose();
+      _clickPlayer = null;
+      _accentPlayer = null;
+
+      if (mounted) {
+        setState(() {
+          _isAudioReady = false;
+          _audioInitFailed = true;
+        });
+      }
     }
   }
 
@@ -71,14 +108,16 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
     _timer?.cancel();
     _timer = null;
     _currentBeat = 0;
-    setState(() {
-      _isBeating = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isBeating = false;
+      });
+    }
   }
 
   void _beat() {
     final state = ref.read(metronomeProvider);
-    
+
     setState(() {
       _isBeating = true;
     });
@@ -106,10 +145,10 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
 
   void _playSound(bool isAccent) {
     try {
-      if (isAccent) {
-        _accentPlayer.stop().then((_) => _accentPlayer.resume());
-      } else {
-        _clickPlayer.stop().then((_) => _clickPlayer.resume());
+      if (isAccent && _accentPlayer != null) {
+        _accentPlayer!.stop().then((_) => _accentPlayer!.resume());
+      } else if (_clickPlayer != null) {
+        _clickPlayer!.stop().then((_) => _clickPlayer!.resume());
       }
     } catch (e) {
       debugPrint('Metronome audio error: $e');
@@ -118,10 +157,11 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _stopMetronome();
     _animationController.dispose();
-    _clickPlayer.dispose();
-    _accentPlayer.dispose();
+    _clickPlayer?.dispose();
+    _accentPlayer?.dispose();
     super.dispose();
   }
 
@@ -140,7 +180,8 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
         }
       } else if (next.isEnabled && previous?.bpm != next.bpm) {
         _startMetronome(next.bpm);
-      } else if (next.isEnabled && previous?.beatsPerMeasure != next.beatsPerMeasure) {
+      } else if (next.isEnabled &&
+          previous?.beatsPerMeasure != next.beatsPerMeasure) {
         _currentBeat = 0;
       }
     });
@@ -151,15 +192,42 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
+              // 音声初期化失敗時の警告
+              if (_audioInitFailed)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.error),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: AppColors.error),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '音声の初期化に失敗しました。\n視覚・触覚フィードバックのみで動作します。',
+                          style: TextStyle(
+                            color: AppColors.error,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               const Spacer(),
-              
+
               // メインBPM表示
               GestureDetector(
                 onTap: () => notifier.toggle(),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 100),
-                  width: 200,
-                  height: 200,
+                  duration: _ScreenConstants.glowAnimationDuration,
+                  width: _ScreenConstants.mainCircleSize,
+                  height: _ScreenConstants.mainCircleSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: _isBeating
@@ -169,7 +237,7 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
                       color: state.isEnabled
                           ? AppColors.primary
                           : AppColors.textGray,
-                      width: 4,
+                      width: _ScreenConstants.borderWidth,
                     ),
                     boxShadow: state.isEnabled
                         ? [
@@ -203,9 +271,9 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // タップで開始/停止の説明
               Text(
                 state.isEnabled ? 'タップで停止' : 'タップで開始',
@@ -214,9 +282,9 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
                   fontSize: 14,
                 ),
               ),
-              
+
               const SizedBox(height: 30),
-              
+
               // ビートインジケーター
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -224,26 +292,29 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
                   final isActive = state.isEnabled && _currentBeat == index;
                   final isAccent = index == 0 && state.accentEnabled;
                   return AnimatedContainer(
-                    duration: const Duration(milliseconds: 100),
+                    duration: _ScreenConstants.beatAnimationDuration,
                     margin: const EdgeInsets.symmetric(horizontal: 6),
                     width: isAccent ? 20 : 16,
                     height: isAccent ? 20 : 16,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: isActive
-                          ? (isAccent ? AppColors.secondary : AppColors.primary)
+                          ? (isAccent
+                              ? AppColors.secondary
+                              : AppColors.primary)
                           : AppColors.backgroundLightDark,
                       border: Border.all(
-                        color: isAccent ? AppColors.secondary : AppColors.primary,
+                        color:
+                            isAccent ? AppColors.secondary : AppColors.primary,
                         width: 2,
                       ),
                     ),
                   );
                 }),
               ),
-              
+
               const Spacer(),
-              
+
               // BPM調整スライダー
               Row(
                 children: [
@@ -251,16 +322,16 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
                     icon: const Icon(Icons.remove_circle_outline, size: 32),
                     color: AppColors.textGray,
                     onPressed: () {
-                      if (state.bpm > MetronomeNotifier.minBPM) {
-                        notifier.setBpm(state.bpm - 5);
+                      if (state.bpm > MetronomeConstants.minBPM) {
+                        notifier.setBpm(state.bpm - MetronomeConstants.bpmStep);
                       }
                     },
                   ),
                   Expanded(
                     child: Slider(
                       value: state.bpm.toDouble(),
-                      min: MetronomeNotifier.minBPM.toDouble(),
-                      max: MetronomeNotifier.maxBPM.toDouble(),
+                      min: MetronomeConstants.minBPM.toDouble(),
+                      max: MetronomeConstants.maxBPM.toDouble(),
                       activeColor: AppColors.primary,
                       inactiveColor: AppColors.backgroundGray,
                       onChanged: (value) {
@@ -272,22 +343,22 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
                     icon: const Icon(Icons.add_circle_outline, size: 32),
                     color: AppColors.textGray,
                     onPressed: () {
-                      if (state.bpm < MetronomeNotifier.maxBPM) {
-                        notifier.setBpm(state.bpm + 5);
+                      if (state.bpm < MetronomeConstants.maxBPM) {
+                        notifier.setBpm(state.bpm + MetronomeConstants.bpmStep);
                       }
                     },
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // プリセットBPM
               Wrap(
                 spacing: 10,
                 runSpacing: 10,
                 alignment: WrapAlignment.center,
-                children: _presetBPMs.map((bpm) {
+                children: MetronomeConstants.presetBPMs.map((bpm) {
                   final isSelected = state.bpm == bpm;
                   return InkWell(
                     onTap: () => notifier.setBpm(bpm),
@@ -317,9 +388,9 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
                   );
                 }).toList(),
               ),
-              
+
               const SizedBox(height: 30),
-              
+
               // 拍子選択とアクセント
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -334,7 +405,7 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
                           fontSize: 14,
                         ),
                       ),
-                      ...(_availableBeats.map((beats) {
+                      ...(MetronomeConstants.availableBeats.map((beats) {
                         final isSelected = state.beatsPerMeasure == beats;
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -367,7 +438,7 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
                       })),
                     ],
                   ),
-                  
+
                   // アクセント切り替え
                   InkWell(
                     onTap: () => notifier.toggleAccent(),
@@ -414,7 +485,7 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 20),
             ],
           ),

@@ -1,6 +1,10 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'metronome_provider.g.dart';
 
 /// メトロノームの状態
+@immutable
 class MetronomeState {
   final int bpm;
   final bool isEnabled;
@@ -29,17 +33,37 @@ class MetronomeState {
   }
 }
 
-/// メトロノームの状態管理
-class MetronomeNotifier extends StateNotifier<MetronomeState> {
-  MetronomeNotifier() : super(const MetronomeState());
+/// メトロノームの定数
+class MetronomeConstants {
+  MetronomeConstants._();
 
   /// BPM範囲
   static const int minBPM = 40;
   static const int maxBPM = 240;
 
+  /// 利用可能な拍子
+  static const List<int> availableBeats = [2, 3, 4, 6];
+
+  /// プリセットBPM
+  static const List<int> presetBPMs = [60, 80, 100, 120, 140, 160];
+
+  /// BPM変更のステップ
+  static const int bpmStep = 5;
+}
+
+/// メトロノームの状態管理
+@riverpod
+class Metronome extends _$Metronome {
+  @override
+  MetronomeState build() {
+    return const MetronomeState();
+  }
+
   /// BPMを設定
   void setBpm(int bpm) {
-    state = state.copyWith(bpm: bpm.clamp(minBPM, maxBPM));
+    state = state.copyWith(
+      bpm: bpm.clamp(MetronomeConstants.minBPM, MetronomeConstants.maxBPM),
+    );
   }
 
   /// メトロノームのON/OFF切り替え
@@ -62,8 +86,3 @@ class MetronomeNotifier extends StateNotifier<MetronomeState> {
     state = state.copyWith(accentEnabled: !state.accentEnabled);
   }
 }
-
-final metronomeProvider =
-    StateNotifierProvider<MetronomeNotifier, MetronomeState>((ref) {
-  return MetronomeNotifier();
-});
