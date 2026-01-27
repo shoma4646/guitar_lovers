@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:guitar_lovers_flutter/features/metronome/application/metronome_provider.dart';
 
 void main() {
@@ -52,6 +53,75 @@ void main() {
 
     test('BPMステップが正しい', () {
       expect(MetronomeConstants.bpmStep, 5);
+    });
+  });
+
+  group('Metronome Notifier', () {
+    test('setBpmでBPM範囲外の値をクランプする', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(metronomeProvider.notifier);
+
+      notifier.setBpm(300); // maxBPM(240)を超える
+      expect(container.read(metronomeProvider).bpm, 240);
+
+      notifier.setBpm(10); // minBPM(40)未満
+      expect(container.read(metronomeProvider).bpm, 40);
+    });
+
+    test('toggleで再生状態が切り替わる', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(metronomeProvider.notifier);
+
+      expect(container.read(metronomeProvider).isEnabled, false);
+      notifier.toggle();
+      expect(container.read(metronomeProvider).isEnabled, true);
+      notifier.toggle();
+      expect(container.read(metronomeProvider).isEnabled, false);
+    });
+
+    test('stopで再生が停止する', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(metronomeProvider.notifier);
+
+      notifier.toggle(); // 再生開始
+      expect(container.read(metronomeProvider).isEnabled, true);
+      notifier.stop();
+      expect(container.read(metronomeProvider).isEnabled, false);
+    });
+
+    test('setBeatsPerMeasureで拍子が変更される', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(metronomeProvider.notifier);
+
+      notifier.setBeatsPerMeasure(3);
+      expect(container.read(metronomeProvider).beatsPerMeasure, 3);
+    });
+
+    test('setBeatsPerMeasureでビート位置がリセットされる', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(metronomeProvider.notifier);
+
+      // 初期状態を変更してビート位置を進める（手動で状態を更新）
+      container.read(metronomeProvider.notifier);
+      // 拍子を変更
+      notifier.setBeatsPerMeasure(3);
+      // ビート位置が0にリセットされる
+      expect(container.read(metronomeProvider).currentBeat, 0);
+    });
+
+    test('toggleAccentでアクセント設定が切り替わる', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(metronomeProvider.notifier);
+
+      final initial = container.read(metronomeProvider).accentEnabled;
+      notifier.toggleAccent();
+      expect(container.read(metronomeProvider).accentEnabled, !initial);
     });
   });
 }

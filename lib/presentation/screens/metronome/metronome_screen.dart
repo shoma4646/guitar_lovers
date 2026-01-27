@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,7 +25,6 @@ class MetronomeScreen extends ConsumerStatefulWidget {
 
 class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  Timer? _timer;
   bool _isBeating = false;
   late AnimationController _animationController;
 
@@ -40,9 +38,6 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
   /// オーディオ初期化失敗フラグ
   bool _audioInitFailed = false;
 
-  /// 現在のビート位置
-  int _currentBeat = 0;
-
   @override
   void initState() {
     super.initState();
@@ -52,6 +47,11 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
       duration: _ScreenConstants.beatAnimationDuration,
     );
     _initAudioPlayers();
+
+    // ビートコールバックを登録（次のフレームで実行）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(metronomeProvider.notifier).registerBeatCallback(_onBeat);
+    });
   }
 
   @override
@@ -95,27 +95,10 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
     }
   }
 
-  void _startMetronome(int bpm) {
-    _stopMetronome();
-    _currentBeat = 0;
-    final interval = Duration(milliseconds: (60000 / bpm).round());
-    _timer = Timer.periodic(interval, (_) {
-      _beat();
-    });
-  }
+  /// ビート発生時のコールバック（Notifierから呼ばれる）
+  void _onBeat() {
+    if (!mounted) return;
 
-  void _stopMetronome() {
-    _timer?.cancel();
-    _timer = null;
-    _currentBeat = 0;
-    if (mounted) {
-      setState(() {
-        _isBeating = false;
-      });
-    }
-  }
-
-  void _beat() {
     final state = ref.read(metronomeProvider);
 
     setState(() {
@@ -131,16 +114,13 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
       }
     });
 
-    // 音を再生
+    // 音を再生（currentBeatは次のビートに進む前の値）
     if (_isAudioReady) {
-      _playSound(state.accentEnabled && _currentBeat == 0);
+      _playSound(state.accentEnabled && state.currentBeat == 0);
     }
 
     // 触覚フィードバック
     HapticFeedback.lightImpact();
-
-    // ビート位置を更新
-    _currentBeat = (_currentBeat + 1) % state.beatsPerMeasure;
   }
 
   void _playSound(bool isAccent) {
@@ -158,7 +138,6 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _stopMetronome();
     _animationController.dispose();
     _clickPlayer?.dispose();
     _accentPlayer?.dispose();
@@ -169,22 +148,6 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
   Widget build(BuildContext context) {
     final state = ref.watch(metronomeProvider);
     final notifier = ref.read(metronomeProvider.notifier);
-
-    // 状態変更時にメトロノームを制御
-    ref.listen<MetronomeState>(metronomeProvider, (previous, next) {
-      if (previous?.isEnabled != next.isEnabled) {
-        if (next.isEnabled) {
-          _startMetronome(next.bpm);
-        } else {
-          _stopMetronome();
-        }
-      } else if (next.isEnabled && previous?.bpm != next.bpm) {
-        _startMetronome(next.bpm);
-      } else if (next.isEnabled &&
-          previous?.beatsPerMeasure != next.beatsPerMeasure) {
-        _currentBeat = 0;
-      }
-    });
 
     return Scaffold(
       body: SafeArea(
@@ -289,7 +252,7 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(state.beatsPerMeasure, (index) {
-                  final isActive = state.isEnabled && _currentBeat == index;
+                  final isActive = state.isEnabled && state.currentBeat == index;
                   final isAccent = index == 0 && state.accentEnabled;
                   return AnimatedContainer(
                     duration: _ScreenConstants.beatAnimationDuration,
