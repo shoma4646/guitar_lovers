@@ -249,35 +249,76 @@ presentation → features/application → features/data → features/domain
 - **再利用性**: 同じfeatures層で異なるUI（Web/Mobile/Desktop）を作成可能
 - **チーム開発**: UI担当とロジック担当で完全分離できる
 
-### 状態管理: Riverpod
+### 状態管理: Riverpod + Riverpod Generator
 
-**Riverpod**はFlutterの状態管理ライブラリです。アプリ全体でデータを共有・管理するために使用します。
+**Riverpod**はFlutterの状態管理ライブラリです。このプロジェクトでは**Riverpod Generator**を使用し、`@riverpod`アノテーションでプロバイダーを定義します。
 
-#### 3種類のプロバイダー
+#### ⚠️ 重要: コード生成が必要です
 
-1. **Provider**(読み取り専用)
-   ```dart
-   // 例: lib/providers/news_provider.dart
-   final newsProvider = Provider<List<NewsArticle>>((ref) {
-     return [/* モックデータ */];
-   });
-   ```
-   - データが変更されない場合に使用
-   - 設定値やモックデータに最適
+Riverpod Generatorを使用しているため、プロバイダーを追加・変更した場合は**必ずコード生成を実行**してください：
 
-2. **StateNotifierProvider**(状態変更可能)
-   ```dart
-   // 例: lib/providers/community_provider.dart
-   final communityProvider = StateNotifierProvider<CommunityNotifier, List<Post>>((ref) {
-     return CommunityNotifier();
-   });
-   ```
-   - ユーザーの操作でデータが変わる場合に使用
-   - 投稿の追加・削除などに最適
+```bash
+# 1回だけ生成
+flutter pub run build_runner build --delete-conflicting-outputs
 
-3. **StateProvider**(シンプルな状態)
-   - 単一の値(数値、文字列など)を管理
-   - このプロジェクトでは未使用
+# 開発中は監視モード推奨（ファイル保存時に自動生成）
+flutter pub run build_runner watch --delete-conflicting-outputs
+```
+
+#### プロバイダーの書き方（Riverpod Generator）
+
+**1. 読み取り専用プロバイダー（関数型）**
+```dart
+// lib/features/news/application/news_provider.dart
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'news_provider.g.dart';  // 自動生成ファイル
+
+@riverpod
+List<NewsArticle> newsArticles(NewsArticlesRef ref) {
+  return [/* モックデータ */];
+}
+```
+- シンプルなデータ取得に使用
+- 関数名がそのままプロバイダー名になる（`newsArticlesProvider`）
+
+**2. 状態変更可能なプロバイダー（クラス型）**
+```dart
+// lib/features/metronome/application/metronome_provider.dart
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+part 'metronome_provider.g.dart';  // 自動生成ファイル
+
+@riverpod
+class Metronome extends _$Metronome {
+  @override
+  MetronomeState build() {
+    return const MetronomeState();  // 初期状態
+  }
+
+  void setBpm(int bpm) {
+    state = state.copyWith(bpm: bpm);
+  }
+
+  void toggle() {
+    state = state.copyWith(isPlaying: !state.isPlaying);
+  }
+}
+```
+- ユーザー操作で状態が変わる場合に使用
+- クラス名がプロバイダー名になる（`metronomeProvider`）
+- `state`で現在の状態にアクセス・更新
+
+**3. 非同期プロバイダー**
+```dart
+@riverpod
+Future<List<NewsArticle>> fetchNews(FetchNewsRef ref) async {
+  final response = await http.get(Uri.parse('https://api.example.com/news'));
+  return parseNews(response.body);
+}
+```
+- API呼び出しなど非同期処理に使用
+- 自動的に`AsyncValue`でローディング/エラー状態を管理
 
 #### 使い方の例
 
@@ -306,6 +347,8 @@ class NewsScreen extends ConsumerWidget {
 **ポイント:**
 - **presentation層からfeatures層のプロバイダーを使用**
 - **AsyncValue.when()でローディング/エラー状態を統一的に処理**
+- **`.g.dart`ファイルは自動生成されるため、手動編集禁止**
+- **プロバイダー変更後は必ず`build_runner`を実行**
 
 ### モデルクラス
 
