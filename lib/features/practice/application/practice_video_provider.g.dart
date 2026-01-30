@@ -28,7 +28,7 @@ final practiceVideoRepositoryProvider =
 // ignore: unused_element
 typedef PracticeVideoRepositoryRef
     = AutoDisposeFutureProviderRef<PracticeVideoRepository>;
-String _$presetVideosHash() => r'542b4daede090384188a1cf2e85a4cfed9e6fc81';
+String _$presetVideosHash() => r'408a3b518b95c12408befa929466638c017c1316';
 
 /// プリセット動画のプロバイダー
 ///
