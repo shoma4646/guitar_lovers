@@ -4,6 +4,7 @@ import '../../../shared/constants/app_colors.dart';
 import '../../../features/tuner/domain/tuning.dart';
 import '../../../features/tuner/application/pitch_detector_provider.dart';
 import '../../../features/tuner/domain/pitch_data.dart';
+import '../../../features/tuner/domain/services/pitch_calculation_service.dart';
 
 /// チューナー画面
 class TunerScreen extends ConsumerStatefulWidget {
@@ -26,6 +27,9 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
 
   /// セント差がこの値を超えたらスムージングをリセット (新しい音符と判断)
   static const double _centsResetThreshold = 50.0;
+
+  /// チューニング完了とみなすセント閾値（±15セント以内）
+  static const double _tuningThresholdCents = 15.0;
 
   int _lastDetectedString = 0;
   int _sameStringCount = 0;
@@ -102,19 +106,32 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
     }
   }
 
+  /// 現在選択されているチューニングを取得
+  Tuning get _currentTuning => Tuning.getByName(_selectedTuning);
+
   String _getStringName(int stringNum) {
     if (stringNum == 0) return '';
+    final note = _currentTuning.getNoteForString(stringNum);
+    // 音名からオクターブを除去（例: "E2" -> "E"）
+    final noteName = note.replaceAll(RegExp(r'[0-9]'), '');
+    return '$stringNum弦 ($noteName)';
+  }
 
-    const stringNames = {
-      6: 'E',
-      5: 'A',
-      4: 'D',
-      3: 'G',
-      2: 'B',
-      1: 'E',
-    };
+  /// 周波数から弦を判定（選択されたチューニングを使用）
+  int _detectString(double frequency) {
+    return PitchCalculationService.detectGuitarString(
+      frequency,
+      _currentTuning.frequencies,
+    );
+  }
 
-    return '$stringNum弦 (${stringNames[stringNum]})';
+  /// 弦に対するセント値を計算（選択されたチューニングを使用）
+  double _calculateCentsForString(double frequency, int stringNum) {
+    return PitchCalculationService.calculateCentsForString(
+      frequency,
+      stringNum,
+      _currentTuning.frequencies,
+    );
   }
 
   double _smoothCents(double currentCents) {
@@ -171,17 +188,10 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
 
   /// 全弦のチューニング状態を表示
   Widget _buildAllStringsDisplay(PitchData? pitchData) {
-    // 標準チューニングの音名
-    const stringNotes = {
-      6: 'E',
-      5: 'A',
-      4: 'D',
-      3: 'G',
-      2: 'B',
-      1: 'E',
-    };
-
-    final currentString = pitchData?.guitarString ?? 0;
+    // 現在のチューニングから弦を判定
+    final currentString = pitchData != null && pitchData.isPitched
+        ? _detectString(pitchData.frequency)
+        : 0;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -194,7 +204,9 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
         children: [6, 5, 4, 3, 2, 1].map((stringNum) {
           final isCurrent = currentString == stringNum;
           final isTuned = _stringTuned[stringNum] ?? false;
-          final note = stringNotes[stringNum] ?? '';
+          // 選択されたチューニングから音名を取得
+          final fullNote = _currentTuning.getNoteForString(stringNum);
+          final note = fullNote.replaceAll(RegExp(r'[0-9]'), '');
 
           return _buildStringIndicator(
             stringNum: stringNum,
@@ -321,6 +333,12 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
                         if (selected && _selectedTuning != tuning.name) {
                           setState(() {
                             _selectedTuning = tuning.name;
+                            // チューニング変更時は以前の検出状態が無効になるためリセット
+                            // （異なるチューニングでは弦の基準周波数が変わるため）
+                            _resetAllTuning();
+                            _lastStableString = 0;
+                            _lastDetectedString = 0;
+                            _sameStringCount = 0;
                           });
                         }
                       },
@@ -439,17 +457,20 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
       currentNote = pitchData.noteName;
       isActuallyDetecting = true;
 
+      // 選択されたチューニングに基づいて弦を判定
+      final detectedString = _detectString(pitchData.frequency);
+
       // 弦番号の判定：連続して3回同じ弦が検出された場合のみ更新
-      if (pitchData.guitarString > 0) {
-        if (_lastDetectedString == pitchData.guitarString) {
+      if (detectedString > 0) {
+        if (_lastDetectedString == detectedString) {
           _sameStringCount++;
           if (_sameStringCount >= 3) {
             // 3回連続で同じ弦が検出されたので確定
-            _lastStableString = pitchData.guitarString;
+            _lastStableString = detectedString;
           }
         } else {
           // 弦が変わったのでカウントリセット
-          _lastDetectedString = pitchData.guitarString;
+          _lastDetectedString = detectedString;
           _sameStringCount = 1;
         }
       }
@@ -457,12 +478,16 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
       currentString = _lastStableString;
       _lastStableNote = pitchData.noteName;
 
-      // セント値のスムージングで外れた値を抑制
-      cents = _smoothCents(pitchData.cents);
+      // 選択されたチューニングに基づいてセント値を計算
+      if (currentString > 0) {
+        cents = _smoothCents(_calculateCentsForString(pitchData.frequency, currentString));
+      } else {
+        cents = _smoothCents(pitchData.cents);
+      }
 
       // チューニング状態の更新
-      _updateTuningStatus(
-          currentString, pitchData.isInTune, pitchData.probability);
+      final isInTune = cents.abs() < _tuningThresholdCents;
+      _updateTuningStatus(currentString, isInTune, pitchData.probability);
     } else {
       _emptyCount++;
       if (_emptyCount >= _emptyThreshold) {
