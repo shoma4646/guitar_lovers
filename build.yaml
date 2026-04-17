@@ -1,8 +1,0 @@
-# Riverpod Generatorの設定
-targets:
-  $default:
-    builders:
-      riverpod_generator:
-        options:
-          # 生成されるファイルのフォーマット
-          line_length: 80

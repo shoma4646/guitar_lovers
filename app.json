@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Guitar Lovers",
+    "slug": "guitar-lovers",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "scheme": "guitar-lovers",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0F19"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.guitarlovers.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "チューナー機能でマイクを使用します"
+      }
+    },
+    "android": {
+      "package": "com.guitarlovers.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B0F19"
+      },
+      "permissions": ["RECORD_AUDIO"]
+    },
+    "plugins": ["expo-router", "expo-av"]
+  }
+}
