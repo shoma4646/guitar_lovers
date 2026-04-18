@@ -137,7 +137,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   setPlaybackRate: (rate) => set({ playbackRate: rate }),
 
   startPracticeTimer: () =>
-    set({ practiceStartTime: Date.now(), elapsedSeconds: 0 }),
+    set({ practiceStartTime: Date.now() }),
 
   stopPracticeTimer: () => {
     const { practiceStartTime, elapsedSeconds } = get();

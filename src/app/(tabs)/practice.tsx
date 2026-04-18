@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import WebView from "react-native-webview";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { v4 as uuidv4 } from "uuid";
 import { colors } from "@/shared/constants/colors";
 import {
@@ -46,8 +47,9 @@ const practicePresetsData: VideoPreset[] = require("../../../assets/json/practic
 /** 画面幅 */
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
-/** YouTube埋め込みiframe用HTML */
+/** YouTube IFrame API連携HTML */
 function buildYouTubeHtml(videoId: string): string {
+  const safeId = videoId.replace(/[^a-zA-Z0-9_-]/g, "");
   return `
 <!DOCTYPE html>
 <html>
@@ -56,15 +58,48 @@ function buildYouTubeHtml(videoId: string): string {
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #0B0F19; }
-    iframe { width: 100%; height: 100%; border: none; }
+    #player { width: 100%; height: 100%; }
   </style>
 </head>
 <body>
-  <iframe
-    src="https://www.youtube.com/embed/${videoId}?playsinline=1&enablejsapi=1"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-    allowfullscreen
-  ></iframe>
+  <div id="player"></div>
+  <script>
+    var tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+    var player;
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        videoId: '${safeId}',
+        playerVars: { playsinline: 1 },
+        events: {
+          onReady: function(e) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'ready', duration: e.target.getDuration()
+            }));
+            setInterval(function() {
+              if (player && player.getCurrentTime) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'time', currentTime: player.getCurrentTime()
+                }));
+              }
+            }, 200);
+          }
+        }
+      });
+    }
+    document.addEventListener('message', function(e) { handleMsg(e.data); });
+    window.addEventListener('message', function(e) { handleMsg(e.data); });
+    function handleMsg(data) {
+      try {
+        var cmd = JSON.parse(data);
+        if (cmd.action === 'play') player.playVideo();
+        if (cmd.action === 'pause') player.pauseVideo();
+        if (cmd.action === 'seek') player.seekTo(cmd.time, true);
+        if (cmd.action === 'setRate') player.setPlaybackRate(cmd.rate);
+      } catch(e) {}
+    }
+  </script>
 </body>
 </html>
 `;
@@ -106,8 +141,9 @@ function MetronomeWidget() {
   const beatScale = useRef(new Animated.Value(1)).current;
   const beatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  /** 拍アニメーションの実行 */
+  /** 拍アニメーションの実行(触覚フィードバック付き) */
   const animateBeat = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Animated.sequence([
       Animated.timing(beatScale, {
         toValue: 1.15,
@@ -247,6 +283,10 @@ function PracticeTab() {
   const bookmarks = usePracticeStore((s) => s.bookmarks);
   const playbackRate = usePracticeStore((s) => s.playbackRate);
 
+  const currentTime = usePracticeStore((s) => s.currentTime);
+  const setCurrentTime = usePracticeStore((s) => s.setCurrentTime);
+  const setDuration = usePracticeStore((s) => s.setDuration);
+
   const setUrlInput = usePracticeStore((s) => s.setUrlInput);
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const setABLoop = usePracticeStore((s) => s.setABLoop);
@@ -257,6 +297,13 @@ function PracticeTab() {
   const startPracticeTimer = usePracticeStore((s) => s.startPracticeTimer);
   const stopPracticeTimer = usePracticeStore((s) => s.stopPracticeTimer);
   const resetPracticeTimer = usePracticeStore((s) => s.resetPracticeTimer);
+
+  const webViewRef = useRef<WebView>(null);
+
+  /** WebView経由でYouTube IFrame APIにコマンドを送信 */
+  const sendToPlayer = useCallback((cmd: Record<string, unknown>) => {
+    webViewRef.current?.postMessage(JSON.stringify(cmd));
+  }, []);
 
   /** 表示用の経過秒数（1秒ごとに更新） */
   const [displaySeconds, setDisplaySeconds] = useState(0);
@@ -274,6 +321,14 @@ function PracticeTab() {
     }, 1000);
     return () => clearInterval(timer);
   }, [isTimerRunning, elapsedSeconds, practiceStartTime]);
+
+  // ABループ: B点到達時にA点にシーク
+  useEffect(() => {
+    if (!abLoop.enabled || abLoop.pointA === null || abLoop.pointB === null) return;
+    if (currentTime >= abLoop.pointB) {
+      sendToPlayer({ action: "seek", time: abLoop.pointA });
+    }
+  }, [currentTime, abLoop, sendToPlayer]);
 
   /**
    * URLを読み込んでYouTubeビデオを表示する
@@ -390,12 +445,23 @@ function PracticeTab() {
       {loadedVideoId && (
         <View style={styles.webViewContainer}>
           <WebView
+            ref={webViewRef}
             source={{ html: buildYouTubeHtml(loadedVideoId) }}
             style={styles.webView}
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
             javaScriptEnabled
             domStorageEnabled
+            onMessage={(event) => {
+              try {
+                const data = JSON.parse(event.nativeEvent.data);
+                if (data.type === "time") {
+                  setCurrentTime(data.currentTime);
+                } else if (data.type === "ready") {
+                  setDuration(data.duration);
+                }
+              } catch { /* 無視 */ }
+            }}
           />
         </View>
       )}
@@ -454,7 +520,10 @@ function PracticeTab() {
             return (
               <TouchableOpacity
                 key={rate}
-                onPress={() => setPlaybackRate(rate as PlaybackRate)}
+                onPress={() => {
+                  setPlaybackRate(rate as PlaybackRate);
+                  sendToPlayer({ action: "setRate", rate });
+                }}
                 style={[
                   styles.chip,
                   {
@@ -487,7 +556,7 @@ function PracticeTab() {
         </Text>
         <View style={styles.abLoopButtons}>
           <TouchableOpacity
-            onPress={() => setABLoop({ pointA: 0 })}
+            onPress={() => setABLoop({ pointA: Math.floor(currentTime) })}
             style={[
               styles.abBtn,
               {
@@ -503,7 +572,7 @@ function PracticeTab() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => setABLoop({ pointB: 30 })}
+            onPress={() => setABLoop({ pointB: Math.floor(currentTime) })}
             style={[
               styles.abBtn,
               {
