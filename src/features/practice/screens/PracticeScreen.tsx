@@ -5,7 +5,7 @@
  * ABループ、メトロノーム、ブックマーク機能を含む。
  */
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -31,18 +31,13 @@ import {
   extractVideoId,
   type PlaybackRate,
 } from "@/stores/practice";
-import {
-  savePracticeSession,
-  getFavoriteVideos,
-  addFavoriteVideo,
-  removeFavoriteVideo,
-  getRecentVideos,
-  addRecentVideo,
-} from "@/shared/services/storage";
 import type { VideoPreset, FavoriteVideo, RecentVideo } from "@/shared/types/models";
-
-/** プリセット動画データ */
-const practicePresetsData: VideoPreset[] = require("../../../../assets/json/practice_presets.json");
+import { useSavePracticeSession } from "@/features/history/api/useSavePracticeSession";
+import { useFavoriteVideos } from "@/features/practice/api/useFavoriteVideos";
+import { useToggleFavoriteVideo } from "@/features/practice/api/useToggleFavoriteVideo";
+import { useRecentVideos } from "@/features/practice/api/useRecentVideos";
+import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
+import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 
 /** 画面幅 */
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -298,6 +293,9 @@ function PracticeTab() {
   const stopPracticeTimer = usePracticeStore((s) => s.stopPracticeTimer);
   const resetPracticeTimer = usePracticeStore((s) => s.resetPracticeTimer);
 
+  const { mutate: addRecent } = useAddRecentVideo();
+  const { mutateAsync: saveSession } = useSavePracticeSession();
+
   const webViewRef = useRef<WebView>(null);
 
   /** WebView経由でYouTube IFrame APIにコマンドを送信 */
@@ -344,12 +342,12 @@ function PracticeTab() {
       return;
     }
     loadVideo(videoId);
-    addRecentVideo({
+    addRecent({
       videoId,
       title: `YouTube動画 (${videoId})`,
       lastWatchedAt: new Date().toISOString(),
     });
-  }, [urlInput, loadVideo]);
+  }, [urlInput, loadVideo, addRecent]);
 
   /**
    * 練習記録を保存する
@@ -361,7 +359,7 @@ function PracticeTab() {
         {
           text: "記録する",
           onPress: async () => {
-            await savePracticeSession({
+            await saveSession({
               id: uuidv4(),
               date: new Date().toISOString(),
               duration: displaySeconds,
@@ -374,7 +372,7 @@ function PracticeTab() {
       ]);
       return;
     }
-    await savePracticeSession({
+    await saveSession({
       id: uuidv4(),
       date: new Date().toISOString(),
       duration: displaySeconds,
@@ -382,7 +380,7 @@ function PracticeTab() {
     });
     resetPracticeTimer();
     Alert.alert("記録完了", "練習を記録しました");
-  }, [displaySeconds, loadedVideoId, resetPracticeTimer]);
+  }, [displaySeconds, loadedVideoId, resetPracticeTimer, saveSession]);
 
   /**
    * ブックマークを追加する
@@ -702,27 +700,30 @@ function PracticeTab() {
  */
 function PresetsTab() {
   const loadVideo = usePracticeStore((s) => s.loadVideo);
+  const { data: presets = [] } = useVideoPresets();
+  const { mutate: addRecent } = useAddRecentVideo();
 
   /** カテゴリ別にグループ化 */
-  const grouped = practicePresetsData.reduce<Record<string, VideoPreset[]>>(
-    (acc, preset) => {
-      if (!acc[preset.category]) acc[preset.category] = [];
-      acc[preset.category].push(preset);
-      return acc;
-    },
-    {}
+  const grouped = useMemo(
+    () =>
+      presets.reduce<Record<string, VideoPreset[]>>((acc, preset) => {
+        if (!acc[preset.category]) acc[preset.category] = [];
+        acc[preset.category].push(preset);
+        return acc;
+      }, {}),
+    [presets]
   );
 
   const handlePlay = useCallback(
     (preset: VideoPreset) => {
       loadVideo(preset.videoId, preset.title);
-      addRecentVideo({
+      addRecent({
         videoId: preset.videoId,
         title: preset.title,
         lastWatchedAt: new Date().toISOString(),
       });
     },
-    [loadVideo]
+    [loadVideo, addRecent]
   );
 
   return (
@@ -795,23 +796,10 @@ function PresetsTab() {
  * お気に入りタブ - 最近視聴した動画とお気に入り
  */
 function FavoritesTab() {
-  const [favorites, setFavorites] = useState<FavoriteVideo[]>([]);
-  const [recents, setRecents] = useState<RecentVideo[]>([]);
+  const { data: favorites = [] } = useFavoriteVideos();
+  const { data: recents = [] } = useRecentVideos();
   const loadVideo = usePracticeStore((s) => s.loadVideo);
-
-  /** データを読み込む */
-  const loadData = useCallback(async () => {
-    const [favs, recs] = await Promise.all([
-      getFavoriteVideos(),
-      getRecentVideos(),
-    ]);
-    setFavorites(favs);
-    setRecents(recs);
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const { mutateAsync: toggleFavorite } = useToggleFavoriteVideo();
 
   /**
    * お気に入りのトグル
@@ -820,18 +808,20 @@ function FavoritesTab() {
     async (video: RecentVideo) => {
       const isFav = favorites.some((f) => f.videoId === video.videoId);
       if (isFav) {
-        await removeFavoriteVideo(video.videoId);
+        await toggleFavorite({ type: "remove", videoId: video.videoId });
       } else {
-        await addFavoriteVideo({
-          id: uuidv4(),
-          videoId: video.videoId,
-          title: video.title,
-          addedAt: new Date().toISOString(),
+        await toggleFavorite({
+          type: "add",
+          video: {
+            id: uuidv4(),
+            videoId: video.videoId,
+            title: video.title,
+            addedAt: new Date().toISOString(),
+          },
         });
       }
-      await loadData();
     },
-    [favorites, loadData]
+    [favorites, toggleFavorite]
   );
 
   const handlePlayRecent = useCallback(
@@ -965,7 +955,7 @@ function FavoritesTab() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() =>
-                  removeFavoriteVideo(video.videoId).then(loadData)
+                  toggleFavorite({ type: "remove", videoId: video.videoId })
                 }
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityRole="button"

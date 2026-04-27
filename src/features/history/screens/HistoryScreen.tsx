@@ -4,7 +4,7 @@
  * スワイプ削除はAlertダイアログで代替実装する。
  */
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -21,12 +21,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { v4 as uuidv4 } from "uuid";
 import { colors } from "@/shared/constants/colors";
-import {
-  getPracticeSessions,
-  savePracticeSession,
-  deletePracticeSession,
-} from "@/shared/services/storage";
 import type { PracticeSession, PracticeStats } from "@/shared/types/models";
+import { usePracticeSessions } from "@/features/history/api/usePracticeSessions";
+import { useSavePracticeSession } from "@/features/history/api/useSavePracticeSession";
+import { useDeletePracticeSession } from "@/features/history/api/useDeletePracticeSession";
 
 /** 曜日ラベル（月〜日） */
 const WEEK_DAYS = ["月", "火", "水", "木", "金", "土", "日"];
@@ -413,38 +411,22 @@ function AddSessionModal({ visible, onClose, onSave }: AddSessionModalProps) {
  * 履歴画面コンポーネント
  */
 export function HistoryScreen() {
-  const [sessions, setSessions] = useState<PracticeSession[]>([]);
-  const [stats, setStats] = useState<PracticeStats>({
-    weeklyDuration: 0,
-    streakDays: 0,
-    totalDuration: 0,
-    totalSessions: 0,
-    weeklyData: Array(7).fill(0),
-  });
+  const { data: sessions = [] } = usePracticeSessions();
+  const { mutateAsync: saveSession } = useSavePracticeSession();
+  const { mutateAsync: deleteSession } = useDeletePracticeSession();
   const [showAddModal, setShowAddModal] = useState(false);
 
-  /**
-   * セッション一覧を読み込んで統計を再計算する
-   */
-  const loadSessions = useCallback(async () => {
-    const data = await getPracticeSessions();
-    setSessions(data);
-    setStats(calcStats(data));
-  }, []);
-
-  useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
+  /** セッションから統計を派生する */
+  const stats = useMemo<PracticeStats>(() => calcStats(sessions), [sessions]);
 
   /**
    * セッションを削除する
    */
   const handleDelete = useCallback(
     async (id: string) => {
-      await deletePracticeSession(id);
-      await loadSessions();
+      await deleteSession(id);
     },
-    [loadSessions]
+    [deleteSession]
   );
 
   /**
@@ -452,10 +434,9 @@ export function HistoryScreen() {
    */
   const handleSaveSession = useCallback(
     async (session: PracticeSession) => {
-      await savePracticeSession(session);
-      await loadSessions();
+      await saveSession(session);
     },
-    [loadSessions]
+    [saveSession]
   );
 
   /**

@@ -4,7 +4,7 @@
  * JSONアセットからデータを読み込み、プルトゥリフレッシュで再描画する。
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import {
   View,
   Text,
@@ -19,9 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/shared/constants/colors";
 import type { NewsArticle } from "@/shared/types/models";
-
-/** ニュースデータをアセットから読み込む */
-const newsData: NewsArticle[] = require("../../../../assets/json/news.json");
+import { useNewsArticles } from "@/features/news/api/useNewsArticles";
 
 /** カテゴリごとの表示スタイル（背景色） */
 const CATEGORY_COLORS: Record<string, string> = {
@@ -146,21 +144,15 @@ function NewsCard({ article }: NewsCardProps) {
  * ニュース画面コンポーネント
  */
 export function NewsScreen() {
-  const [articles, setArticles] = useState<NewsArticle[]>(newsData);
-  const [refreshing, setRefreshing] = useState(false);
+  const { data: articles = [], isFetching, refetch } = useNewsArticles();
 
   /**
    * プルトゥリフレッシュハンドラ
-   * 実際のAPIがない場合は再レンダリングのみ行う
+   * 静的アセットの再読み込みでも視覚的な再描画を維持する
    */
   const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    // 実際のAPIが用意されたらここでフェッチする
-    // 現在はJSONアセットを再読み込みするだけ
-    await new Promise<void>((resolve) => setTimeout(resolve, 800));
-    setArticles([...newsData]);
-    setRefreshing(false);
-  }, []);
+    await refetch();
+  }, [refetch]);
 
   /**
    * FlatListのヘッダーコンポーネント
@@ -210,7 +202,7 @@ export function NewsScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={isFetching}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
             colors={[colors.primary]}
