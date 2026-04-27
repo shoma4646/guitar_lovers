@@ -7,6 +7,7 @@ import "../../global.css";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { colors } from "@/shared/constants/colors";
+import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 
 /**
  * ルートレイアウトコンポーネント
@@ -14,7 +15,7 @@ import { colors } from "@/shared/constants/colors";
  */
 export default function RootLayout() {
   return (
-    <>
+    <ErrorBoundary>
       <StatusBar style="light" backgroundColor={colors.bgDark} />
       <Stack
         screenOptions={{
@@ -30,6 +31,6 @@ export default function RootLayout() {
         {/* インデックスリダイレクト - ヘッダー非表示 */}
         <Stack.Screen name="index" options={{ headerShown: false }} />
       </Stack>
-    </>
+    </ErrorBoundary>
   );
 }

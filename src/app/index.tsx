@@ -10,5 +10,5 @@ import { Redirect } from "expo-router";
  * アプリ起動時にデフォルトタブ（チューナー）へ遷移する
  */
 export default function Index() {
-  return <Redirect href="/(tabs)/tuner" />;
+  return <Redirect href={{ pathname: "/(tabs)/tuner" }} />;
 }
