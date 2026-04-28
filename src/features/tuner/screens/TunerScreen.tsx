@@ -22,6 +22,7 @@ import {
   TuningPresetKey,
   TUNING_THRESHOLD_CENTS,
 } from "@/shared/constants/tuning";
+import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 
 /** デモモードで1弦あたり表示するミリ秒 */
 const DEMO_INTERVAL_MS = 2000;
@@ -231,14 +232,15 @@ export function TunerScreen() {
   const isTuned = Math.abs(cents) <= TUNING_THRESHOLD_CENTS && isActive;
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.bgDark }]}
-      edges={["bottom"]}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <ErrorBoundary>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.bgDark }]}
+        edges={["bottom"]}
       >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         {/* チューニングプリセット選択 */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.textGray }]}>
@@ -457,8 +459,9 @@ export function TunerScreen() {
         <Text style={[styles.nativeNote, { color: colors.textGray }]}>
           マイクからのピッチ検出にはネイティブビルドが必要です
         </Text>
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
+    </ErrorBoundary>
   );
 }
 

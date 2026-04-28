@@ -10,6 +10,9 @@ import type {
   RecentVideo,
   PracticeStats,
 } from "@/shared/types/models";
+import { practiceSessionsSchema } from "@/shared/lib/schemas/practiceSession";
+import { favoriteVideosSchema } from "@/shared/lib/schemas/favoriteVideo";
+import { recentVideosSchema } from "@/shared/lib/schemas/recentVideo";
 
 /** ストレージキーの定義 */
 const STORAGE_KEYS = {
@@ -32,8 +35,14 @@ export async function getPracticeSessions(): Promise<PracticeSession[]> {
   try {
     const json = await AsyncStorage.getItem(STORAGE_KEYS.PRACTICE_SESSIONS);
     if (!json) return [];
-    return JSON.parse(json) as PracticeSession[];
-  } catch {
+    const parsed = practiceSessionsSchema.safeParse(JSON.parse(json));
+    if (!parsed.success) {
+      console.error("[storage] practice_sessionsの復元に失敗", parsed.error);
+      return [];
+    }
+    return parsed.data;
+  } catch (e) {
+    console.error("[storage] practice_sessionsの読み込みエラー", e);
     return [];
   }
 }
@@ -77,8 +86,14 @@ export async function getFavoriteVideos(): Promise<FavoriteVideo[]> {
   try {
     const json = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITE_VIDEOS);
     if (!json) return [];
-    return JSON.parse(json) as FavoriteVideo[];
-  } catch {
+    const parsed = favoriteVideosSchema.safeParse(JSON.parse(json));
+    if (!parsed.success) {
+      console.error("[storage] favorite_videosの復元に失敗", parsed.error);
+      return [];
+    }
+    return parsed.data;
+  } catch (e) {
+    console.error("[storage] favorite_videosの読み込みエラー", e);
     return [];
   }
 }
@@ -131,8 +146,14 @@ export async function getRecentVideos(): Promise<RecentVideo[]> {
   try {
     const json = await AsyncStorage.getItem(STORAGE_KEYS.RECENT_VIDEOS);
     if (!json) return [];
-    return JSON.parse(json) as RecentVideo[];
-  } catch {
+    const parsed = recentVideosSchema.safeParse(JSON.parse(json));
+    if (!parsed.success) {
+      console.error("[storage] recent_videosの復元に失敗", parsed.error);
+      return [];
+    }
+    return parsed.data;
+  } catch (e) {
+    console.error("[storage] recent_videosの読み込みエラー", e);
     return [];
   }
 }
