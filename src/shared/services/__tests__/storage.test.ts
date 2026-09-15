@@ -11,6 +11,7 @@ import {
   recordPhraseResult,
   savePhraseAttempt,
   savePracticePhrase,
+  updatePracticePhrase,
 } from "../storage";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import {
@@ -194,6 +195,33 @@ describe("フレーズの削除とアーカイブ", () => {
     const [phrase] = await getPracticePhrases();
     expect(phrase.archivedAt).toEqual(expect.any(String));
     expect(Number.isNaN(Date.parse(phrase.archivedAt!))).toBe(false);
+  });
+});
+
+describe("初期BPMと卒業日時の永続化", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("initialBpmとgraduatedAtは保存して読み出しても保持される", async () => {
+    await savePracticePhrase({ ...makePhrase("x"), initialBpm: 80 });
+    await updatePracticePhrase("x", { graduatedAt: "2026-09-03T00:00:00.000Z" });
+
+    const [phrase] = await getPracticePhrases();
+    expect(phrase.initialBpm).toBe(80);
+    expect(phrase.graduatedAt).toBe("2026-09-03T00:00:00.000Z");
+  });
+
+  it("graduatedAtにundefinedを渡すと保存データからキーが消える", async () => {
+    await savePracticePhrase({ ...makePhrase("x"), graduatedAt: "2026-09-03T00:00:00.000Z" });
+
+    await updatePracticePhrase("x", { targetBpm: 140, graduatedAt: undefined });
+
+    const [phrase] = await getPracticePhrases();
+    expect(phrase.targetBpm).toBe(140);
+    expect("graduatedAt" in phrase).toBe(false);
+    const raw = JSON.parse((await AsyncStorage.getItem(STORAGE_KEYS.PRACTICE_PHRASES))!);
+    expect("graduatedAt" in raw[0]).toBe(false);
   });
 });
 

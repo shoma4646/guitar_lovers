@@ -70,6 +70,10 @@ export interface PracticePhrase {
   updatedAt: string;
   /** アーカイブ日時（ISO 8601形式、任意）。設定されていれば今日の練習メニューと進捗一覧に表示しない（記録は保持） */
   archivedAt?: string;
+  /** 保存時のBPM（任意）。導入前に保存したフレーズには無い */
+  initialBpm?: number;
+  /** 目標BPMに到達した日時（ISO 8601形式、任意）。卒業かどうかは到達BPMと目標BPMから判定し、この値単独では判定しない */
+  graduatedAt?: string;
 }
 
 /** フレーズ1回分の練習結果 */
@@ -128,6 +132,8 @@ export interface RecentVideo {
 export interface PracticeStats {
   /** 今週の練習時間（秒） */
   weeklyDuration: number;
+  /** 今週（月曜起点）に練習した日数。セッションまたはフレーズ練習結果がある日を数える */
+  weeklyPracticeDays: number;
   /** 連続練習日数 */
   streakDays: number;
   /** 累計練習時間（秒） */

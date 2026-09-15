@@ -17,6 +17,8 @@ export const practicePhraseSchema = z
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
     archivedAt: z.iso.datetime().optional(),
+    initialBpm: z.number().int().min(BPM_MIN).max(BPM_MAX).optional(),
+    graduatedAt: z.iso.datetime().optional(),
   })
   .refine((phrase) => phrase.startSec < phrase.endSec, {
     message: "区間の終了点は開始点より後である必要があります",

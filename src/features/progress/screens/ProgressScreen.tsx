@@ -3,7 +3,7 @@
  *
  * - AppBar: プロフィール + "練習の記録" + settings
  * - フレーズの上達（BPM推移）: 保存済みフレーズがある場合のみ表示、最上段の主役
- * - 統計グリッド: Hours / Days / Songs / Streak の 2x2 カード
+ * - 統計: 主指標「今週の練習日数」の大カード + 今週の時間 / 累計時間 / 回数の補助カード
  * - WEEKLY RHYTHM バーチャート
  * - RECENT SESSIONS リスト
  * - FAB（右下に追加ボタン）
@@ -26,6 +26,7 @@ import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { usePracticeSessions } from "@/features/progress/api/usePracticeSessions";
 import { useSavePracticeSession } from "@/features/progress/api/useSavePracticeSession";
 import { useDeletePracticeSession } from "@/features/progress/api/useDeletePracticeSession";
+import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { calcStats } from "@/features/progress/lib/calcStats";
 import { formatDurationLong } from "@/features/progress/lib/formatters";
 import { StatCard } from "@/features/progress/components/StatCard";
@@ -33,24 +34,18 @@ import { WeekBarChart } from "@/features/progress/components/WeekBarChart";
 import { SessionRow } from "@/features/progress/components/SessionRow";
 import { AddSessionModal } from "@/features/progress/components/AddSessionModal";
 import { PhraseProgressList } from "@/features/progress/components/PhraseProgressList";
-
-const INITIAL_STATS: PracticeStats = {
-  weeklyDuration: 0,
-  streakDays: 0,
-  totalDuration: 0,
-  totalSessions: 0,
-  weeklyData: [0, 0, 0, 0, 0, 0, 0],
-};
+import { GraduatedPhraseList } from "@/features/progress/components/GraduatedPhraseList";
 
 export function ProgressScreen() {
   const { data: sessions = [] } = usePracticeSessions();
+  const { data: attempts = [] } = usePhraseAttempts();
   const { mutateAsync: saveSession } = useSavePracticeSession();
   const { mutateAsync: deleteSession } = useDeletePracticeSession();
   const [showAddModal, setShowAddModal] = useState(false);
 
   const stats = useMemo<PracticeStats>(
-    () => (sessions.length === 0 ? INITIAL_STATS : calcStats(sessions)),
-    [sessions],
+    () => calcStats(sessions, attempts),
+    [sessions, attempts],
   );
 
   const handleDelete = useCallback(
@@ -70,8 +65,8 @@ export function ProgressScreen() {
   const handleShare = useCallback(async () => {
     const text = [
       "Guitar Lovers 練習記録",
-      `今週の練習: ${formatDurationLong(stats.weeklyDuration)}`,
-      `連続日数: ${stats.streakDays}日`,
+      `今週の練習日数: ${stats.weeklyPracticeDays}/7日`,
+      `今週の練習時間: ${formatDurationLong(stats.weeklyDuration)}`,
       `累計時間: ${formatDurationLong(stats.totalDuration)}`,
       `総回数: ${stats.totalSessions}回`,
     ].join("\n");
@@ -113,22 +108,28 @@ export function ProgressScreen() {
         >
           {/* フレーズの上達（BPM推移） */}
           <PhraseProgressList />
+          <GraduatedPhraseList />
 
-          {/* Stats Grid (2x2) */}
+          {/* Stats: 主指標 + 補助 */}
           <View style={styles.statsGrid}>
-            <View className="flex-row" style={{ gap: 12 }}>
+            <View className="flex-row">
               <StatCard
-                label="HOURS"
-                value={formatDurationLong(stats.totalDuration)}
+                label="今週の練習日数"
+                value={`${stats.weeklyPracticeDays}/7日`}
+                emphasized
+                caption={stats.streakDays > 0 ? `連続${stats.streakDays}日` : undefined}
               />
-              <StatCard label="DAYS" value={`${stats.streakDays}`} />
-              <StatCard label="SESSIONS" value={`${stats.totalSessions}`} />
             </View>
             <View className="flex-row" style={{ gap: 12, marginTop: 12 }}>
               <StatCard
                 label="THIS WEEK"
                 value={formatDurationLong(stats.weeklyDuration)}
               />
+              <StatCard
+                label="HOURS"
+                value={formatDurationLong(stats.totalDuration)}
+              />
+              <StatCard label="SESSIONS" value={`${stats.totalSessions}`} />
             </View>
           </View>
 

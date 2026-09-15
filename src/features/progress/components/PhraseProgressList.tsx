@@ -1,7 +1,7 @@
 /**
  * フレーズ別BPM推移リスト（Progress画面の上段・主役）
  *
- * 保存済みフレーズごとに「開始BPM → 現在BPM → 目標BPM」を進捗バーで表示する。
+ * 練習中のフレーズ（アーカイブ・卒業済みを除く）ごとに「開始BPM → 現在BPM → 目標BPM」を進捗バーで表示する。
  * フレーズが1件も無ければ、同じカード枠内に案内文を表示する。
  */
 
@@ -26,6 +26,7 @@ export function PhraseProgressList() {
           (attempts ?? []).filter((a) => a.phraseId === phrase.id),
         ),
       )
+      .filter((summary) => !summary.graduatedAt)
       .sort(
         (a, b) =>
           new Date(b.phrase.updatedAt).getTime() -
@@ -56,7 +57,7 @@ export function PhraseProgressList() {
         </Text>
       ) : (
         <View style={{ gap: 16 }}>
-          {summaries.map(({ phrase, startBpm, currentBpm, targetBpm, progressRatio }) => (
+          {summaries.map(({ phrase, startBpm, currentBpm, targetBpm, progressRatio, gainBpm }) => (
             <View key={phrase.id} style={{ gap: 6 }}>
               <View className="flex-row items-center justify-between">
                 <Text
@@ -76,6 +77,14 @@ export function PhraseProgressList() {
                   {startBpm} → {currentBpm} / 目標{targetBpm}
                 </Text>
               </View>
+              {gainBpm > 0 ? (
+                <Text
+                  className="text-label-sm"
+                  style={{ color: colors.tertiary, fontWeight: "700", fontVariant: ["tabular-nums"] }}
+                >
+                  +{gainBpm} BPM
+                </Text>
+              ) : null}
               <View style={styles.track}>
                 <View
                   style={{

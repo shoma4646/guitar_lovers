@@ -211,9 +211,9 @@ export function TodayMenuCard({ onStartPhrase, onTryPreset }: Props) {
                     className="text-label-sm"
                     style={{ color: colors.onSurfaceVariant }}
                   >
+                    {priority === "graduated" ? "卒業・" : ""}
                     {latest ? `前回 ${latest.bpm}` : "未練習"} → 今日は{" "}
                     {todayTargetBpm} BPM
-                    {priority === "graduated" ? "・目標到達" : ""}
                   </Text>
                   {isPick && priority !== "graduated" && (
                     <Text

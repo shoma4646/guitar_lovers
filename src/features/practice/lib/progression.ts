@@ -155,3 +155,25 @@ export function pickTodayPick(menu: TodayMenuEntry[]): TodayMenuEntry | undefine
   const first = menu[0];
   return first && first.priority !== "graduated" ? first : undefined;
 }
+
+/**
+ * 卒業していればその日時を返し、未卒業ならundefinedを返す
+ *
+ * 日時は graduatedAt → 目標BPM以上で弾けた最初の記録 → createdAt の順に採る。
+ * 目標BPMを引き上げて未到達になった場合は graduatedAt が残っていても undefined を返す
+ * @param phrase - 対象フレーズ
+ * @param attempts - 対象フレーズの練習結果一覧（順不同で可）
+ */
+export function resolveGraduatedAt(
+  phrase: Pick<PracticePhrase, "currentBpm" | "targetBpm" | "graduatedAt" | "createdAt">,
+  attempts: PhraseAttempt[],
+): string | undefined {
+  if (!isGraduated(resolveCurrentBpm(phrase.currentBpm, attempts), phrase.targetBpm)) {
+    return undefined;
+  }
+  if (phrase.graduatedAt) return phrase.graduatedAt;
+  const firstReached = attempts
+    .filter((a) => a.result === "ok" && a.bpm >= phrase.targetBpm)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+  return firstReached?.date ?? phrase.createdAt;
+}
