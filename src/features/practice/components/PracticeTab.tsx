@@ -22,6 +22,7 @@ import { useSavePracticeSession } from "@/features/progress/api/useSavePracticeS
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { useSavePracticePhrase } from "@/features/practice/api/useSavePracticePhrase";
 import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseResult";
+import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePracticePhrase";
 import { PhraseNotFoundError } from "@/shared/services/storage";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { MetronomeWidget } from "./MetronomeWidget";
@@ -101,6 +102,7 @@ export function PracticeTab() {
   const { mutateAsync: saveSession } = useSavePracticeSession();
   const { mutate: savePhrase } = useSavePracticePhrase();
   const { mutateAsync: recordResultAsync } = useRecordPhraseResult();
+  const { mutate: graduatePhrase } = useGraduatePracticePhrase();
   const { data: presets = [] } = useVideoPresets();
 
   const [showResultSheet, setShowResultSheet] = useState(false);
@@ -240,11 +242,12 @@ export function PracticeTab() {
   const handleSubmitResult = useCallback(
     async ({ bpm, result }: { bpm: number; result: "ok" | "partial" | "ng" }) => {
       if (!activePractice) return;
+      const date = new Date().toISOString();
       try {
         await recordResultAsync({
           id: pendingAttemptId ?? randomUUID(),
           phraseId: activePractice.phrase.id,
-          date: new Date().toISOString(),
+          date,
           bpm,
           result,
         });
@@ -258,10 +261,14 @@ export function PracticeTab() {
         // 保存失敗はshowMutationErrorがAlertを表示済み。シートと練習状態は保持し再送できるようにする
         return;
       }
+      const { phrase } = activePractice;
+      if (result === "ok" && bpm >= phrase.targetBpm && !phrase.graduatedAt) {
+        graduatePhrase({ id: phrase.id, graduatedAt: date });
+      }
       setShowResultSheet(false);
       setActivePractice(null);
     },
-    [activePractice, pendingAttemptId, recordResultAsync, setActivePractice],
+    [activePractice, pendingAttemptId, recordResultAsync, graduatePhrase, setActivePractice],
   );
 
   const handleTryPreset = useCallback(() => {

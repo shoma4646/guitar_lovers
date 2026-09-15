@@ -34,6 +34,7 @@ import { WeekBarChart } from "@/features/progress/components/WeekBarChart";
 import { SessionRow } from "@/features/progress/components/SessionRow";
 import { AddSessionModal } from "@/features/progress/components/AddSessionModal";
 import { PhraseProgressList } from "@/features/progress/components/PhraseProgressList";
+import { GraduatedPhraseList } from "@/features/progress/components/GraduatedPhraseList";
 
 export function ProgressScreen() {
   const { data: sessions = [] } = usePracticeSessions();
@@ -107,6 +108,7 @@ export function ProgressScreen() {
         >
           {/* フレーズの上達（BPM推移） */}
           <PhraseProgressList />
+          <GraduatedPhraseList />
 
           {/* Stats: 主指標 + 補助 */}
           <View style={styles.statsGrid}>

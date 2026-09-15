@@ -1,7 +1,7 @@
 /**
  * フレーズ別BPM推移リスト（Progress画面の上段・主役）
  *
- * 保存済みフレーズごとに「開始BPM → 現在BPM → 目標BPM」を進捗バーで表示する。
+ * 練習中のフレーズ（アーカイブ・卒業済みを除く）ごとに「開始BPM → 現在BPM → 目標BPM」を進捗バーで表示する。
  * フレーズが1件も無ければ、同じカード枠内に案内文を表示する。
  */
 
@@ -26,6 +26,7 @@ export function PhraseProgressList() {
           (attempts ?? []).filter((a) => a.phraseId === phrase.id),
         ),
       )
+      .filter((summary) => !summary.graduatedAt)
       .sort(
         (a, b) =>
           new Date(b.phrase.updatedAt).getTime() -

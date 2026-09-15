@@ -3,6 +3,7 @@
  *
  * Practiceタブを開いた直後の主役。保存済みフレーズ（アーカイブ済みを除く）を一覧し、
  * 各フレーズの「前回BPM → 今日の目標BPM」を表示する。行タップで練習を再開する。
+ * 卒業済み（目標BPM到達）のフレーズは末尾に「卒業」ラベル付きで並べる。
  */
 
 import { useCallback, useMemo } from "react";
@@ -18,6 +19,7 @@ import {
   computeTodayTargetBpm,
   resolveCurrentBpm,
   getLatestAttempt,
+  isGraduated,
 } from "@/features/practice/lib/progression";
 import type { PracticePhrase } from "@/shared/types/models";
 import { cardShadowStyle, cardStyle } from "./cardStyle";
@@ -48,8 +50,17 @@ export function TodayMenuCard({ onStartPhrase, onTryPreset }: Props) {
           latest,
           phrase.targetBpm,
         );
-        return { phrase, latest, todayTargetBpm };
-      });
+        return {
+          phrase,
+          latest,
+          todayTargetBpm,
+          graduated: isGraduated(
+            resolveCurrentBpm(phrase.currentBpm, phraseAttempts),
+            phrase.targetBpm,
+          ),
+        };
+      })
+      .sort((a, b) => Number(a.graduated) - Number(b.graduated));
   }, [phrases, attempts]);
 
   const isLoading = isLoadingPhrases || isLoadingAttempts;
@@ -150,7 +161,7 @@ export function TodayMenuCard({ onStartPhrase, onTryPreset }: Props) {
         </View>
       ) : (
         <View style={{ gap: 8 }}>
-          {menuItems.map(({ phrase, latest, todayTargetBpm }) => (
+          {menuItems.map(({ phrase, latest, todayTargetBpm, graduated }) => (
             <Pressable
               key={phrase.id}
               onPress={() => onStartPhrase(phrase, todayTargetBpm)}
@@ -190,6 +201,7 @@ export function TodayMenuCard({ onStartPhrase, onTryPreset }: Props) {
                   className="text-label-sm"
                   style={{ color: colors.onSurfaceVariant }}
                 >
+                  {graduated ? "卒業・" : ""}
                   {latest ? `前回 ${latest.bpm}` : "未練習"} → 今日は{" "}
                   {todayTargetBpm} BPM
                 </Text>
