@@ -15,12 +15,18 @@ import { useArchivePracticePhrase } from "@/features/practice/api/useArchivePrac
 import { useDeletePracticePhrase } from "@/features/practice/api/useDeletePracticePhrase";
 import { usePracticeStore } from "@/stores/practice";
 import {
-  computeTodayTargetBpm,
-  resolveCurrentBpm,
-  getLatestAttempt,
+  buildTodayMenu,
+  pickTodayPick,
+  type TodayMenuPriority,
 } from "@/features/practice/lib/progression";
 import type { PracticePhrase } from "@/shared/types/models";
 import { cardShadowStyle, cardStyle } from "./cardStyle";
+
+const TODAY_PICK_REASONS: Record<Exclude<TodayMenuPriority, "graduated">, string> = {
+  retry: "前回うまくいかなかったので、同じテンポでもう一度",
+  stale: "しばらく弾いていないフレーズ",
+  fresh: "まだ記録がありません",
+};
 
 type Props = {
   onStartPhrase: (phrase: PracticePhrase, todayTargetBpm: number) => void;
@@ -34,23 +40,11 @@ export function TodayMenuCard({ onStartPhrase, onTryPreset }: Props) {
   const { mutate: archivePhrase } = useArchivePracticePhrase();
   const { mutate: deletePhrase } = useDeletePracticePhrase();
 
-  const menuItems = useMemo(() => {
-    if (!phrases) return [];
-    return phrases
-      .filter((p) => !p.archivedAt)
-      .map((phrase) => {
-        const phraseAttempts = (attempts ?? []).filter(
-          (a) => a.phraseId === phrase.id,
-        );
-        const latest = getLatestAttempt(phraseAttempts);
-        const todayTargetBpm = computeTodayTargetBpm(
-          resolveCurrentBpm(phrase.currentBpm, phraseAttempts),
-          latest,
-          phrase.targetBpm,
-        );
-        return { phrase, latest, todayTargetBpm };
-      });
-  }, [phrases, attempts]);
+  const menuItems = useMemo(
+    () => buildTodayMenu(phrases ?? [], attempts ?? []),
+    [phrases, attempts],
+  );
+  const todayPick = pickTodayPick(menuItems);
 
   const isLoading = isLoadingPhrases || isLoadingAttempts;
 
@@ -150,52 +144,89 @@ export function TodayMenuCard({ onStartPhrase, onTryPreset }: Props) {
         </View>
       ) : (
         <View style={{ gap: 8 }}>
-          {menuItems.map(({ phrase, latest, todayTargetBpm }) => (
-            <Pressable
-              key={phrase.id}
-              onPress={() => onStartPhrase(phrase, todayTargetBpm)}
-              onLongPress={() => handleLongPress(phrase)}
-              className="flex-row items-center active:opacity-80"
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                borderRadius: 12,
-                gap: 12,
-                backgroundColor: colors.surfaceContainerLow,
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={`${phrase.name}の練習を開始`}
-              accessibilityHint="長押しでアーカイブ・削除"
-            >
-              <View
-                className="items-center justify-center"
+          {menuItems.map((entry) => {
+            const { phrase, latest, todayTargetBpm, priority } = entry;
+            const isPick = entry === todayPick;
+            return (
+              <Pressable
+                key={phrase.id}
+                onPress={() => onStartPhrase(phrase, todayTargetBpm)}
+                onLongPress={() => handleLongPress(phrase)}
+                className="flex-row items-center active:opacity-80"
                 style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: `${colors.primaryContainer}33`,
+                  paddingHorizontal: 16,
+                  paddingVertical: isPick ? 16 : 12,
+                  borderRadius: 12,
+                  gap: 12,
+                  backgroundColor: isPick
+                    ? `${colors.primaryContainer}26`
+                    : colors.surfaceContainerLow,
+                  borderWidth: isPick ? 1 : 0,
+                  borderColor: colors.primary,
                 }}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  isPick
+                    ? `今日の1本、${phrase.name}の練習を開始`
+                    : `${phrase.name}の練習を開始`
+                }
+                accessibilityHint="長押しでアーカイブ・削除"
               >
-                <Icon name="play_arrow" size={18} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  className="text-body-md"
-                  style={{ color: colors.onSurface, fontWeight: "600" }}
-                  numberOfLines={1}
+                <View
+                  className="items-center justify-center"
+                  style={{
+                    width: isPick ? 44 : 36,
+                    height: isPick ? 44 : 36,
+                    borderRadius: isPick ? 22 : 18,
+                    backgroundColor: isPick ? colors.primary : `${colors.primaryContainer}33`,
+                  }}
                 >
-                  {phrase.name}
-                </Text>
-                <Text
-                  className="text-label-sm"
-                  style={{ color: colors.onSurfaceVariant }}
-                >
-                  {latest ? `前回 ${latest.bpm}` : "未練習"} → 今日は{" "}
-                  {todayTargetBpm} BPM
-                </Text>
-              </View>
-            </Pressable>
-          ))}
+                  <Icon
+                    name="play_arrow"
+                    size={isPick ? 22 : 18}
+                    color={isPick ? colors.onPrimary : colors.primary}
+                  />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  {isPick && (
+                    <Text
+                      className="text-label-sm"
+                      style={{ color: colors.primary, fontWeight: "700" }}
+                    >
+                      今日の1本
+                    </Text>
+                  )}
+                  <Text
+                    className="text-body-md"
+                    style={{
+                      color: colors.onSurface,
+                      fontWeight: isPick ? "700" : "600",
+                      fontSize: isPick ? 18 : undefined,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {phrase.name}
+                  </Text>
+                  <Text
+                    className="text-label-sm"
+                    style={{ color: colors.onSurfaceVariant }}
+                  >
+                    {latest ? `前回 ${latest.bpm}` : "未練習"} → 今日は{" "}
+                    {todayTargetBpm} BPM
+                    {priority === "graduated" ? "・目標到達" : ""}
+                  </Text>
+                  {isPick && priority !== "graduated" && (
+                    <Text
+                      className="text-label-sm"
+                      style={{ color: colors.onSurfaceVariant }}
+                    >
+                      {TODAY_PICK_REASONS[priority]}
+                    </Text>
+                  )}
+                </View>
+              </Pressable>
+            );
+          })}
         </View>
       )}
     </View>

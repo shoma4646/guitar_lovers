@@ -1,9 +1,12 @@
 import {
+  buildTodayMenu,
   computeTodayTargetBpm,
   getLatestAttempt,
+  isGraduated,
+  pickTodayPick,
   resolveCurrentBpm,
 } from "../progression";
-import type { PhraseAttempt } from "@/shared/types/models";
+import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
 function makeAttempt(overrides: Partial<PhraseAttempt> = {}): PhraseAttempt {
   return {
@@ -12,6 +15,23 @@ function makeAttempt(overrides: Partial<PhraseAttempt> = {}): PhraseAttempt {
     date: "2026-08-10T00:00:00.000Z",
     bpm: 70,
     result: "ok",
+    ...overrides,
+  };
+}
+
+function makePhrase(overrides: Partial<PracticePhrase> = {}): PracticePhrase {
+  return {
+    id: "p1",
+    videoId: "dQw4w9WgXcQ",
+    videoTitle: "動画",
+    name: "フレーズ",
+    startSec: 10,
+    endSec: 20,
+    currentBpm: 70,
+    targetBpm: 120,
+    playbackRate: 1,
+    createdAt: "2026-08-01T00:00:00.000Z",
+    updatedAt: "2026-08-01T00:00:00.000Z",
     ...overrides,
   };
 }
@@ -95,5 +115,142 @@ describe("computeTodayTargetBpm", () => {
   it("既に目標BPMを超えていれば据え置く", () => {
     const attempt = makeAttempt({ result: "ok", bpm: 150 });
     expect(computeTodayTargetBpm(150, attempt, 100)).toBe(150);
+  });
+});
+
+describe("isGraduated", () => {
+  it("到達BPMが目標BPM以上なら到達済みとする", () => {
+    expect(isGraduated(120, 120)).toBe(true);
+    expect(isGraduated(130, 120)).toBe(true);
+  });
+
+  it("到達BPMが目標BPM未満なら到達済みとしない", () => {
+    expect(isGraduated(115, 120)).toBe(false);
+  });
+});
+
+describe("buildTodayMenu", () => {
+  it("アーカイブ済みのフレーズを除く", () => {
+    const menu = buildTodayMenu(
+      [makePhrase({ id: "p1" }), makePhrase({ id: "p2", archivedAt: "2026-08-05T00:00:00.000Z" })],
+      [],
+    );
+    expect(menu.map((e) => e.phrase.id)).toEqual(["p1"]);
+  });
+
+  it("前回あやしい/弾けなかった → 記録あり → 未記録 → 目標到達済みの順に並ぶ", () => {
+    const phrases = [
+      makePhrase({ id: "graduated", currentBpm: 120, targetBpm: 120 }),
+      makePhrase({ id: "fresh" }),
+      makePhrase({ id: "stale" }),
+      makePhrase({ id: "retry" }),
+    ];
+    const attempts = [
+      makeAttempt({ id: "1", phraseId: "stale", result: "ok" }),
+      makeAttempt({ id: "2", phraseId: "retry", result: "ng" }),
+    ];
+    const menu = buildTodayMenu(phrases, attempts);
+    expect(menu.map((e) => e.phrase.id)).toEqual(["retry", "stale", "fresh", "graduated"]);
+    expect(menu.map((e) => e.priority)).toEqual(["retry", "stale", "fresh", "graduated"]);
+  });
+
+  it("最後の結果がpartialでも前回あやしいとして先頭に来る", () => {
+    const menu = buildTodayMenu(
+      [makePhrase({ id: "stale" }), makePhrase({ id: "retry" })],
+      [
+        makeAttempt({ id: "1", phraseId: "stale", result: "ok", date: "2026-08-01T00:00:00.000Z" }),
+        makeAttempt({ id: "2", phraseId: "retry", result: "partial" }),
+      ],
+    );
+    expect(menu[0].phrase.id).toBe("retry");
+  });
+
+  it("記録ありのフレーズは最終記録が古い順に並ぶ", () => {
+    const phrases = [makePhrase({ id: "recent" }), makePhrase({ id: "old" })];
+    const attempts = [
+      makeAttempt({ id: "1", phraseId: "recent", date: "2026-08-10T00:00:00.000Z" }),
+      makeAttempt({ id: "2", phraseId: "old", date: "2026-08-03T00:00:00.000Z" }),
+    ];
+    expect(buildTodayMenu(phrases, attempts).map((e) => e.phrase.id)).toEqual(["old", "recent"]);
+  });
+
+  it("前回あやしい/弾けなかった同士は最終記録日ではなくupdatedAtの古い順に並ぶ", () => {
+    const phrases = [
+      makePhrase({ id: "olderRecord", updatedAt: "2026-08-05T00:00:00.000Z" }),
+      makePhrase({ id: "olderUpdate", updatedAt: "2026-08-02T00:00:00.000Z" }),
+    ];
+    const attempts = [
+      makeAttempt({ id: "1", phraseId: "olderRecord", result: "ng", date: "2026-08-06T00:00:00.000Z" }),
+      makeAttempt({ id: "2", phraseId: "olderUpdate", result: "ng", date: "2026-08-10T00:00:00.000Z" }),
+    ];
+    expect(buildTodayMenu(phrases, attempts).map((e) => e.phrase.id)).toEqual([
+      "olderUpdate",
+      "olderRecord",
+    ]);
+  });
+
+  it("同順位はupdatedAtの古い順、それも同じならidの順に並ぶ", () => {
+    const phrases = [
+      makePhrase({ id: "c", updatedAt: "2026-08-05T00:00:00.000Z" }),
+      makePhrase({ id: "b", updatedAt: "2026-08-02T00:00:00.000Z" }),
+      makePhrase({ id: "a", updatedAt: "2026-08-05T00:00:00.000Z" }),
+    ];
+    expect(buildTodayMenu(phrases, []).map((e) => e.phrase.id)).toEqual(["b", "a", "c"]);
+  });
+
+  it("目標BPM到達済みなら最後の結果がngでも末尾に回る", () => {
+    const phrases = [
+      makePhrase({ id: "graduated", currentBpm: 120, targetBpm: 120 }),
+      makePhrase({ id: "fresh" }),
+    ];
+    const attempts = [makeAttempt({ phraseId: "graduated", result: "ng", bpm: 120 })];
+    const menu = buildTodayMenu(phrases, attempts);
+    expect(menu.map((e) => e.phrase.id)).toEqual(["fresh", "graduated"]);
+    expect(menu[1].priority).toBe("graduated");
+  });
+
+  it("保存済みの到達BPMが未更新でも、弾けた記録で目標に届いていれば到達済みとする", () => {
+    const menu = buildTodayMenu(
+      [makePhrase({ currentBpm: 100, targetBpm: 120 })],
+      [makeAttempt({ result: "ok", bpm: 120 })],
+    );
+    expect(menu[0].priority).toBe("graduated");
+  });
+
+  it("記録の配列順に依存せず最新の結果で区分する", () => {
+    const attempts = [
+      makeAttempt({ id: "new", result: "ng", date: "2026-08-10T00:00:00.000Z" }),
+      makeAttempt({ id: "old", result: "ok", date: "2026-08-08T00:00:00.000Z" }),
+    ];
+    const menu = buildTodayMenu([makePhrase()], attempts);
+    expect(menu[0].priority).toBe("retry");
+    expect(menu[0].latest?.id).toBe("new");
+  });
+
+  it("今日の目標BPMは記録を加味した到達BPMから算出する", () => {
+    const menu = buildTodayMenu(
+      [makePhrase({ currentBpm: 70, targetBpm: 120 })],
+      [makeAttempt({ result: "ok", bpm: 80 })],
+    );
+    expect(menu[0].todayTargetBpm).toBe(85);
+  });
+});
+
+describe("pickTodayPick", () => {
+  it("並び替え済みメニューの先頭を返す", () => {
+    const menu = buildTodayMenu(
+      [makePhrase({ id: "fresh" }), makePhrase({ id: "retry" })],
+      [makeAttempt({ phraseId: "retry", result: "ng" })],
+    );
+    expect(pickTodayPick(menu)?.phrase.id).toBe("retry");
+  });
+
+  it("全件が目標BPM到達済みならundefinedを返す", () => {
+    const menu = buildTodayMenu([makePhrase({ currentBpm: 120, targetBpm: 120 })], []);
+    expect(pickTodayPick(menu)).toBeUndefined();
+  });
+
+  it("メニューが空ならundefinedを返す", () => {
+    expect(pickTodayPick([])).toBeUndefined();
   });
 });
