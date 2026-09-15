@@ -25,6 +25,7 @@ import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseRe
 import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePracticePhrase";
 import { PhraseNotFoundError } from "@/shared/services/storage";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
+import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
 import { MetronomeWidget } from "./MetronomeWidget";
 import { VideoLoaderCard } from "./VideoLoaderCard";
 import { VideoPlayerCard } from "./VideoPlayerCard";
@@ -106,6 +107,7 @@ export function PracticeTab() {
   const { mutateAsync: recordResultAsync } = useRecordPhraseResult();
   const { mutate: graduatePhrase } = useGraduatePracticePhrase();
   const { data: presets = [] } = useVideoPresets();
+  const promptReminderPermission = useReminderPermissionPrompt();
 
   const [showResultSheet, setShowResultSheet] = useState(false);
   const playerError = usePracticeStore((s) => s.playerError);
@@ -225,11 +227,13 @@ export function PracticeTab() {
         },
         {
           onSuccess: () =>
-            Alert.alert("保存しました", `「${input.name}」を今日の練習メニューに追加しました`),
+            Alert.alert("保存しました", `「${input.name}」を今日の練習メニューに追加しました`, [
+              { text: "OK", onPress: () => void promptReminderPermission() },
+            ]),
         },
       );
     },
-    [loadedVideoId, videoTitle, abLoop, playbackRate, savePhrase],
+    [loadedVideoId, videoTitle, abLoop, playbackRate, savePhrase, promptReminderPermission],
   );
 
   const handleStartPhrase = useCallback(

@@ -40,6 +40,12 @@
           "androidPermissions": ["android.permission.RECORD_AUDIO"],
           "androidForegroundService": false
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#ae3026"
+        }
       ]
     ]
   }
