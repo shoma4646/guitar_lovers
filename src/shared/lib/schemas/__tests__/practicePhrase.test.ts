@@ -29,6 +29,25 @@ describe("practicePhrasesSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("initialBpmとgraduatedAtを含めて通る", () => {
+    const data = [
+      makePhrase({ initialBpm: 70, graduatedAt: "2026-08-12T00:00:00.000Z" }),
+    ];
+    expect(practicePhrasesSchema.safeParse(data).success).toBe(true);
+  });
+
+  it("initialBpmが範囲外なら失敗する", () => {
+    expect(practicePhrasesSchema.safeParse([makePhrase({ initialBpm: 20 })]).success).toBe(
+      false,
+    );
+  });
+
+  it("graduatedAtが日時として不正なら失敗する", () => {
+    expect(
+      practicePhrasesSchema.safeParse([makePhrase({ graduatedAt: "yesterday" })]).success,
+    ).toBe(false);
+  });
+
   it("currentBpmが0以下のときは失敗する", () => {
     const data = [makePhrase({ currentBpm: 0 })];
     const result = practicePhrasesSchema.safeParse(data);

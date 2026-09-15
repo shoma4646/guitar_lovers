@@ -1,4 +1,4 @@
-import type { PhraseAttempt } from "@/shared/types/models";
+import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import { BPM_MAX } from "@/shared/constants/bpm";
 
 /** 1回の成功で引き上げる目標BPMの幅 */
@@ -57,4 +57,35 @@ export function computeTodayTargetBpm(
     return currentBpm;
   }
   return Math.min(currentBpm + BPM_STEP, Math.max(targetBpm, currentBpm), BPM_MAX);
+}
+
+/**
+ * 到達BPMが目標BPM以上なら卒業とみなす
+ * @param resolvedCurrentBpm - resolveCurrentBpmで記録を加味した到達BPM
+ * @param targetBpm - フレーズの目標BPM
+ */
+export function isGraduated(resolvedCurrentBpm: number, targetBpm: number): boolean {
+  return resolvedCurrentBpm >= targetBpm;
+}
+
+/**
+ * 卒業していればその日時を返し、未卒業ならundefinedを返す
+ *
+ * 日時は graduatedAt → 目標BPM以上で弾けた最初の記録 → createdAt の順に採る。
+ * 目標BPMを引き上げて未到達になった場合は graduatedAt が残っていても undefined を返す
+ * @param phrase - 対象フレーズ
+ * @param attempts - 対象フレーズの練習結果一覧（順不同で可）
+ */
+export function resolveGraduatedAt(
+  phrase: Pick<PracticePhrase, "currentBpm" | "targetBpm" | "graduatedAt" | "createdAt">,
+  attempts: PhraseAttempt[],
+): string | undefined {
+  if (!isGraduated(resolveCurrentBpm(phrase.currentBpm, attempts), phrase.targetBpm)) {
+    return undefined;
+  }
+  if (phrase.graduatedAt) return phrase.graduatedAt;
+  const firstReached = attempts
+    .filter((a) => a.result === "ok" && a.bpm >= phrase.targetBpm)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+  return firstReached?.date ?? phrase.createdAt;
 }

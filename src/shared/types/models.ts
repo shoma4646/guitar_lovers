@@ -70,6 +70,10 @@ export interface PracticePhrase {
   updatedAt: string;
   /** アーカイブ日時（ISO 8601形式、任意）。設定されていれば今日の練習メニューと進捗一覧に表示しない（記録は保持） */
   archivedAt?: string;
+  /** 保存時のBPM（任意）。導入前に保存したフレーズには無い */
+  initialBpm?: number;
+  /** 目標BPMに到達した日時（ISO 8601形式、任意）。卒業かどうかは到達BPMと目標BPMから判定し、この値単独では判定しない */
+  graduatedAt?: string;
 }
 
 /** フレーズ1回分の練習結果 */

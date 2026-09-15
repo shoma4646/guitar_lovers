@@ -1,9 +1,25 @@
 import {
   computeTodayTargetBpm,
   getLatestAttempt,
+  isGraduated,
   resolveCurrentBpm,
+  resolveGraduatedAt,
 } from "../progression";
-import type { PhraseAttempt } from "@/shared/types/models";
+import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
+
+type GraduationInput = Pick<
+  PracticePhrase,
+  "currentBpm" | "targetBpm" | "graduatedAt" | "createdAt"
+>;
+
+function makeGraduationInput(overrides: Partial<GraduationInput> = {}): GraduationInput {
+  return {
+    currentBpm: 90,
+    targetBpm: 110,
+    createdAt: "2026-08-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
 
 function makeAttempt(overrides: Partial<PhraseAttempt> = {}): PhraseAttempt {
   return {
@@ -95,5 +111,64 @@ describe("computeTodayTargetBpm", () => {
   it("既に目標BPMを超えていれば据え置く", () => {
     const attempt = makeAttempt({ result: "ok", bpm: 150 });
     expect(computeTodayTargetBpm(150, attempt, 100)).toBe(150);
+  });
+});
+
+describe("isGraduated", () => {
+  it("到達BPMが目標BPMちょうどなら卒業", () => {
+    expect(isGraduated(110, 110)).toBe(true);
+  });
+
+  it("到達BPMが目標BPM未満なら未卒業", () => {
+    expect(isGraduated(109, 110)).toBe(false);
+  });
+});
+
+describe("resolveGraduatedAt", () => {
+  it("未到達ならundefinedを返す", () => {
+    expect(resolveGraduatedAt(makeGraduationInput(), [])).toBeUndefined();
+  });
+
+  it("保存済みのgraduatedAtがあればそれを返す", () => {
+    const phrase = makeGraduationInput({
+      currentBpm: 110,
+      graduatedAt: "2026-08-05T00:00:00.000Z",
+    });
+    const attempts = [makeAttempt({ bpm: 110, date: "2026-08-03T00:00:00.000Z" })];
+    expect(resolveGraduatedAt(phrase, attempts)).toBe("2026-08-05T00:00:00.000Z");
+  });
+
+  it("graduatedAtが無ければ目標BPM以上で弾けた最初の記録の日時を返す", () => {
+    const attempts = [
+      makeAttempt({ id: "late", bpm: 115, date: "2026-08-09T00:00:00.000Z" }),
+      makeAttempt({ id: "partial", bpm: 110, result: "partial", date: "2026-08-02T00:00:00.000Z" }),
+      makeAttempt({ id: "first", bpm: 110, date: "2026-08-04T00:00:00.000Z" }),
+      makeAttempt({ id: "slow", bpm: 100, date: "2026-08-01T00:00:00.000Z" }),
+    ];
+    expect(resolveGraduatedAt(makeGraduationInput(), attempts)).toBe(
+      "2026-08-04T00:00:00.000Z",
+    );
+  });
+
+  it("記録なしで保存時から目標以上ならcreatedAtを返す", () => {
+    const phrase = makeGraduationInput({ currentBpm: 120, targetBpm: 110 });
+    expect(resolveGraduatedAt(phrase, [])).toBe("2026-08-01T00:00:00.000Z");
+  });
+
+  it("目標BPMを引き上げて未到達になれば、古いgraduatedAtが残っていても未卒業", () => {
+    const phrase = makeGraduationInput({
+      currentBpm: 110,
+      targetBpm: 130,
+      graduatedAt: "2026-08-05T00:00:00.000Z",
+    });
+    const attempts = [makeAttempt({ bpm: 110 })];
+    expect(resolveGraduatedAt(phrase, attempts)).toBeUndefined();
+  });
+
+  it("到達BPMが未更新でも弾けた記録で目標に届いていれば卒業", () => {
+    const attempts = [makeAttempt({ bpm: 110, date: "2026-08-06T00:00:00.000Z" })];
+    expect(resolveGraduatedAt(makeGraduationInput({ currentBpm: 90 }), attempts)).toBe(
+      "2026-08-06T00:00:00.000Z",
+    );
   });
 });
