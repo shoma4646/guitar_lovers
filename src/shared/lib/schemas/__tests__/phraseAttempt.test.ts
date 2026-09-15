@@ -44,4 +44,29 @@ describe("phraseAttemptsSchema", () => {
     const result = phraseAttemptsSchema.safeParse([]);
     expect(result.success).toBe(true);
   });
+
+  it("repsを持たない既存形式のデータも通る", () => {
+    const data = [
+      { id: "a", phraseId: "p1", date: "2026-08-10T00:00:00.000Z", bpm: 75, result: "ok" },
+    ];
+    const result = phraseAttemptsSchema.safeParse(data);
+    expect(result.success).toBe(true);
+    expect(result.data?.[0].reps).toBeUndefined();
+  });
+
+  it("repsが正の整数なら通り、値が保持される", () => {
+    const data = [
+      { id: "a", phraseId: "p1", date: "2026-08-10T00:00:00.000Z", bpm: 75, result: "ok", reps: 3 },
+    ];
+    const result = phraseAttemptsSchema.safeParse(data);
+    expect(result.success).toBe(true);
+    expect(result.data?.[0].reps).toBe(3);
+  });
+
+  it.each([0, 1.5, "3"])("repsが%pのときは失敗する", (reps) => {
+    const data = [
+      { id: "a", phraseId: "p1", date: "2026-08-10T00:00:00.000Z", bpm: 75, result: "ok", reps },
+    ];
+    expect(phraseAttemptsSchema.safeParse(data).success).toBe(false);
+  });
 });

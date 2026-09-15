@@ -84,6 +84,8 @@ export interface PhraseAttempt {
   bpm: number;
   /** 結果。ok=弾けた / partial=あやしい / ng=弾けなかった */
   result: "ok" | "partial" | "ng";
+  /** その回に弾いた回数（任意） */
+  reps?: number;
 }
 
 /** 動画プリセット */

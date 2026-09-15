@@ -300,6 +300,24 @@ describe("recordPhraseResult", () => {
     expect(computeTodayTargetBpm(phrase.currentBpm, latest, phrase.targetBpm)).toBe(90);
   });
 
+  it("弾いた回数付きの記録は回数を保ったまま読み出せ、回数なしの既存記録も退避されない", async () => {
+    await savePracticePhrase(makePhrase("p"));
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.PHRASE_ATTEMPTS,
+      JSON.stringify([makeAttempt("legacy", "p")]),
+    );
+
+    await recordPhraseResult({ ...makeAttempt("a1", "p"), bpm: 90, result: "ok", reps: 3 });
+
+    const attempts = await getPhraseAttempts();
+    expect(attempts.map((a) => [a.id, a.reps])).toEqual([
+      ["a1", 3],
+      ["legacy", undefined],
+    ]);
+    const keys = await AsyncStorage.getAllKeys();
+    expect(keys.filter((k) => k.includes("__dropped_") || k.includes("__corrupt_"))).toEqual([]);
+  });
+
   it("あやしい・弾けなかった結果では到達BPMを変えない", async () => {
     await savePracticePhrase(makePhrase("p"));
 
