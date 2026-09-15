@@ -1,10 +1,13 @@
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
-import { resolveCurrentBpm } from "@/features/practice/lib/progression";
+import {
+  resolveCurrentBpm,
+  resolveGraduatedAt,
+} from "@/features/practice/lib/progression";
 
 /** フレーズ1件分のBPM推移サマリ */
 export interface PhraseProgressSummary {
   phrase: PracticePhrase;
-  /** 練習開始時点のBPM。最初の練習結果があればそのBPM、無ければ現在BPMを使う */
+  /** 保存時のBPM。initialBpmが無い既存フレーズは最初の練習結果のBPM、それも無ければ現在BPMで補う */
   startBpm: number;
   /** 現在の到達BPM */
   currentBpm: number;
@@ -12,6 +15,10 @@ export interface PhraseProgressSummary {
   targetBpm: number;
   /** 開始BPMから目標BPMまでの達成率（0〜1に正規化） */
   progressRatio: number;
+  /** 開始BPMから現在BPMまでの上昇幅（0未満にはしない） */
+  gainBpm: number;
+  /** 卒業日時。未卒業ならundefined */
+  graduatedAt: string | undefined;
 }
 
 /**
@@ -26,7 +33,7 @@ export function summarizePhraseProgress(
   const sorted = [...attempts].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
-  const startBpm = sorted[0]?.bpm ?? phrase.currentBpm;
+  const startBpm = phrase.initialBpm ?? sorted[0]?.bpm ?? phrase.currentBpm;
   const currentBpm = resolveCurrentBpm(phrase.currentBpm, attempts);
   const targetBpm = phrase.targetBpm;
   const span = targetBpm - startBpm;
@@ -37,7 +44,15 @@ export function summarizePhraseProgress(
         : 0
       : clamp((currentBpm - startBpm) / span, 0, 1);
 
-  return { phrase, startBpm, currentBpm, targetBpm, progressRatio };
+  return {
+    phrase,
+    startBpm,
+    currentBpm,
+    targetBpm,
+    progressRatio,
+    gainBpm: Math.max(0, currentBpm - startBpm),
+    graduatedAt: resolveGraduatedAt(phrase, attempts),
+  };
 }
 
 function clamp(value: number, min: number, max: number): number {

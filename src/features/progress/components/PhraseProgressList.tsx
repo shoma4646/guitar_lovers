@@ -56,7 +56,7 @@ export function PhraseProgressList() {
         </Text>
       ) : (
         <View style={{ gap: 16 }}>
-          {summaries.map(({ phrase, startBpm, currentBpm, targetBpm, progressRatio }) => (
+          {summaries.map(({ phrase, startBpm, currentBpm, targetBpm, progressRatio, gainBpm }) => (
             <View key={phrase.id} style={{ gap: 6 }}>
               <View className="flex-row items-center justify-between">
                 <Text
@@ -76,6 +76,14 @@ export function PhraseProgressList() {
                   {startBpm} → {currentBpm} / 目標{targetBpm}
                 </Text>
               </View>
+              {gainBpm > 0 ? (
+                <Text
+                  className="text-label-sm"
+                  style={{ color: colors.tertiary, fontWeight: "700", fontVariant: ["tabular-nums"] }}
+                >
+                  +{gainBpm} BPM
+                </Text>
+              ) : null}
               <View style={styles.track}>
                 <View
                   style={{

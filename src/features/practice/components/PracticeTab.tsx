@@ -210,6 +210,7 @@ export function PracticeTab() {
           startSec: abLoop.pointA,
           endSec: abLoop.pointB,
           currentBpm: input.currentBpm,
+          initialBpm: input.currentBpm,
           targetBpm: input.targetBpm,
           playbackRate,
           createdAt: now,
