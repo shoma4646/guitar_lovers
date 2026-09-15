@@ -130,6 +130,8 @@ export interface RecentVideo {
 export interface PracticeStats {
   /** 今週の練習時間（秒） */
   weeklyDuration: number;
+  /** 今週（月曜起点）に練習した日数。セッションまたはフレーズ練習結果がある日を数える */
+  weeklyPracticeDays: number;
   /** 連続練習日数 */
   streakDays: number;
   /** 累計練習時間（秒） */
