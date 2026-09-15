@@ -21,6 +21,7 @@ import {
   YOUTUBE_TERMS_URL,
   GOOGLE_PRIVACY_URL,
 } from "@/shared/constants/links";
+import { ReminderSettingsSection } from "../components/ReminderSettingsSection";
 
 type SectionProps = {
   title: string;
@@ -137,6 +138,10 @@ export function SettingsScreen() {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
+          <Section title="リマインド">
+            <ReminderSettingsSection />
+          </Section>
+
           <Section title="アプリについて">
             <InfoRow label="アプリ名" value={appName} />
             <InfoRow label="バージョン" value={appVersion} isLast />
