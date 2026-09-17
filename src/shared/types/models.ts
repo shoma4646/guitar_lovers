@@ -142,6 +142,8 @@ export interface PracticeStats {
   totalSessions: number;
   /** 曜日別練習時間（月〜日、秒） */
   weeklyData: number[];
+  /** 曜日別の練習有無（月〜日）。セッションまたはフレーズ練習結果があった日をtrueとする */
+  weeklyPracticedDays: boolean[];
 }
 
 /** メトロノームの設定 */

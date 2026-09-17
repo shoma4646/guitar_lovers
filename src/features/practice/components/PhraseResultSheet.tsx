@@ -62,13 +62,16 @@ export function PhraseResultSheet({
 
   if (!phrase) return null;
 
+  const parsedBpm = parseInt(bpmText, 10);
+  // 案内文のBPMは保存される値と一致させる。入力途中で無効な値の間だけ今日の目標BPMで表示する
+  const displayBpm = isValidBpm(parsedBpm) ? parsedBpm : todayTargetBpm;
+
   const handleSubmit = () => {
-    const bpm = parseInt(bpmText, 10);
-    if (!isValidBpm(bpm)) {
+    if (!isValidBpm(parsedBpm)) {
       Alert.alert("エラー", `BPMは${BPM_MIN}〜${BPM_MAX}の範囲で入力してください`);
       return;
     }
-    onSubmit({ bpm, result });
+    onSubmit({ bpm: parsedBpm, result });
   };
 
   return (
@@ -101,7 +104,7 @@ export function PhraseResultSheet({
             style={{ color: colors.onSurfaceVariant }}
           >
             {completedReps > 0
-              ? `BPM ${todayTargetBpm}で${completedReps}回弾きました。結果を記録してください`
+              ? `BPM ${displayBpm}で${completedReps}回弾きました。結果を記録してください`
               : "今日の結果を記録してください"}
           </Text>
 

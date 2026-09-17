@@ -12,8 +12,8 @@ function toDayKey(date: Date): string {
 
 /**
  * セッションとフレーズ練習結果から週次集計・練習日数・累計を計算する純粋関数。
- * 月曜起点で当週を集計する。練習日（今週の練習日数・連続日数）はセッションと結果記録の
- * どちらかがあった日を数え、時間と回数はセッションのみから集計する。
+ * 月曜起点で当週を集計する。練習日（今週の練習日数・連続日数・weeklyPracticedDays）は
+ * セッションと結果記録のどちらかがあった日を数え、時間と回数はセッションのみから集計する。
  */
 export function calcStats(
   sessions: PracticeSession[],
@@ -45,6 +45,14 @@ export function calcStats(
     practiceDates.filter((d) => d >= monday && d < nextMonday).map(toDayKey),
   ).size;
 
+  const weeklyPracticedDays = Array(7).fill(false) as boolean[];
+  practiceDates.forEach((date) => {
+    const diffDays = Math.floor((date.getTime() - monday.getTime()) / DAY_MS);
+    if (diffDays >= 0 && diffDays < 7) {
+      weeklyPracticedDays[diffDays] = true;
+    }
+  });
+
   let streakDays = 0;
   const checkDate = new Date(now);
   while (dateSet.has(toDayKey(checkDate))) {
@@ -59,5 +67,6 @@ export function calcStats(
     totalDuration: sessions.reduce((sum, s) => sum + s.duration, 0),
     totalSessions: sessions.length,
     weeklyData,
+    weeklyPracticedDays,
   };
 }

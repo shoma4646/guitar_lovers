@@ -18,9 +18,12 @@ export const reminderSettingsSchema = z.object({
 export type ReminderTime = z.infer<typeof reminderTimeSchema>;
 export type ReminderSettings = z.infer<typeof reminderSettingsSchema>;
 
-/** 保存値が無いときのリマインド設定 */
+/**
+ * 保存値が無いときのリマインド設定
+ * enabledは既定でfalse。ユーザーが明示的にONにする（またはOS許可を得た）操作を経て初めてtrueになる
+ */
 export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
-  enabled: true,
+  enabled: false,
   timeOverride: null,
   permissionPromptedAt: null,
 };

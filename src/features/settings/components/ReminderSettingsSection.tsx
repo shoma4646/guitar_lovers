@@ -63,7 +63,8 @@ export function ReminderSettingsSection() {
     return null;
   }
 
-  const isActive = settings.enabled && permission.granted;
+  // トグルは設定値のみを表す。OS許可の有無は別行（isBlockedByOs）で案内する
+  const isActive = settings.enabled;
   const isBlockedByOs = !permission.granted && !permission.canAskAgain;
 
   const handleToggle = async (value: boolean) => {
@@ -84,7 +85,7 @@ export function ReminderSettingsSection() {
   };
 
   const handleShift = (deltaMinutes: number) => {
-    const base = settings.timeOverride ?? (nextPlan
+    const base = settings.timeOverride ?? (nextPlan?.fireAt
       ? { hour: nextPlan.fireAt.getHours(), minute: nextPlan.fireAt.getMinutes() as ReminderTime["minute"] }
       : DEFAULT_MANUAL_TIME);
     updateSettings({ timeOverride: shiftReminderTime(base, deltaMinutes) });
@@ -167,11 +168,13 @@ export function ReminderSettingsSection() {
 
       <View className="px-lg py-md">
         <Text className="text-label-sm" style={{ color: colors.onSurfaceVariant }}>
-          {isActive && nextPlan
+          {isActive && nextPlan?.fireAt
             ? `次回: ${formatFireAt(nextPlan.fireAt)}`
-            : isActive
-              ? "フレーズを保存すると予約されます"
-              : "リマインドはオフです"}
+            : isActive && nextPlan?.syncFailed
+              ? "予約に失敗しました。もう一度お試しください"
+              : isActive
+                ? "フレーズを保存すると予約されます"
+                : "リマインドはオフです"}
         </Text>
       </View>
     </View>

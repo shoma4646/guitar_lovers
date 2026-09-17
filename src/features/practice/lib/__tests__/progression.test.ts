@@ -189,7 +189,7 @@ describe("buildTodayMenu", () => {
     expect(buildTodayMenu(phrases, attempts).map((e) => e.phrase.id)).toEqual(["old", "recent"]);
   });
 
-  it("前回あやしい/弾けなかった同士は最終記録日ではなくupdatedAtの古い順に並ぶ", () => {
+  it("前回あやしい/弾けなかった同士もupdatedAtではなく最終記録の古い順に並ぶ", () => {
     const phrases = [
       makePhrase({ id: "olderRecord", updatedAt: "2026-08-05T00:00:00.000Z" }),
       makePhrase({ id: "olderUpdate", updatedAt: "2026-08-02T00:00:00.000Z" }),
@@ -199,8 +199,8 @@ describe("buildTodayMenu", () => {
       makeAttempt({ id: "2", phraseId: "olderUpdate", result: "ng", date: "2026-08-10T00:00:00.000Z" }),
     ];
     expect(buildTodayMenu(phrases, attempts).map((e) => e.phrase.id)).toEqual([
-      "olderUpdate",
       "olderRecord",
+      "olderUpdate",
     ]);
   });
 
@@ -316,5 +316,12 @@ describe("resolveGraduatedAt", () => {
     expect(resolveGraduatedAt(makeGraduationInput({ currentBpm: 90 }), attempts)).toBe(
       "2026-08-06T00:00:00.000Z",
     );
+  });
+
+  it("graduatedAt未保存の到達済みフレーズへ新しい記録を追加しても、卒業日は最初の到達日のまま", () => {
+    const phrase = makeGraduationInput({ currentBpm: 90 });
+    const firstReached = makeAttempt({ id: "first", bpm: 110, date: "2026-08-04T00:00:00.000Z" });
+    const today = makeAttempt({ id: "today", bpm: 115, date: "2026-08-20T00:00:00.000Z" });
+    expect(resolveGraduatedAt(phrase, [firstReached, today])).toBe("2026-08-04T00:00:00.000Z");
   });
 });

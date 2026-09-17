@@ -58,11 +58,11 @@ export function GraduatedPhraseList() {
         卒業したフレーズ
       </Text>
       <View style={{ gap: 12 }}>
-        {graduates.map(({ phrase, startBpm, targetBpm, gainBpm, graduatedAt }) => (
+        {graduates.map(({ phrase, startBpm, currentBpm, targetBpm, graduatedAt }) => (
           <View
             key={phrase.id}
             className="flex-row items-center justify-between"
-            accessibilityLabel={`${phrase.name}、${formatMonthDay(graduatedAt)}に卒業、${startBpm}から目標${targetBpm}BPM`}
+            accessibilityLabel={`${phrase.name}、${formatMonthDay(graduatedAt)}に卒業、${startBpm}から${currentBpm}、目標${targetBpm}BPM`}
           >
             <View style={{ flex: 1, gap: 2 }}>
               <Text
@@ -76,8 +76,7 @@ export function GraduatedPhraseList() {
                 className="text-label-sm"
                 style={{ color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}
               >
-                {startBpm} → 目標{targetBpm}
-                {gainBpm > 0 ? `（+${gainBpm} BPM）` : ""}
+                {startBpm} → {currentBpm}（目標{targetBpm}）
               </Text>
             </View>
             <Text

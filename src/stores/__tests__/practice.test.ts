@@ -74,3 +74,26 @@ describe("incrementCompletedReps", () => {
     expect(usePracticeStore.getState().incrementCompletedReps()).toBe(0);
   });
 });
+
+describe("pendingAttemptIdの寿命", () => {
+  it("同じフレーズを開始し直しても保存失敗後のpendingAttemptIdは保持される", () => {
+    const { startPhrasePractice, beginResultEntry } = usePracticeStore.getState();
+    const phrase = makePhrase();
+    startPhrasePractice(phrase, 85);
+    const pendingId = beginResultEntry("pending-1");
+
+    startPhrasePractice(phrase, 85);
+
+    expect(usePracticeStore.getState().pendingAttemptId).toBe(pendingId);
+  });
+
+  it("別のフレーズを開始するとpendingAttemptIdはクリアされる", () => {
+    const { startPhrasePractice, beginResultEntry } = usePracticeStore.getState();
+    startPhrasePractice(makePhrase({ id: "p1" }), 85);
+    beginResultEntry("pending-1");
+
+    startPhrasePractice(makePhrase({ id: "p2" }), 85);
+
+    expect(usePracticeStore.getState().pendingAttemptId).toBeNull();
+  });
+});

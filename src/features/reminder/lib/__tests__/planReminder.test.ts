@@ -39,10 +39,28 @@ describe("planReminder", () => {
         phrases: [],
         attempts: [],
         sessions: [],
-        settings: DEFAULT_REMINDER_SETTINGS,
+        settings: { ...DEFAULT_REMINDER_SETTINGS, enabled: true },
         now,
       }),
     ).toBeNull();
+  });
+
+  it("フレーズを保存した当日は通知せず翌日に予約する", () => {
+    const savedToday: PracticePhrase = {
+      ...makePhrase("p1"),
+      createdAt: new Date(2026, 8, 16, 9).toISOString(),
+      updatedAt: new Date(2026, 8, 16, 9).toISOString(),
+    };
+
+    const plan = planReminder({
+      phrases: [savedToday],
+      attempts: [],
+      sessions: [],
+      settings: { ...DEFAULT_REMINDER_SETTINGS, enabled: true },
+      now,
+    });
+
+    expect(plan!.fireAt).toEqual(new Date(2026, 8, 17, 20));
   });
 
   it("選んだフレーズをdataに入れ、練習セッションの記録も送信日の判定に使う", () => {
@@ -56,7 +74,7 @@ describe("planReminder", () => {
       phrases: [makePhrase("p1")],
       attempts: [],
       sessions: [session],
-      settings: DEFAULT_REMINDER_SETTINGS,
+      settings: { ...DEFAULT_REMINDER_SETTINGS, enabled: true },
       now,
     });
 

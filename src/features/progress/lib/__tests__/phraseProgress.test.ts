@@ -88,15 +88,30 @@ describe("summarizePhraseProgress", () => {
   });
 
   it("上昇幅は現在BPMから開始BPMを引いた値になる", () => {
-    const phrase = makePhrase({ currentBpm: 90, targetBpm: 110 });
+    const phrase = makePhrase({ initialBpm: 70, currentBpm: 90, targetBpm: 110 });
     const attempts = [makeAttempt({ bpm: 70 })];
     expect(summarizePhraseProgress(phrase, attempts).gainBpm).toBe(20);
   });
 
   it("最初の練習結果が現在BPMより速くても上昇幅は負にならない", () => {
-    const phrase = makePhrase({ currentBpm: 70, targetBpm: 110 });
+    const phrase = makePhrase({ initialBpm: 90, currentBpm: 70, targetBpm: 110 });
     const attempts = [makeAttempt({ bpm: 90, result: "ng" })];
     expect(summarizePhraseProgress(phrase, attempts).gainBpm).toBe(0);
+  });
+
+  it("initialBpmが無く最初の練習結果で開始BPMを補完した場合、上昇幅はundefinedにする", () => {
+    const phrase = makePhrase({ currentBpm: 90, targetBpm: 110 });
+    const attempts = [makeAttempt({ bpm: 70 })];
+    const result = summarizePhraseProgress(phrase, attempts);
+    expect(result.startBpm).toBe(70);
+    expect(result.gainBpm).toBeUndefined();
+  });
+
+  it("initialBpmも練習結果も無く現在BPMで開始BPMを補完した場合、上昇幅はundefinedにする", () => {
+    const phrase = makePhrase({ currentBpm: 90, targetBpm: 110 });
+    const result = summarizePhraseProgress(phrase, []);
+    expect(result.startBpm).toBe(90);
+    expect(result.gainBpm).toBeUndefined();
   });
 
   it("未卒業ならgraduatedAtはundefined", () => {

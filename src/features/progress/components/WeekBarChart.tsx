@@ -1,8 +1,8 @@
 /**
- * 週次練習時間バーチャート（Stitch modern_2 風）
+ * 週次練習日バーチャート（Stitch modern_2 風）
  *
- * - 曜日ごとに 1 本のバー、値に応じて primary の透過度を変える
- * - 今日のバーは fully primary、それ以外は値の量で 10%〜60% に減衰
+ * - 曜日ごとに1本のバー。「その日に練習したか」（セッションまたは結果記録）だけを表す
+ * - 練習した日は一定の高さで塗り、今日は fully primary で強調する
  */
 
 import { View, Text, StyleSheet } from "react-native";
@@ -11,21 +11,16 @@ import { colors } from "@/shared/theme";
 const WEEK_DAYS_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 type Props = {
-  weeklyData: number[];
+  weeklyPracticedDays: boolean[];
 };
 
-/** 値の割合 0..1 を 0.1〜1.0 の primary 不透明度に変換 */
-function ratioToAlphaHex(ratio: number, isToday: boolean): string {
+/** 練習有無と今日かどうかから primary の不透明度を決める */
+function barColor(practiced: boolean, isToday: boolean): string {
   if (isToday) return colors.primary;
-  const alpha = Math.max(0.1, Math.min(1, ratio * 0.85 + 0.1));
-  const hex = Math.round(alpha * 255)
-    .toString(16)
-    .padStart(2, "0");
-  return `${colors.primary}${hex}`;
+  return practiced ? `${colors.primary}99` : `${colors.primary}1a`;
 }
 
-export function WeekBarChart({ weeklyData }: Props) {
-  const maxVal = Math.max(...weeklyData, 1);
+export function WeekBarChart({ weeklyPracticedDays }: Props) {
   const today = new Date();
   const todayIdx = (today.getDay() + 6) % 7;
 
@@ -44,13 +39,12 @@ export function WeekBarChart({ weeklyData }: Props) {
           marginBottom: 16,
         }}
       >
-        WEEKLY RHYTHM
+        今週の練習日
       </Text>
       <View style={styles.bars}>
-        {weeklyData.map((val, idx) => {
-          const ratio = val / maxVal;
+        {weeklyPracticedDays.map((practiced, idx) => {
           const isToday = idx === todayIdx;
-          const height = `${Math.max(ratio * 100, val > 0 ? 5 : 0)}%` as const;
+          const height = practiced ? "100%" : "4%";
 
           return (
             <View key={idx} style={styles.column}>
@@ -58,7 +52,7 @@ export function WeekBarChart({ weeklyData }: Props) {
                 style={{
                   width: "100%",
                   height,
-                  backgroundColor: ratioToAlphaHex(ratio, isToday),
+                  backgroundColor: barColor(practiced, isToday),
                   borderTopLeftRadius: 8,
                   borderTopRightRadius: 8,
                 }}

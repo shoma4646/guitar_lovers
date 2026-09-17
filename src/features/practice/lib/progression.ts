@@ -99,7 +99,7 @@ function classifyTodayMenuPriority(
 function compareTodayMenuEntries(a: TodayMenuEntry, b: TodayMenuEntry): number {
   const byPriority = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
   if (byPriority !== 0) return byPriority;
-  if (a.priority === "stale" && a.latest && b.latest) {
+  if (a.latest && b.latest) {
     const byLatestDate = Date.parse(a.latest.date) - Date.parse(b.latest.date);
     if (byLatestDate !== 0) return byLatestDate;
   }
@@ -111,8 +111,8 @@ function compareTodayMenuEntries(a: TodayMenuEntry, b: TodayMenuEntry): number {
 /**
  * アーカイブ済みを除いたフレーズを今日の練習順に並べる
  *
- * 前回あやしい/弾けなかった → 最終記録が古い → 未記録 → 目標BPM到達済みの順。
- * 記録ありは最終記録の古い順。同順位はupdatedAtの古い順、最後にidの順
+ * 前回あやしい/弾けなかった → 前回弾けた → 未記録 → 目標BPM到達済みの順。
+ * 記録ありは区分内で最終記録の古い順。同順位はupdatedAtの古い順、最後にidの順
  * @param phrases - 全フレーズ
  * @param attempts - 全練習結果
  */

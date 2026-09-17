@@ -85,15 +85,25 @@ describe("pickReminderPhrase", () => {
 describe("buildReminderMessage", () => {
   const fireAt = new Date(2026, 8, 17, 19);
 
-  it("記録が無ければ保存済みのBPMから始める文面にする", () => {
+  it("記録が無く、作成から日が浅ければ保存済みのBPMから始める文面にする", () => {
     const { title, body } = buildReminderMessage({
-      phrase: makePhrase(),
+      phrase: makePhrase({ createdAt: sep(16, 12) }),
       phraseAttempts: [],
       fireAt,
     });
 
     expect(title).toBe("今日の練習");
     expect(body).toBe("『イントロのリフ』を保存しました。今日は90から始めましょう");
+  });
+
+  it("記録が無く、作成から前々日以前が経っていれば未練習の文面にする", () => {
+    const { body } = buildReminderMessage({
+      phrase: makePhrase({ createdAt: sep(1, 12) }),
+      phraseAttempts: [],
+      fireAt,
+    });
+
+    expect(body).toBe("『イントロのリフ』はまだ練習していません。今日は90から始めましょう");
   });
 
   it("届く日の前日に弾けていれば「昨日」と書く", () => {
@@ -130,6 +140,16 @@ describe("buildReminderMessage", () => {
     const { body } = buildReminderMessage({
       phrase: makePhrase({ currentBpm: 120 }),
       phraseAttempts: [makeAttempt({ bpm: 120 })],
+      fireAt,
+    });
+
+    expect(body).toBe("『イントロのリフ』は目標の120に届いています。今日も120で仕上げ");
+  });
+
+  it("最新記録がngでも到達済みなら仕上げの文面にする", () => {
+    const { body } = buildReminderMessage({
+      phrase: makePhrase({ currentBpm: 120 }),
+      phraseAttempts: [makeAttempt({ bpm: 100, result: "ng" })],
       fireAt,
     });
 

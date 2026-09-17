@@ -3,6 +3,7 @@ import {
   buildTodayMenu,
   computeTodayTargetBpm,
   getLatestAttempt,
+  isGraduated,
   pickTodayPick,
   resolveCurrentBpm,
 } from "@/features/practice/lib/progression";
@@ -47,6 +48,12 @@ function isDayBefore(date: Date, base: Date): boolean {
   return isSameLocalDay(date, dayBefore);
 }
 
+/** dateがbaseの前日より古い（前々日以前）か */
+function isOlderThanDayBefore(date: Date, base: Date): boolean {
+  const dayBeforeStart = new Date(base.getFullYear(), base.getMonth(), base.getDate() - 1);
+  return date.getTime() < dayBeforeStart.getTime();
+}
+
 /**
  * フレーズの記録からリマインド通知の文面を作る
  *
@@ -72,14 +79,17 @@ export function buildReminderMessage({
   return { title: REMINDER_TITLE, body: buildBody() };
 
   function buildBody(): string {
+    if (isGraduated(currentBpm, phrase.targetBpm)) {
+      return `『${name}』は目標の${phrase.targetBpm}に届いています。今日も${currentBpm}で仕上げ`;
+    }
     if (!latest) {
+      if (isOlderThanDayBefore(new Date(phrase.createdAt), fireAt)) {
+        return `『${name}』はまだ練習していません。今日は${todayTargetBpm}から始めましょう`;
+      }
       return `『${name}』を保存しました。今日は${todayTargetBpm}から始めましょう`;
     }
     if (latest.result !== "ok") {
       return `『${name}』、前回は${latest.bpm}で練習しました。今日は${todayTargetBpm}から`;
-    }
-    if (latest.bpm >= currentBpm && todayTargetBpm === currentBpm) {
-      return `『${name}』は目標の${phrase.targetBpm}に届いています。今日も${currentBpm}で仕上げ`;
     }
     const when = isDayBefore(new Date(latest.date), fireAt) ? "を昨日" : "は前回";
     return `『${name}』${when}${latest.bpm}で弾けました。今日は${todayTargetBpm}に挑戦`;

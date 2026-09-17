@@ -66,10 +66,10 @@ export function ProgressScreen() {
     const text = [
       "Guitar Lovers 練習記録",
       `今週の練習日数: ${stats.weeklyPracticeDays}/7日`,
-      `今週の練習時間: ${formatDurationLong(stats.weeklyDuration)}`,
-      `累計時間: ${formatDurationLong(stats.totalDuration)}`,
-      `総回数: ${stats.totalSessions}回`,
-    ].join("\n");
+      stats.streakDays > 0 ? `連続練習日数: ${stats.streakDays}日` : undefined,
+    ]
+      .filter((line): line is string => line !== undefined)
+      .join("\n");
 
     try {
       await Share.share({ message: text, title: "練習記録をシェア" });
@@ -135,7 +135,7 @@ export function ProgressScreen() {
 
           {/* Weekly Rhythm Chart */}
           <View style={{ marginBottom: 24 }}>
-            <WeekBarChart weeklyData={stats.weeklyData} />
+            <WeekBarChart weeklyPracticedDays={stats.weeklyPracticedDays} />
           </View>
 
           {/* Recent Sessions */}

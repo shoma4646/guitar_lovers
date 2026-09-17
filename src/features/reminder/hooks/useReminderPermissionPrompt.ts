@@ -25,16 +25,32 @@ export function useReminderPermissionPrompt(): () => Promise<void> {
       const permission = await getReminderPermission();
       if (!permission.undetermined) return;
 
-      await updateReminderSettings({ permissionPromptedAt: new Date().toISOString() });
-      queryClient.invalidateQueries({ queryKey: reminderQueryKeys.all });
+      // 依頼済みフラグはAlertの各ボタンが押された後に書く。表示前に書くと、
+      // 表示中のクラッシュ・強制終了で二度と依頼できなくなる
+      const markPrompted = () =>
+        updateReminderSettings({ permissionPromptedAt: new Date().toISOString() }).catch((e) =>
+          console.error("[reminder] 通知許可の依頼記録に失敗", e),
+        );
 
       Alert.alert("練習リマインド", "明日、このフレーズの続きを通知でお知らせしますか？", [
-        { text: "今はしない", style: "cancel" },
+        {
+          text: "今はしない",
+          style: "cancel",
+          onPress: () => {
+            void markPrompted().then(() =>
+              queryClient.invalidateQueries({ queryKey: reminderQueryKeys.all }),
+            );
+          },
+        },
         {
           text: "通知を受け取る",
           onPress: () => {
             void (async () => {
-              await ensureReminderPermission();
+              await markPrompted();
+              const granted = await ensureReminderPermission();
+              if (granted) {
+                await updateReminderSettings({ enabled: true });
+              }
               await syncReminder();
               queryClient.invalidateQueries({ queryKey: reminderQueryKeys.all });
             })().catch((e) => console.error("[reminder] 通知許可の依頼に失敗", e));

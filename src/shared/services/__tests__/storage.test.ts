@@ -303,6 +303,26 @@ describe("recordPhraseResult", () => {
     }
   });
 
+  it("途中失敗後にreps付きで再送すると、reps込みの記録が1件だけ残る", async () => {
+    await savePracticePhrase(makePhrase("p"));
+    const restore = failSetItemOnce(STORAGE_KEYS.PRACTICE_PHRASES);
+
+    try {
+      await expect(
+        recordPhraseResult({ ...makeAttempt("a1", "p"), bpm: 90, result: "ok", reps: 3 }),
+      ).rejects.toThrow("disk full");
+
+      await recordPhraseResult({ ...makeAttempt("a1", "p"), bpm: 90, result: "ok", reps: 4 });
+
+      const attempts = await getPhraseAttempts();
+      expect(attempts).toHaveLength(1);
+      expect(attempts[0].reps).toBe(4);
+      expect((await getPracticePhrases())[0].currentBpm).toBe(90);
+    } finally {
+      restore();
+    }
+  });
+
   it("削除済みフレーズへの記録は例外にし、孤児の結果を残さない", async () => {
     await expect(
       recordPhraseResult({ ...makeAttempt("a1", "missing"), bpm: 90, result: "ok" }),
@@ -553,5 +573,17 @@ describe("リマインド設定", () => {
     await updateReminderSettings({ enabled: false });
 
     expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("2");
+  });
+
+  it("patchにundefinedのキーがあっても既存の値を消さない", async () => {
+    await updateReminderSettings({ enabled: true });
+
+    await updateReminderSettings({ enabled: undefined, timeOverride: { hour: 21, minute: 30 } });
+
+    expect(await getReminderSettings()).toEqual({
+      ...DEFAULT_REMINDER_SETTINGS,
+      enabled: true,
+      timeOverride: { hour: 21, minute: 30 },
+    });
   });
 });
