@@ -52,6 +52,7 @@ export function planReminder({
 
   const fireAt = computeNextFireAt({
     practiceDates: [...attempts.map((a) => a.date), ...sessions.map((s) => s.date)],
+    activityDates: phrases.map((p) => p.createdAt),
     override: settings.timeOverride,
     now,
   });

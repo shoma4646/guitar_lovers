@@ -90,18 +90,22 @@ export function resolveReminderTime({
 /**
  * 次にリマインドを送る日時を返す
  *
- * 今日まだ練習記録が無く、今日の送信時刻が未来なら今日。それ以外は明日。
+ * 今日まだ練習記録も活動も無く、今日の送信時刻が未来なら今日。それ以外は明日。
  * 送信時刻は手動指定があればそれを、無ければ送る日ごとの傾向を使う
- * @param params.practiceDates - 練習記録の日時（ISO 8601）
+ * @param params.practiceDates - 練習記録の日時（ISO 8601）。傾向と当日判定の両方に使う
+ * @param params.activityDates - 当日判定にだけ使う日時（フレーズ保存など）
  * @param params.override - 手動で指定した送信時刻（無ければnull）
  * @param params.now - 現在日時
  */
 export function computeNextFireAt({
   practiceDates,
+  activityDates = [],
   override,
   now,
 }: {
   practiceDates: string[];
+  /** 送信時刻の傾向には使わず、当日に活動があったかの判定だけに使う日時（フレーズ保存など） */
+  activityDates?: string[];
   override: ReminderTime | null;
   now: Date;
 }): Date {
@@ -111,7 +115,9 @@ export function computeNextFireAt({
     return new Date(day.getFullYear(), day.getMonth(), day.getDate(), time.hour, time.minute);
   };
 
-  const practicedToday = practiceDates.some((date) => isSameLocalDay(new Date(date), now));
+  const practicedToday = [...practiceDates, ...activityDates].some((date) =>
+    isSameLocalDay(new Date(date), now),
+  );
   if (!practicedToday) {
     const today = fireAtOn(0);
     if (today.getTime() > now.getTime()) {
