@@ -22,8 +22,10 @@ import { useSavePracticeSession } from "@/features/progress/api/useSavePracticeS
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { useSavePracticePhrase } from "@/features/practice/api/useSavePracticePhrase";
 import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseResult";
+import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePracticePhrase";
 import { PhraseNotFoundError } from "@/shared/services/storage";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
+import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
 import { MetronomeWidget } from "./MetronomeWidget";
 import { VideoLoaderCard } from "./VideoLoaderCard";
 import { VideoPlayerCard } from "./VideoPlayerCard";
@@ -33,6 +35,7 @@ import { ABLoopCard, type SavePhraseInput } from "./ABLoopCard";
 import { BookmarksCard } from "./BookmarksCard";
 import { TodayMenuCard } from "./TodayMenuCard";
 import { PhraseResultSheet } from "./PhraseResultSheet";
+import { ActivePracticeBar } from "./ActivePracticeBar";
 import { cardShadowStyle, cardStyle } from "./cardStyle";
 
 /** A点とB点が両方設定され、B点がA点より後にあるか */
@@ -96,12 +99,15 @@ export function PracticeTab() {
   // 「今日の練習メニュー」から開始したフレーズ練習。サブタブ切替をまたいで保持するためストアで管理する
   const activePractice = usePracticeStore((s) => s.activePhrasePractice);
   const setActivePractice = usePracticeStore((s) => s.setActivePhrasePractice);
+  const incrementCompletedReps = usePracticeStore((s) => s.incrementCompletedReps);
 
   const { mutate: addRecent } = useAddRecentVideo();
   const { mutateAsync: saveSession } = useSavePracticeSession();
   const { mutate: savePhrase } = useSavePracticePhrase();
   const { mutateAsync: recordResultAsync } = useRecordPhraseResult();
+  const { mutate: graduatePhrase } = useGraduatePracticePhrase();
   const { data: presets = [] } = useVideoPresets();
+  const promptReminderPermission = useReminderPermissionPrompt();
 
   const [showResultSheet, setShowResultSheet] = useState(false);
   const playerError = usePracticeStore((s) => s.playerError);
@@ -110,6 +116,9 @@ export function PracticeTab() {
   const beginResultEntry = usePracticeStore((s) => s.beginResultEntry);
 
   const webViewRef = useRef<WebView>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const playerSectionYRef = useRef<number | null>(null);
+  const [practiceBarHeight, setPracticeBarHeight] = useState(0);
 
   const sendToPlayer = useCallback((cmd: Record<string, unknown>) => {
     webViewRef.current?.postMessage(JSON.stringify(cmd));
@@ -210,6 +219,7 @@ export function PracticeTab() {
           startSec: abLoop.pointA,
           endSec: abLoop.pointB,
           currentBpm: input.currentBpm,
+          initialBpm: input.currentBpm,
           targetBpm: input.targetBpm,
           playbackRate,
           createdAt: now,
@@ -217,16 +227,22 @@ export function PracticeTab() {
         },
         {
           onSuccess: () =>
-            Alert.alert("保存しました", `「${input.name}」を今日の練習メニューに追加しました`),
+            Alert.alert("保存しました", `「${input.name}」を今日の練習メニューに追加しました`, [
+              { text: "OK", onPress: () => void promptReminderPermission() },
+            ]),
         },
       );
     },
-    [loadedVideoId, videoTitle, abLoop, playbackRate, savePhrase],
+    [loadedVideoId, videoTitle, abLoop, playbackRate, savePhrase, promptReminderPermission],
   );
 
   const handleStartPhrase = useCallback(
     (phrase: PracticePhrase, todayTargetBpm: number) => {
       startPhrasePractice(phrase, todayTargetBpm);
+      const playerSectionY = playerSectionYRef.current;
+      if (playerSectionY !== null) {
+        scrollViewRef.current?.scrollTo({ y: playerSectionY, animated: true });
+      }
     },
     [startPhrasePractice],
   );
@@ -236,16 +252,26 @@ export function PracticeTab() {
     setShowResultSheet(true);
   }, [beginResultEntry]);
 
+  const handleCountRep = useCallback(() => {
+    const completedReps = incrementCompletedReps();
+    // 到達した瞬間だけ開く。シートを閉じた後に回数を重ねても開き直さない
+    if (activePractice && completedReps === activePractice.targetReps) {
+      handleFinishPractice();
+    }
+  }, [activePractice, incrementCompletedReps, handleFinishPractice]);
+
   const handleSubmitResult = useCallback(
     async ({ bpm, result }: { bpm: number; result: "ok" | "partial" | "ng" }) => {
       if (!activePractice) return;
+      const date = new Date().toISOString();
       try {
         await recordResultAsync({
           id: pendingAttemptId ?? randomUUID(),
           phraseId: activePractice.phrase.id,
-          date: new Date().toISOString(),
+          date,
           bpm,
           result,
+          ...(activePractice.completedReps > 0 ? { reps: activePractice.completedReps } : {}),
         });
       } catch (error) {
         if (error instanceof PhraseNotFoundError) {
@@ -257,10 +283,14 @@ export function PracticeTab() {
         // 保存失敗はshowMutationErrorがAlertを表示済み。シートと練習状態は保持し再送できるようにする
         return;
       }
+      const { phrase } = activePractice;
+      if (result === "ok" && bpm >= phrase.targetBpm && !phrase.graduatedAt) {
+        graduatePhrase({ id: phrase.id, graduatedAt: date });
+      }
       setShowResultSheet(false);
       setActivePractice(null);
     },
-    [activePractice, pendingAttemptId, recordResultAsync, setActivePractice],
+    [activePractice, pendingAttemptId, recordResultAsync, graduatePhrase, setActivePractice],
   );
 
   const handleTryPreset = useCallback(() => {
@@ -275,66 +305,17 @@ export function PracticeTab() {
   }, [presets, loadVideo, addRecent]);
 
   return (
-    <>
+    <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        ref={scrollViewRef}
+        contentContainerStyle={[
+          styles.scrollContent,
+          activePractice && { paddingBottom: styles.scrollContent.paddingBottom + practiceBarHeight },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* 今日の練習メニュー */}
         <TodayMenuCard onStartPhrase={handleStartPhrase} onTryPreset={handleTryPreset} />
-
-        {/* 練習中のフレーズ（今日の練習メニューから開始した場合のみ表示） */}
-        {activePractice && (
-          <View
-            className="bg-surface-container-lowest flex-row items-center"
-            style={[cardStyle, cardShadowStyle, { marginBottom: 16, gap: 12 }]}
-          >
-            <View
-              className="items-center justify-center"
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: `${colors.tertiaryContainer}33`,
-              }}
-            >
-              <Icon name="star" size={18} color={colors.tertiary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                className="text-body-md"
-                style={{ color: colors.onSurface, fontWeight: "600" }}
-                numberOfLines={1}
-              >
-                練習中: {activePractice.phrase.name}
-              </Text>
-              <Text
-                className="text-label-sm"
-                style={{ color: colors.onSurfaceVariant }}
-              >
-                今日の目標 {activePractice.todayTargetBpm} BPM
-              </Text>
-            </View>
-            <Pressable
-              onPress={handleFinishPractice}
-              className="active:opacity-90"
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 9999,
-                backgroundColor: colors.primary,
-              }}
-              accessibilityRole="button"
-            >
-              <Text
-                className="text-label-sm"
-                style={{ color: colors.onPrimary, fontWeight: "700" }}
-              >
-                終了して記録
-              </Text>
-            </Pressable>
-          </View>
-        )}
 
         {/* URL Input Card */}
         <VideoLoaderCard
@@ -344,56 +325,62 @@ export function PracticeTab() {
         />
 
         {/* Video Player (if loaded) */}
-        {loadedVideoId && playerError !== null && (
-          <View
-            className="bg-surface-container-lowest items-center"
-            style={[cardStyle, cardShadowStyle, { marginBottom: 16, gap: 12 }]}
-          >
-            <Icon name="error" size={28} color={colors.error} />
-            <Text
-              className="text-body-md text-center"
-              style={{ color: colors.onSurface, fontWeight: "600" }}
+        <View
+          onLayout={(e) => {
+            playerSectionYRef.current = e.nativeEvent.layout.y;
+          }}
+        >
+          {loadedVideoId && playerError !== null && (
+            <View
+              className="bg-surface-container-lowest items-center"
+              style={[cardStyle, cardShadowStyle, { marginBottom: 16, gap: 12 }]}
             >
-              この動画は再生できません
-            </Text>
-            <Text
-              className="text-label-sm text-center"
-              style={{ color: colors.onSurfaceVariant }}
-            >
-              {describePlayerError(playerError)}
-            </Text>
-            <Pressable
-              onPress={clearVideo}
-              className="active:opacity-90"
-              style={{
-                paddingHorizontal: 20,
-                paddingVertical: 10,
-                borderRadius: 9999,
-                backgroundColor: colors.primary,
-              }}
-              accessibilityRole="button"
-            >
+              <Icon name="error" size={28} color={colors.error} />
               <Text
-                className="text-label-sm"
-                style={{ color: colors.onPrimary, fontWeight: "700" }}
+                className="text-body-md text-center"
+                style={{ color: colors.onSurface, fontWeight: "600" }}
               >
-                別の動画を読み込む
+                この動画は再生できません
               </Text>
-            </Pressable>
-          </View>
-        )}
-        {loadedVideoId && playerError === null && (
-          <VideoPlayerCard
-            key={videoLoadNonce}
-            ref={webViewRef}
-            videoId={loadedVideoId}
-            startSeconds={videoStartSeconds}
-            initialRate={videoInitialRate}
-            onTimeUpdate={setCurrentTime}
-            onDurationReady={setDuration}
-            onPlayerError={setPlayerError}
-          />
-        )}
+              <Text
+                className="text-label-sm text-center"
+                style={{ color: colors.onSurfaceVariant }}
+              >
+                {describePlayerError(playerError)}
+              </Text>
+              <Pressable
+                onPress={clearVideo}
+                className="active:opacity-90"
+                style={{
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: 9999,
+                  backgroundColor: colors.primary,
+                }}
+                accessibilityRole="button"
+              >
+                <Text
+                  className="text-label-sm"
+                  style={{ color: colors.onPrimary, fontWeight: "700" }}
+                >
+                  別の動画を読み込む
+                </Text>
+              </Pressable>
+            </View>
+          )}
+          {loadedVideoId && playerError === null && (
+            <VideoPlayerCard
+              key={videoLoadNonce}
+              ref={webViewRef}
+              videoId={loadedVideoId}
+              startSeconds={videoStartSeconds}
+              initialRate={videoInitialRate}
+              onTimeUpdate={setCurrentTime}
+              onDurationReady={setDuration}
+              onPlayerError={setPlayerError}
+            />
+          )}
+        </View>
 
         {/* Timer Card */}
         <PracticeTimerCard
@@ -440,18 +427,31 @@ export function PracticeTab() {
         {/* Metronome */}
         <MetronomeWidget />
       </ScrollView>
+      {activePractice && (
+        <View onLayout={(e) => setPracticeBarHeight(e.nativeEvent.layout.height)}>
+          <ActivePracticeBar
+            practice={activePractice}
+            onCountRep={handleCountRep}
+            onFinish={handleFinishPractice}
+          />
+        </View>
+      )}
       <PhraseResultSheet
         visible={showResultSheet}
         phrase={activePractice?.phrase ?? null}
         todayTargetBpm={activePractice?.todayTargetBpm ?? 0}
+        completedReps={activePractice?.completedReps ?? 0}
         onClose={() => setShowResultSheet(false)}
         onSubmit={handleSubmitResult}
       />
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 32,

@@ -7,11 +7,15 @@ import {
   deletePracticePhrase,
   getPhraseAttempts,
   getPracticePhrases,
+  getReminderSettings,
   migrateIfNeeded,
   recordPhraseResult,
   savePhraseAttempt,
   savePracticePhrase,
+  updatePracticePhrase,
+  updateReminderSettings,
 } from "../storage";
+import { DEFAULT_REMINDER_SETTINGS } from "@/shared/lib/schemas/reminderSettings";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import {
   computeTodayTargetBpm,
@@ -197,6 +201,33 @@ describe("フレーズの削除とアーカイブ", () => {
   });
 });
 
+describe("初期BPMと卒業日時の永続化", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("initialBpmとgraduatedAtは保存して読み出しても保持される", async () => {
+    await savePracticePhrase({ ...makePhrase("x"), initialBpm: 80 });
+    await updatePracticePhrase("x", { graduatedAt: "2026-09-03T00:00:00.000Z" });
+
+    const [phrase] = await getPracticePhrases();
+    expect(phrase.initialBpm).toBe(80);
+    expect(phrase.graduatedAt).toBe("2026-09-03T00:00:00.000Z");
+  });
+
+  it("graduatedAtにundefinedを渡すと保存データからキーが消える", async () => {
+    await savePracticePhrase({ ...makePhrase("x"), graduatedAt: "2026-09-03T00:00:00.000Z" });
+
+    await updatePracticePhrase("x", { targetBpm: 140, graduatedAt: undefined });
+
+    const [phrase] = await getPracticePhrases();
+    expect(phrase.targetBpm).toBe(140);
+    expect("graduatedAt" in phrase).toBe(false);
+    const raw = JSON.parse((await AsyncStorage.getItem(STORAGE_KEYS.PRACTICE_PHRASES))!);
+    expect("graduatedAt" in raw[0]).toBe(false);
+  });
+});
+
 describe("recordPhraseResult", () => {
   beforeEach(async () => {
     await AsyncStorage.clear();
@@ -298,6 +329,24 @@ describe("recordPhraseResult", () => {
     [phrase] = await getPracticePhrases();
     latest = getLatestAttempt((await getPhraseAttempts()).filter((a) => a.phraseId === "p"));
     expect(computeTodayTargetBpm(phrase.currentBpm, latest, phrase.targetBpm)).toBe(90);
+  });
+
+  it("弾いた回数付きの記録は回数を保ったまま読み出せ、回数なしの既存記録も退避されない", async () => {
+    await savePracticePhrase(makePhrase("p"));
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.PHRASE_ATTEMPTS,
+      JSON.stringify([makeAttempt("legacy", "p")]),
+    );
+
+    await recordPhraseResult({ ...makeAttempt("a1", "p"), bpm: 90, result: "ok", reps: 3 });
+
+    const attempts = await getPhraseAttempts();
+    expect(attempts.map((a) => [a.id, a.reps])).toEqual([
+      ["a1", 3],
+      ["legacy", undefined],
+    ]);
+    const keys = await AsyncStorage.getAllKeys();
+    expect(keys.filter((k) => k.includes("__dropped_") || k.includes("__corrupt_"))).toEqual([]);
   });
 
   it("あやしい・弾けなかった結果では到達BPMを変えない", async () => {
@@ -432,12 +481,77 @@ describe("migrateIfNeeded", () => {
 
   it("既に現行バージョンなら何もしない", async () => {
     await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "2");
-    const setItem = jest.spyOn(AsyncStorage, "setItem");
+    // モックのsetItemは元からjest.fnなので、spyOn+mockRestoreで実装を消さないよう呼び出し履歴だけ消す
+    const setItem = AsyncStorage.setItem as jest.Mock;
     setItem.mockClear();
 
     await migrateIfNeeded();
 
     expect(setItem).not.toHaveBeenCalled();
-    setItem.mockRestore();
+  });
+});
+
+describe("リマインド設定", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("未保存なら既定値を返す", async () => {
+    expect(await getReminderSettings()).toEqual(DEFAULT_REMINDER_SETTINGS);
+  });
+
+  it("更新した値を読み出せる", async () => {
+    await updateReminderSettings({ timeOverride: { hour: 21, minute: 30 } });
+
+    expect(await getReminderSettings()).toEqual({
+      ...DEFAULT_REMINDER_SETTINGS,
+      timeOverride: { hour: 21, minute: 30 },
+    });
+  });
+
+  it("JSONが破損していれば退避キーへ保存して既定値を返す", async () => {
+    await AsyncStorage.setItem(STORAGE_KEYS.REMINDER_SETTINGS, "{not json");
+
+    expect(await getReminderSettings()).toEqual(DEFAULT_REMINDER_SETTINGS);
+    const backups = await corruptKeys();
+    expect(backups).toHaveLength(1);
+    expect(await AsyncStorage.getItem(backups[0])).toBe("{not json");
+  });
+
+  it("スキーマに合わなければ退避キーへ保存して既定値を返す", async () => {
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.REMINDER_SETTINGS,
+      JSON.stringify({ enabled: "yes", timeOverride: null, permissionPromptedAt: null }),
+    );
+
+    expect(await getReminderSettings()).toEqual(DEFAULT_REMINDER_SETTINGS);
+    expect(await corruptKeys()).toHaveLength(1);
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.REMINDER_SETTINGS)).toBeNull();
+  });
+
+  it("並行して更新しても互いの変更を消さない", async () => {
+    const promptedAt = "2026-09-16T01:00:00.000Z";
+
+    await Promise.all([
+      updateReminderSettings({ permissionPromptedAt: promptedAt }),
+      updateReminderSettings({ enabled: false }),
+    ]);
+
+    expect(await getReminderSettings()).toEqual({
+      enabled: false,
+      timeOverride: null,
+      permissionPromptedAt: promptedAt,
+    });
+  });
+
+  it("設定の保存でスキーマバージョンは変わらない", async () => {
+    await updateReminderSettings({ enabled: false });
+
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("2");
   });
 });

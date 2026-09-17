@@ -9,8 +9,24 @@ import "../../global.css";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Notifications from "expo-notifications";
 import { colors } from "@/shared/theme";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
+import { ReminderBridge } from "@/features/reminder/components/ReminderBridge";
+import { REMINDER_DATA_TYPE } from "@/features/reminder/lib/planReminder";
+
+// このハンドラはアプリが前面のときだけ呼ばれる。練習中にリマインドのバナーを出さない
+Notifications.setNotificationHandler({
+  handleNotification: async (notification) => {
+    const isReminder = notification.request.content.data?.type === REMINDER_DATA_TYPE;
+    return {
+      shouldShowBanner: !isReminder,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    };
+  },
+});
 
 const queryClient = new QueryClient();
 
@@ -31,6 +47,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="index" options={{ headerShown: false }} />
         </Stack>
+        <ReminderBridge />
       </QueryClientProvider>
     </ErrorBoundary>
   );

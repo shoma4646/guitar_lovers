@@ -36,6 +36,8 @@ type Props = {
   phrase: PracticePhrase | null;
   /** 今回の目標BPM。BPM入力欄の初期値として使う */
   todayTargetBpm: number;
+  /** 今回弾き終えた回数（1以上なら案内文に表示する） */
+  completedReps?: number;
   onClose: () => void;
   onSubmit: (input: { bpm: number; result: Result }) => void;
 };
@@ -44,6 +46,7 @@ export function PhraseResultSheet({
   visible,
   phrase,
   todayTargetBpm,
+  completedReps = 0,
   onClose,
   onSubmit,
 }: Props) {
@@ -97,7 +100,9 @@ export function PhraseResultSheet({
             className="text-body-md"
             style={{ color: colors.onSurfaceVariant }}
           >
-            今日の結果を記録してください
+            {completedReps > 0
+              ? `BPM ${todayTargetBpm}で${completedReps}回弾きました。結果を記録してください`
+              : "今日の結果を記録してください"}
           </Text>
 
           <View className="flex-row" style={{ gap: 8 }}>

@@ -17,6 +17,11 @@ import { favoriteVideoSchema } from "@/shared/lib/schemas/favoriteVideo";
 import { recentVideoSchema } from "@/shared/lib/schemas/recentVideo";
 import { practicePhraseSchema } from "@/shared/lib/schemas/practicePhrase";
 import { phraseAttemptSchema } from "@/shared/lib/schemas/phraseAttempt";
+import {
+  DEFAULT_REMINDER_SETTINGS,
+  reminderSettingsSchema,
+  type ReminderSettings,
+} from "@/shared/lib/schemas/reminderSettings";
 import { clampBpm } from "@/shared/constants/bpm";
 import { PLAYBACK_RATES } from "@/shared/constants/playback";
 
@@ -27,6 +32,7 @@ export const STORAGE_KEYS = {
   RECENT_VIDEOS: "@guitar_lovers/recent_videos",
   PRACTICE_PHRASES: "@guitar_lovers/practice_phrases",
   PHRASE_ATTEMPTS: "@guitar_lovers/phrase_attempts",
+  REMINDER_SETTINGS: "@guitar_lovers/reminder_settings",
   SCHEMA_VERSION: "@guitar_lovers/schema_version",
 } as const;
 
@@ -136,6 +142,49 @@ function serialized<T>(operation: () => Promise<T>): Promise<T> {
 
 async function writeList(key: string, list: unknown[]): Promise<void> {
   await AsyncStorage.setItem(key, JSON.stringify(list));
+}
+
+/**
+ * 指定キーの単一オブジェクトをAsyncStorageから読み込み、スキーマ検証する
+ * キーが無ければfallbackを返す。JSONの破損やスキーマ不一致は退避キーへ移してからfallbackを返す
+ * @param key - AsyncStorageのキー
+ * @param schema - オブジェクトのZodスキーマ
+ * @param fallback - 読めなかったときに返す値
+ */
+async function readObject<T>(
+  key: string,
+  schema: z.ZodType<T>,
+  fallback: T
+): Promise<T> {
+  let json: string | null;
+  try {
+    json = await AsyncStorage.getItem(key);
+  } catch (e) {
+    console.error(`[storage] ${key}の読み込みエラー`, e);
+    return fallback;
+  }
+  if (!json) return fallback;
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch (e) {
+    console.error(`[storage] ${key}のJSON解析に失敗、破損データを退避します`, e);
+    await quarantine(key, `${key}__corrupt_${Date.now()}`, json, null);
+    return fallback;
+  }
+
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`[storage] ${key}の内容がスキーマに合いません、破損データを退避します`);
+    await quarantine(key, `${key}__corrupt_${Date.now()}`, json, null);
+    return fallback;
+  }
+  return parsed.data;
+}
+
+async function writeObject(key: string, value: unknown): Promise<void> {
+  await AsyncStorage.setItem(key, JSON.stringify(value));
 }
 
 // ============================================================
@@ -251,6 +300,39 @@ export class PhraseNotFoundError extends Error {
     super("記録対象のフレーズが見つかりません");
     this.name = "PhraseNotFoundError";
   }
+}
+
+// ============================================================
+// リマインド設定
+// ============================================================
+
+function loadReminderSettings(): Promise<ReminderSettings> {
+  return readObject(
+    STORAGE_KEYS.REMINDER_SETTINGS,
+    reminderSettingsSchema,
+    DEFAULT_REMINDER_SETTINGS
+  );
+}
+
+/**
+ * リマインド設定を取得する。未保存なら既定値を返す
+ */
+export function getReminderSettings(): Promise<ReminderSettings> {
+  return serialized(loadReminderSettings);
+}
+
+/**
+ * リマインド設定の一部を更新し、更新後の設定を返す
+ * @param patch - 更新するフィールドの差分
+ */
+export function updateReminderSettings(
+  patch: Partial<ReminderSettings>
+): Promise<ReminderSettings> {
+  return serialized(async () => {
+    const next = { ...(await loadReminderSettings()), ...patch };
+    await writeObject(STORAGE_KEYS.REMINDER_SETTINGS, next);
+    return next;
+  });
 }
 
 // ============================================================

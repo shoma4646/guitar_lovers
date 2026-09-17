@@ -16,6 +16,19 @@ export { PLAYBACK_RATES, type PlaybackRate } from "@/shared/constants/playback";
 /** プリセットBPMの選択肢 */
 export const PRESET_BPMS = [60, 80, 100, 120, 140, 160] as const;
 
+/** フレーズ練習の既定の目標回数 */
+export const DEFAULT_TARGET_REPS = 3;
+
+/** 今日の練習メニューから開始した練習中フレーズの状態 */
+export type ActivePhrasePractice = {
+  phrase: PracticePhrase;
+  todayTargetBpm: number;
+  /** 今日の目標BPMで弾く目標回数 */
+  targetReps: number;
+  /** 弾き終えた回数 */
+  completedReps: number;
+};
+
 /** 練習ストアの状態 */
 interface PracticeState {
   // --- YouTube動画 ---
@@ -55,7 +68,7 @@ interface PracticeState {
 
   // --- 練習中のフレーズ ---
   /** 「今日の練習メニュー」から開始した練習中フレーズ。サブタブ切替で消えないようストアに保持する */
-  activePhrasePractice: { phrase: PracticePhrase; todayTargetBpm: number } | null;
+  activePhrasePractice: ActivePhrasePractice | null;
   /**
    * 結果記録中のattempt ID。保存失敗後の再送で同じIDを使い重複記録を防ぐため、
    * 練習中フレーズと同じ寿命でストアに保持する
@@ -116,9 +129,9 @@ interface PracticeState {
   setMetronomeBpm: (bpm: number) => void;
   setMetronomeEnabled: (enabled: boolean) => void;
   setPracticeSubTab: (tab: PracticeSubTab) => void;
-  setActivePhrasePractice: (
-    value: { phrase: PracticePhrase; todayTargetBpm: number } | null,
-  ) => void;
+  setActivePhrasePractice: (value: ActivePhrasePractice | null) => void;
+  /** 練習中フレーズの弾き終えた回数を1増やし、増やした後の回数を返す（練習中でなければ何もせず0を返す） */
+  incrementCompletedReps: () => number;
   /** 結果記録を開始し、未発番なら新しいattempt IDを発番して返す（再送時は同じIDを返す） */
   beginResultEntry: (newId: string) => string;
   setPlayerError: (code: number | null) => void;
@@ -199,7 +212,12 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       playbackRate: phrase.playbackRate,
     });
     set({
-      activePhrasePractice: { phrase, todayTargetBpm },
+      activePhrasePractice: {
+        phrase,
+        todayTargetBpm,
+        targetReps: DEFAULT_TARGET_REPS,
+        completedReps: 0,
+      },
       metronomeBpm: clampBpm(todayTargetBpm),
     });
   },
@@ -276,6 +294,13 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     if (current) return current;
     set({ pendingAttemptId: newId });
     return newId;
+  },
+  incrementCompletedReps: () => {
+    const active = get().activePhrasePractice;
+    if (!active) return 0;
+    const completedReps = active.completedReps + 1;
+    set({ activePhrasePractice: { ...active, completedReps } });
+    return completedReps;
   },
   setPlayerError: (code) => set({ playerError: code }),
 
