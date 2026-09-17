@@ -15,13 +15,13 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.guitarlovers.app",
+      "bundleIdentifier": "jp.shoma.guitarlovers",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.guitarlovers.app",
+      "package": "jp.shoma.guitarlovers",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#fff8f7"
