@@ -81,7 +81,7 @@ export function PhraseProgressList() {
                   {startBpm} → {currentBpm} / 目標{targetBpm}
                 </Text>
               </View>
-              {gainBpm > 0 ? (
+              {gainBpm !== undefined && gainBpm > 0 ? (
                 <Text
                   className="text-label-sm"
                   style={{ color: colors.tertiary, fontWeight: "700", fontVariant: ["tabular-nums"] }}

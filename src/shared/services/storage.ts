@@ -323,13 +323,16 @@ export function getReminderSettings(): Promise<ReminderSettings> {
 
 /**
  * リマインド設定の一部を更新し、更新後の設定を返す
- * @param patch - 更新するフィールドの差分
+ * @param patch - 更新するフィールドの差分。値がundefinedのキーは無視する（意図せず既存値を消さないため）
  */
 export function updateReminderSettings(
   patch: Partial<ReminderSettings>
 ): Promise<ReminderSettings> {
   return serialized(async () => {
-    const next = { ...(await loadReminderSettings()), ...patch };
+    const definedPatch = Object.fromEntries(
+      Object.entries(patch).filter(([, value]) => value !== undefined)
+    ) as Partial<ReminderSettings>;
+    const next = { ...(await loadReminderSettings()), ...definedPatch };
     await writeObject(STORAGE_KEYS.REMINDER_SETTINGS, next);
     return next;
   });

@@ -30,6 +30,7 @@ describe("calcStats", () => {
     expect(stats.weeklyPracticeDays).toBe(0);
     expect(stats.streakDays).toBe(0);
     expect(stats.weeklyData).toEqual([0, 0, 0, 0, 0, 0, 0]);
+    expect(stats.weeklyPracticedDays).toEqual([false, false, false, false, false, false, false]);
   });
 
   it("累計時間と総回数を集計する", () => {
@@ -92,6 +93,13 @@ describe("calcStats", () => {
       [makeAttempt(daysAgoIso(lastWeek + 1))],
     );
     expect(stats.weeklyPracticeDays).toBe(0);
+  });
+
+  it("結果記録だけの日もバーに立つ", () => {
+    const todayIdx = daysSinceMonday();
+    const stats = calcStats([], [makeAttempt(daysAgoIso(0))]);
+    expect(stats.weeklyPracticedDays[todayIdx]).toBe(true);
+    expect(stats.weeklyPracticedDays.filter(Boolean)).toHaveLength(1);
   });
 
   it("結果記録は時間と回数の集計に影響しない", () => {

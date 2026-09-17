@@ -77,6 +77,7 @@ Steps to create a practice phrase:
 
 ## (g) 提出前の最終確認
 
+- [ ] 注意: 旧ビルドへ戻すとフレーズの初期BPM・卒業日・回数が失われる（`SCHEMA_VERSION`据え置きのため）
 - [ ] `mise exec -- npx tsc --noEmit` が通ることを確認する
 - [ ] `mise exec -- npx expo lint` が通ることを確認する
 - [ ] テストスイートが通ることを確認する

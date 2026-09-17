@@ -107,7 +107,16 @@ interface PracticeState {
   loadVideo: (
     videoId: string,
     title?: string,
-    options?: { abLoop?: ABLoop; playbackRate?: PlaybackRate },
+    options?: {
+      abLoop?: ABLoop;
+      playbackRate?: PlaybackRate;
+      /**
+       * 読み込み対象のフレーズID
+       * 現在練習中のフレーズと同じIDならpendingAttemptId・練習中状態を維持する
+       * （保存失敗後の再送で同じフレーズを開始し直しても、結果記録が重複しないため）
+       */
+      phraseId?: string;
+    },
   ) => void;
   clearVideo: () => void;
   /**
@@ -188,6 +197,9 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     const id = extractVideoId(videoId) ?? videoId;
     // 速度未指定時は現在選択中の速度を維持する（WebView側にも改めて焼き込む）
     const nextPlaybackRate = options?.playbackRate ?? get().playbackRate;
+    const current = get().activePhrasePractice;
+    const samePhrase =
+      options?.phraseId !== undefined && current?.phrase.id === options.phraseId;
     set((state) => ({
       loadedVideoId: id,
       videoTitle: title,
@@ -199,9 +211,9 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       videoLoadNonce: state.videoLoadNonce + 1,
       abLoop: options?.abLoop ?? { pointA: null, pointB: null, enabled: false },
       bookmarks: [],
-      // 別の動画に切り替えたら、前のフレーズへ結果が記録されないよう練習中状態を解除する
-      activePhrasePractice: null,
-      pendingAttemptId: null,
+      // 別の動画・別のフレーズに切り替えたら、前のフレーズへ結果が記録されないよう練習中状態を解除する
+      activePhrasePractice: samePhrase ? state.activePhrasePractice : null,
+      pendingAttemptId: samePhrase ? state.pendingAttemptId : null,
       playerError: null,
     }));
   },
@@ -210,6 +222,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     get().loadVideo(phrase.videoId, phrase.videoTitle, {
       abLoop: { pointA: phrase.startSec, pointB: phrase.endSec, enabled: true },
       playbackRate: phrase.playbackRate,
+      phraseId: phrase.id,
     });
     set({
       activePhrasePractice: {

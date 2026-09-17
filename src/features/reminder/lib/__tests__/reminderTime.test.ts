@@ -1,4 +1,5 @@
 import {
+  clampReminderTime,
   computeNextFireAt,
   formatReminderTime,
   resolveReminderTime,
@@ -131,12 +132,30 @@ describe("shiftReminderTime", () => {
     expect(shiftReminderTime({ hour: 21, minute: 30 }, 30)).toEqual({ hour: 22, minute: 0 });
   });
 
-  it("日をまたいだら0:00側へ巻き戻す", () => {
-    expect(shiftReminderTime({ hour: 23, minute: 45 }, 30)).toEqual({ hour: 0, minute: 15 });
+  it("上限(22:00)を超えたら22:00で止まる", () => {
+    expect(shiftReminderTime({ hour: 22, minute: 0 }, 30)).toEqual({ hour: 22, minute: 0 });
   });
 
-  it("0:00より前へ戻したら23時台にする", () => {
-    expect(shiftReminderTime({ hour: 0, minute: 0 }, -30)).toEqual({ hour: 23, minute: 30 });
+  it("下限(07:00)を下回ったら07:00で止まる", () => {
+    expect(shiftReminderTime({ hour: 7, minute: 0 }, -30)).toEqual({ hour: 7, minute: 0 });
+  });
+
+  it("上限・下限の範囲外から呼ばれても07:00〜22:00に収める", () => {
+    expect(shiftReminderTime({ hour: 0, minute: 0 }, -30)).toEqual({ hour: 7, minute: 0 });
+  });
+});
+
+describe("clampReminderTime", () => {
+  it("範囲内ならそのまま返す", () => {
+    expect(clampReminderTime({ hour: 12, minute: 30 })).toEqual({ hour: 12, minute: 30 });
+  });
+
+  it("07:00より前は07:00にする", () => {
+    expect(clampReminderTime({ hour: 3, minute: 0 })).toEqual({ hour: 7, minute: 0 });
+  });
+
+  it("22:00より後は22:00にする", () => {
+    expect(clampReminderTime({ hour: 23, minute: 30 })).toEqual({ hour: 22, minute: 0 });
   });
 });
 

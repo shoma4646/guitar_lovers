@@ -39,7 +39,7 @@ describe("planReminder", () => {
         phrases: [],
         attempts: [],
         sessions: [],
-        settings: DEFAULT_REMINDER_SETTINGS,
+        settings: { ...DEFAULT_REMINDER_SETTINGS, enabled: true },
         now,
       }),
     ).toBeNull();
@@ -56,7 +56,7 @@ describe("planReminder", () => {
       phrases: [makePhrase("p1")],
       attempts: [],
       sessions: [session],
-      settings: DEFAULT_REMINDER_SETTINGS,
+      settings: { ...DEFAULT_REMINDER_SETTINGS, enabled: true },
       now,
     });
 

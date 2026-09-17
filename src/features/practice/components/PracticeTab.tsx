@@ -17,15 +17,17 @@ import {
 } from "@/stores/practice";
 import { colors } from "@/shared/theme";
 import { Icon } from "@/shared/components/atoms/Icon";
-import type { ABLoop, PracticePhrase } from "@/shared/types/models";
+import type { ABLoop, PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import { useSavePracticeSession } from "@/features/progress/api/useSavePracticeSession";
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { useSavePracticePhrase } from "@/features/practice/api/useSavePracticePhrase";
 import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseResult";
 import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePracticePhrase";
+import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { PhraseNotFoundError } from "@/shared/services/storage";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
+import { resolveGraduatedAt } from "@/features/practice/lib/progression";
 import { MetronomeWidget } from "./MetronomeWidget";
 import { VideoLoaderCard } from "./VideoLoaderCard";
 import { VideoPlayerCard } from "./VideoPlayerCard";
@@ -106,6 +108,7 @@ export function PracticeTab() {
   const { mutate: savePhrase } = useSavePracticePhrase();
   const { mutateAsync: recordResultAsync } = useRecordPhraseResult();
   const { mutate: graduatePhrase } = useGraduatePracticePhrase();
+  const { data: allPhraseAttempts = [] } = usePhraseAttempts();
   const { data: presets = [] } = useVideoPresets();
   const promptReminderPermission = useReminderPermissionPrompt();
 
@@ -264,15 +267,16 @@ export function PracticeTab() {
     async ({ bpm, result }: { bpm: number; result: "ok" | "partial" | "ng" }) => {
       if (!activePractice) return;
       const date = new Date().toISOString();
+      const attempt: PhraseAttempt = {
+        id: pendingAttemptId ?? randomUUID(),
+        phraseId: activePractice.phrase.id,
+        date,
+        bpm,
+        result,
+        ...(activePractice.completedReps > 0 ? { reps: activePractice.completedReps } : {}),
+      };
       try {
-        await recordResultAsync({
-          id: pendingAttemptId ?? randomUUID(),
-          phraseId: activePractice.phrase.id,
-          date,
-          bpm,
-          result,
-          ...(activePractice.completedReps > 0 ? { reps: activePractice.completedReps } : {}),
-        });
+        await recordResultAsync(attempt);
       } catch (error) {
         if (error instanceof PhraseNotFoundError) {
           Alert.alert("記録できません", "このフレーズは削除されています");
@@ -285,12 +289,22 @@ export function PracticeTab() {
       }
       const { phrase } = activePractice;
       if (result === "ok" && bpm >= phrase.targetBpm && !phrase.graduatedAt) {
-        graduatePhrase({ id: phrase.id, graduatedAt: date });
+        const phraseAttempts = allPhraseAttempts.filter((a) => a.phraseId === phrase.id);
+        // 到達済みフレーズの卒業日が再記録のたびに今日へ前進しないよう、記録から最初の到達日を再計算する
+        const graduatedAt = resolveGraduatedAt(phrase, [...phraseAttempts, attempt]) ?? date;
+        graduatePhrase({ id: phrase.id, graduatedAt });
       }
       setShowResultSheet(false);
       setActivePractice(null);
     },
-    [activePractice, pendingAttemptId, recordResultAsync, graduatePhrase, setActivePractice],
+    [
+      activePractice,
+      pendingAttemptId,
+      recordResultAsync,
+      graduatePhrase,
+      setActivePractice,
+      allPhraseAttempts,
+    ],
   );
 
   const handleTryPreset = useCallback(() => {

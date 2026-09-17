@@ -13,10 +13,13 @@ const EARLIEST_MINUTES = 7 * 60;
 const LATEST_MINUTES = 22 * 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// hourがマイナスや24以上になりうる中間値でも hour*60+minute が元のminutesへ正しく戻るよう、
+// JSの%ではなくfloorベースの剰余で分を求める（clampReminderTimeでの再計算を壊さないため）
 function toReminderTime(minutes: number): ReminderTime {
+  const hour = Math.floor(minutes / 60);
   return {
-    hour: Math.floor(minutes / 60),
-    minute: (minutes % 60) as ReminderTime["minute"],
+    hour,
+    minute: (minutes - hour * 60) as ReminderTime["minute"],
   };
 }
 
@@ -81,7 +84,7 @@ export function resolveReminderTime({
   const minutesOfDay = samples.map((date) => date.getHours() * 60 + date.getMinutes());
   const lead = median(minutesOfDay) - LEAD_MINUTES;
   const rounded = Math.floor(lead / ROUND_MINUTES) * ROUND_MINUTES;
-  return toReminderTime(Math.min(Math.max(rounded, EARLIEST_MINUTES), LATEST_MINUTES));
+  return clampReminderTime(toReminderTime(rounded));
 }
 
 /**
@@ -119,14 +122,23 @@ export function computeNextFireAt({
 }
 
 /**
- * 送信時刻を指定の分だけずらす。日をまたぐ場合は0:00〜23:59の範囲に巻き戻す
+ * 送信時刻を07:00〜22:00の範囲に収める
+ * @param time - 収める時刻
+ */
+export function clampReminderTime(time: ReminderTime): ReminderTime {
+  const minutes = time.hour * 60 + time.minute;
+  return toReminderTime(Math.min(Math.max(minutes, EARLIEST_MINUTES), LATEST_MINUTES));
+}
+
+/**
+ * 送信時刻を指定の分だけずらし、07:00〜22:00の範囲に収める
+ * 上限・下限に達したら日をまたいで巻き戻さず、その時刻で止まる
  * @param time - 元の時刻
  * @param deltaMinutes - ずらす分（15の倍数）
  */
 export function shiftReminderTime(time: ReminderTime, deltaMinutes: number): ReminderTime {
-  const minutesPerDay = 24 * 60;
   const total = time.hour * 60 + time.minute + deltaMinutes;
-  return toReminderTime(((total % minutesPerDay) + minutesPerDay) % minutesPerDay);
+  return clampReminderTime(toReminderTime(total));
 }
 
 /**

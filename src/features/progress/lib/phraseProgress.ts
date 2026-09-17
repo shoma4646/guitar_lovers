@@ -15,8 +15,11 @@ export interface PhraseProgressSummary {
   targetBpm: number;
   /** 開始BPMから目標BPMまでの達成率（0〜1に正規化） */
   progressRatio: number;
-  /** 開始BPMから現在BPMまでの上昇幅（0未満にはしない） */
-  gainBpm: number;
+  /**
+   * 開始BPMから現在BPMまでの上昇幅（0未満にはしない）
+   * initialBpmが無く開始BPMを補完した場合はundefined（補完値は本物の保存時BPMより高いことがあり、上昇幅が実態より小さく見えるため）
+   */
+  gainBpm: number | undefined;
   /** 卒業日時。未卒業ならundefined */
   graduatedAt: string | undefined;
 }
@@ -33,6 +36,7 @@ export function summarizePhraseProgress(
   const sorted = [...attempts].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
+  const hasReliableStartBpm = phrase.initialBpm !== undefined;
   const startBpm = phrase.initialBpm ?? sorted[0]?.bpm ?? phrase.currentBpm;
   const currentBpm = resolveCurrentBpm(phrase.currentBpm, attempts);
   const targetBpm = phrase.targetBpm;
@@ -50,7 +54,7 @@ export function summarizePhraseProgress(
     currentBpm,
     targetBpm,
     progressRatio,
-    gainBpm: Math.max(0, currentBpm - startBpm),
+    gainBpm: hasReliableStartBpm ? Math.max(0, currentBpm - startBpm) : undefined,
     graduatedAt: resolveGraduatedAt(phrase, attempts),
   };
 }

@@ -4,7 +4,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { savePracticePhrase, updateReminderSettings } from "@/shared/services/storage";
 import type { PracticePhrase } from "@/shared/types/models";
-import { REMINDER_NOTIFICATION_ID, syncReminder } from "../reminderScheduler";
+import {
+  getLastSyncError,
+  REMINDER_NOTIFICATION_ID,
+  syncReminder,
+} from "../reminderScheduler";
 
 jest.mock("@react-native-async-storage/async-storage", () => mockAsyncStorage);
 jest.mock("expo-notifications", () => ({
@@ -12,6 +16,7 @@ jest.mock("expo-notifications", () => ({
   requestPermissionsAsync: jest.fn(),
   cancelScheduledNotificationAsync: jest.fn(),
   scheduleNotificationAsync: jest.fn(),
+  getAllScheduledNotificationsAsync: jest.fn(),
   setNotificationChannelAsync: jest.fn(),
   IosAuthorizationStatus: { NOT_DETERMINED: 0, DENIED: 1, AUTHORIZED: 2, PROVISIONAL: 3 },
   AndroidImportance: { DEFAULT: 5 },
@@ -47,6 +52,8 @@ describe("syncReminder", () => {
     await AsyncStorage.clear();
     jest.clearAllMocks();
     getPermissionsAsync.mockResolvedValue(permission(true));
+    // DEFAULT_REMINDER_SETTINGS.enabledはfalseなので、各テストで明示的にONへする
+    await updateReminderSettings({ enabled: true });
   });
 
   it("許可済みでフレーズがあれば、固定identifierで取り消してから予約する", async () => {
@@ -128,5 +135,24 @@ describe("syncReminder", () => {
 
     expect(schedule).not.toHaveBeenCalled();
     expect(cancel).toHaveBeenCalledTimes(2);
+  });
+
+  it("scheduleがrejectしても例外を投げず、失敗をgetLastSyncErrorで読み出せる", async () => {
+    await savePracticePhrase(makePhrase("p1"));
+    schedule.mockRejectedValueOnce(new Error("boom"));
+
+    await expect(syncReminder()).resolves.toBeUndefined();
+
+    expect(getLastSyncError()).not.toBeNull();
+  });
+
+  it("失敗の後に成功すればgetLastSyncErrorはnullに戻る", async () => {
+    await savePracticePhrase(makePhrase("p1"));
+    schedule.mockRejectedValueOnce(new Error("boom"));
+    await syncReminder();
+
+    await syncReminder();
+
+    expect(getLastSyncError()).toBeNull();
   });
 });

@@ -84,6 +84,10 @@ export function ABLoopCard({
       Alert.alert("エラー", `目標BPMは${BPM_MIN}〜${BPM_MAX}の範囲で入力してください`);
       return;
     }
+    if (parsedTarget <= parsedCurrent) {
+      Alert.alert("エラー", "目標BPMは現在のBPMより大きい値にしてください");
+      return;
+    }
     onSavePhrase({
       name: name.trim(),
       currentBpm: parsedCurrent,
