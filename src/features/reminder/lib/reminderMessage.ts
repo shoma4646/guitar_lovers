@@ -1,7 +1,9 @@
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import {
+  buildTodayMenu,
   computeTodayTargetBpm,
   getLatestAttempt,
+  pickTodayPick,
   resolveCurrentBpm,
 } from "@/features/practice/lib/progression";
 import { isSameLocalDay } from "./reminderTime";
@@ -14,8 +16,8 @@ export const REMINDER_TITLE = "今日の練習";
 /**
  * リマインドに出すフレーズを選ぶ
  *
- * アーカイブ済みを除き、最後に練習記録を付けたフレーズを返す。
- * どれにも記録が無ければ最後に作成したフレーズ、対象が無ければnullを返す
+ * 今日の練習メニューの「今日の1本」と同じフレーズを返す。
+ * 全て卒業済みなら最後に作成した未アーカイブのフレーズ、対象が無ければnullを返す
  * @param phrases - 全フレーズ
  * @param attempts - 全フレーズの練習結果
  */
@@ -23,16 +25,11 @@ export function pickReminderPhrase(
   phrases: PracticePhrase[],
   attempts: PhraseAttempt[],
 ): PracticePhrase | null {
+  const pick = pickTodayPick(buildTodayMenu(phrases, attempts));
+  if (pick) return pick.phrase;
+
   const active = phrases.filter((phrase) => !phrase.archivedAt);
   if (active.length === 0) return null;
-
-  const practiced = active.flatMap((phrase) => {
-    const latest = getLatestAttempt(attempts.filter((a) => a.phraseId === phrase.id));
-    return latest ? [{ phrase, at: Date.parse(latest.date) }] : [];
-  });
-  if (practiced.length > 0) {
-    return practiced.reduce((a, b) => (b.at > a.at ? b : a)).phrase;
-  }
   return active.reduce((a, b) =>
     Date.parse(b.createdAt) > Date.parse(a.createdAt) ? b : a,
   );

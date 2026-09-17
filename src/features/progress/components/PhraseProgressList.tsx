@@ -16,22 +16,24 @@ export function PhraseProgressList() {
   const { data: phrases } = usePracticePhrases();
   const { data: attempts } = usePhraseAttempts();
 
-  const summaries = useMemo(() => {
-    if (!phrases) return [];
-    return phrases
+  const { summaries, graduatedCount } = useMemo(() => {
+    if (!phrases) return { summaries: [], graduatedCount: 0 };
+    const active = phrases
       .filter((phrase) => !phrase.archivedAt)
       .map((phrase) =>
         summarizePhraseProgress(
           phrase,
           (attempts ?? []).filter((a) => a.phraseId === phrase.id),
         ),
-      )
+      );
+    const inProgress = active
       .filter((summary) => !summary.graduatedAt)
       .sort(
         (a, b) =>
           new Date(b.phrase.updatedAt).getTime() -
           new Date(a.phrase.updatedAt).getTime(),
       );
+    return { summaries: inProgress, graduatedCount: active.length - inProgress.length };
   }, [phrases, attempts]);
 
   return (
@@ -53,7 +55,9 @@ export function PhraseProgressList() {
       </Text>
       {summaries.length === 0 ? (
         <Text className="text-on-surface-variant text-body-md">
-          Practiceタブでフレーズを保存すると、ここにBPMの推移が表示されます
+          {graduatedCount > 0
+            ? "練習中のフレーズはありません。保存したフレーズはすべて卒業しました"
+            : "Practiceタブでフレーズを保存すると、ここにBPMの推移が表示されます"}
         </Text>
       ) : (
         <View style={{ gap: 16 }}>

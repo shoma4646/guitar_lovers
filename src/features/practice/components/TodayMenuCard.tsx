@@ -23,8 +23,8 @@ import type { PracticePhrase } from "@/shared/types/models";
 import { cardShadowStyle, cardStyle } from "./cardStyle";
 
 const TODAY_PICK_REASONS: Record<Exclude<TodayMenuPriority, "graduated">, string> = {
-  retry: "前回うまくいかなかったので、同じテンポでもう一度",
-  stale: "しばらく弾いていないフレーズ",
+  retry: "前回はうまくいかなかったので、無理のないテンポでもう一度",
+  stale: "前回は弾けたフレーズ",
   fresh: "まだ記録がありません",
 };
 

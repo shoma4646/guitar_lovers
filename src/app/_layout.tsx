@@ -13,14 +13,19 @@ import * as Notifications from "expo-notifications";
 import { colors } from "@/shared/theme";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { ReminderBridge } from "@/features/reminder/components/ReminderBridge";
+import { REMINDER_DATA_TYPE } from "@/features/reminder/lib/planReminder";
 
+// このハンドラはアプリが前面のときだけ呼ばれる。練習中にリマインドのバナーを出さない
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (notification) => {
+    const isReminder = notification.request.content.data?.type === REMINDER_DATA_TYPE;
+    return {
+      shouldShowBanner: !isReminder,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 const queryClient = new QueryClient();

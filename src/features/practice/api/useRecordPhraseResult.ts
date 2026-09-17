@@ -5,6 +5,7 @@ import {
 } from "@/shared/services/storage";
 import type { PhraseAttempt } from "@/shared/types/models";
 import { showMutationError } from "@/shared/lib/showMutationError";
+import { syncReminder } from "@/features/reminder/services/reminderScheduler";
 import { phraseAttemptsQueryKey } from "./usePhraseAttempts";
 import { practicePhrasesQueryKey } from "./usePracticePhrases";
 
@@ -19,6 +20,7 @@ export function useRecordPhraseResult() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: phraseAttemptsQueryKey });
       queryClient.invalidateQueries({ queryKey: practicePhrasesQueryKey });
+      void syncReminder();
     },
     onError: (error) => {
       if (error instanceof PhraseNotFoundError) {

@@ -1,9 +1,5 @@
 import { buildReminderMessage, pickReminderPhrase } from "../reminderMessage";
-import {
-  computeTodayTargetBpm,
-  getLatestAttempt,
-  resolveCurrentBpm,
-} from "@/features/practice/lib/progression";
+import { buildTodayMenu, pickTodayPick } from "@/features/practice/lib/progression";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
 function sep(day: number, hour: number, minute = 0): string {
@@ -51,7 +47,7 @@ describe("pickReminderPhrase", () => {
     expect(pickReminderPhrase([archived, active], attempts)?.id).toBe("active");
   });
 
-  it("最後に記録を付けたフレーズを選ぶ", () => {
+  it("今日の練習メニューの「今日の1本」と同じフレーズを選ぶ", () => {
     const phrases = [
       makePhrase({ id: "a" }),
       makePhrase({ id: "b" }),
@@ -62,13 +58,24 @@ describe("pickReminderPhrase", () => {
       makeAttempt({ id: "2", phraseId: "b", date: sep(15, 20) }),
     ];
 
-    expect(pickReminderPhrase(phrases, attempts)?.id).toBe("b");
+    expect(pickReminderPhrase(phrases, attempts)?.id).toBe(
+      pickTodayPick(buildTodayMenu(phrases, attempts))?.phrase.id,
+    );
+    expect(pickReminderPhrase(phrases, attempts)?.id).toBe("a");
   });
 
-  it("どれにも記録が無ければ最後に作成したフレーズを選ぶ", () => {
+  it("卒業済みのフレーズは記録が新しくても選ばない", () => {
+    const graduated = makePhrase({ id: "done", currentBpm: 120, targetBpm: 120 });
+    const fresh = makePhrase({ id: "fresh" });
+    const attempts = [makeAttempt({ phraseId: "done", bpm: 120, date: sep(16, 20) })];
+
+    expect(pickReminderPhrase([graduated, fresh], attempts)?.id).toBe("fresh");
+  });
+
+  it("全て卒業済みなら最後に作成したフレーズを選ぶ", () => {
     const phrases = [
-      makePhrase({ id: "a", createdAt: sep(10, 9) }),
-      makePhrase({ id: "b", createdAt: sep(12, 9) }),
+      makePhrase({ id: "a", currentBpm: 120, targetBpm: 120, createdAt: sep(10, 9) }),
+      makePhrase({ id: "b", currentBpm: 120, targetBpm: 120, createdAt: sep(12, 9) }),
     ];
 
     expect(pickReminderPhrase(phrases, [])?.id).toBe("b");
@@ -155,14 +162,11 @@ describe("buildReminderMessage", () => {
       makeAttempt({ id: "1", date: sep(14, 20), bpm: 85, result: "ok" }),
       makeAttempt({ id: "2", date: sep(16, 20), bpm: 85, result: "ok" }),
     ];
-    const expected = computeTodayTargetBpm(
-      resolveCurrentBpm(phrase.currentBpm, attempts),
-      getLatestAttempt(attempts),
-      phrase.targetBpm,
-    );
+    const menuTarget = buildTodayMenu([phrase], attempts)[0].todayTargetBpm;
 
     const { body } = buildReminderMessage({ phrase, phraseAttempts: attempts, fireAt });
 
-    expect(body).toContain(`今日は${expected}に挑戦`);
+    expect(menuTarget).toBe(90);
+    expect(body).toContain("今日は90に挑戦");
   });
 });

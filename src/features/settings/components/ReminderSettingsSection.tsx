@@ -98,7 +98,7 @@ export function ReminderSettingsSection() {
             練習リマインド
           </Text>
           <Text className="text-label-sm" style={{ color: colors.onSurfaceVariant }}>
-            前回のBPMと今日の目標を1日1回お知らせします
+            前回のBPMと今日の目標をお知らせします。次回の予約はアプリを開いたときに更新されます
           </Text>
         </View>
         <Switch
