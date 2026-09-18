@@ -1,4 +1,4 @@
-import { DEFAULT_TARGET_REPS, usePracticeStore } from "../practice";
+import { DEFAULT_TARGET_REPS, extractVideoId, usePracticeStore } from "../practice";
 import type { PracticePhrase } from "@/shared/types/models";
 
 const initialState = usePracticeStore.getState();
@@ -22,6 +22,36 @@ function makePhrase(overrides: Partial<PracticePhrase> = {}): PracticePhrase {
 
 beforeEach(() => {
   usePracticeStore.setState(initialState, true);
+});
+
+describe("extractVideoId", () => {
+  it("youtu.beの短縮URLからIDを抽出する", () => {
+    expect(extractVideoId("https://youtu.be/abcdefghijk?si=xxxx")).toBe("abcdefghijk");
+  });
+
+  it("watch URLからIDを抽出する", () => {
+    expect(extractVideoId("https://www.youtube.com/watch?v=abcdefghijk&t=30s")).toBe(
+      "abcdefghijk",
+    );
+  });
+
+  it("shorts URLからIDを抽出する", () => {
+    expect(extractVideoId("https://www.youtube.com/shorts/abcdefghijk")).toBe("abcdefghijk");
+  });
+
+  it("live URLからIDを抽出する", () => {
+    expect(extractVideoId("https://www.youtube.com/live/abcdefghijk?feature=share")).toBe(
+      "abcdefghijk",
+    );
+  });
+
+  it("生の動画IDをそのまま受け付ける", () => {
+    expect(extractVideoId("abcdefghijk")).toBe("abcdefghijk");
+  });
+
+  it("不正なURLはnullを返す", () => {
+    expect(extractVideoId("https://example.com/not-a-video")).toBeNull();
+  });
 });
 
 describe("startPhrasePractice", () => {

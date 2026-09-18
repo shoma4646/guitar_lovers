@@ -1,4 +1,10 @@
 /**
+ * YouTube埋め込みのorigin。WebViewのbaseUrlとplayerVars.originの両方に使う
+ * （baseUrl無しだとWKWebViewのoriginがnullになり、YouTubeがError 153で埋め込みを拒否するため）
+ */
+export const YOUTUBE_EMBED_ORIGIN = "https://shoma4646.github.io";
+
+/**
  * WebViewに表示するYouTube IFrame APIラッパーHTMLを生成する。
  * postMessageで現在再生位置・duration・コマンド受信を扱う。
  * @param videoId - YouTube動画ID
@@ -40,7 +46,7 @@ export function buildYouTubeHtml(
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
         videoId: '${safeId}',
-        playerVars: { playsinline: 1, start: ${safeStart}, autoplay: 1 },
+        playerVars: { playsinline: 1, start: ${safeStart}, autoplay: 1, origin: '${YOUTUBE_EMBED_ORIGIN}' },
         events: {
           onReady: function(e) {
             e.target.setPlaybackRate(${safeRate});

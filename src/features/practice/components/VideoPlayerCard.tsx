@@ -8,7 +8,7 @@
 import { forwardRef } from "react";
 import { View, StyleSheet, Dimensions } from "react-native";
 import WebView from "react-native-webview";
-import { buildYouTubeHtml } from "@/features/practice/lib/youtubeHtml";
+import { buildYouTubeHtml, YOUTUBE_EMBED_ORIGIN } from "@/features/practice/lib/youtubeHtml";
 import { cardShadowStyle } from "./cardStyle";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -37,7 +37,11 @@ export const VideoPlayerCard = forwardRef<WebView, Props>(
       >
         <WebView
           ref={ref}
-          source={{ html: buildYouTubeHtml(videoId, startSeconds, initialRate) }}
+          // baseUrl無しだとWKWebViewのoriginがnullになりYouTubeが埋め込みを拒否する
+          source={{
+            html: buildYouTubeHtml(videoId, startSeconds, initialRate),
+            baseUrl: YOUTUBE_EMBED_ORIGIN,
+          }}
           style={styles.webView}
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}

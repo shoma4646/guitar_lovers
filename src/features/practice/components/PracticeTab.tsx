@@ -57,6 +57,8 @@ function describePlayerError(code: number): string {
       return "この動画は埋め込み再生が許可されていません";
     case 100:
       return "動画が見つかりません（削除・非公開の可能性）";
+    case 153:
+      return "動画の埋め込み設定でエラーが発生しました。アプリを更新してもう一度お試しください";
     case 2:
       return "動画IDが正しくありません。URLを確認してください";
     case 5:
