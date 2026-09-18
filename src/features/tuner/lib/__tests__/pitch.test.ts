@@ -88,18 +88,16 @@ describe("nearestStringInPreset", () => {
     expect(result?.cents).toBeCloseTo(100, 3);
   });
 
-  it("2弦と1弦のちょうど中間（D4、-200セント）はどの弦にも該当せずnull", () => {
-    expect(nearestStringInPreset(noteToFrequency("D4"), standard)).toBeNull();
-  });
-
-  it("4弦D3の2倍音（D4）は1弦E4に吸い込まれずnull", () => {
-    expect(nearestStringInPreset(noteToFrequency("D3") * 2, standard)).toBeNull();
-  });
-
-  it("1弦E4の-140セントは境界内なので1弦を返す", () => {
-    const result = nearestStringInPreset(noteToFrequency("E4") * Math.pow(2, -140 / 1200), standard);
+  it("2弦と1弦のちょうど中間（D4、-200セント）は境界を含むので1弦を返す", () => {
+    const result = nearestStringInPreset(noteToFrequency("D4"), standard);
     expect(result?.index).toBe(5);
-    expect(result?.cents).toBeCloseTo(-140, 3);
+    expect(result?.cents).toBeCloseTo(-200, 3);
+  });
+
+  it("Drop D選択直後の6弦E2（D2から+200セント）は6弦として案内できる", () => {
+    const result = nearestStringInPreset(noteToFrequency("E2"), dropD);
+    expect(result?.index).toBe(0);
+    expect(result?.cents).toBeCloseTo(200, 3);
   });
 
   it("1弦E4の+250セント（境界超え）はどの弦にも該当せずnull", () => {

@@ -15,7 +15,7 @@ describe("createPitchSmoother", () => {
   it("直近windowSize件の中央値を返す", () => {
     const smoother = createPitchSmoother({ windowSize: 3 });
     smoother.push(100, 1);
-    smoother.push(200, 1);
+    smoother.push(150, 1);
     expect(smoother.push(110, 1)).toBe(110);
     expect(smoother.push(105, 1)).toBe(110);
   });
@@ -49,6 +49,24 @@ describe("createPitchSmoother", () => {
     expect(smoother.push(0, 0)).toBeNull();
     expect(smoother.push(220, 1)).toBe(220);
     expect(smoother.push(225, 1)).toBe(222.5);
+  });
+
+  it("直前の中央値からちょうど1オクターブ上へ飛んだ値は無効として直前値を保持する", () => {
+    const smoother = createPitchSmoother({ maxMisses: 3, windowSize: 3 });
+    smoother.push(196, 1);
+    smoother.push(196, 1);
+    expect(smoother.push(392, 1)).toBe(196);
+    expect(smoother.push(391, 1)).toBe(196);
+    expect(smoother.push(393, 1)).toBeNull();
+  });
+
+  it("オクターブ以外の跳躍（別の弦へ移った）は通常どおり採用する", () => {
+    const smoother = createPitchSmoother({ windowSize: 3 });
+    smoother.push(196, 1);
+    smoother.push(196, 1);
+    smoother.push(247, 1);
+    smoother.push(247, 1);
+    expect(smoother.push(247, 1)).toBe(247);
   });
 
   it("既定値では信頼度0.9未満と60〜1200Hz外を捨て、3回連続で無音に戻る", () => {

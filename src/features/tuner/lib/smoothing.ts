@@ -15,6 +15,11 @@ export interface PitchSmootherOptions {
   maxHz: number;
   /** 連続してこの回数捨てたら無音とみなして窓をリセットする */
   maxMisses: number;
+  /**
+   * 直前の中央値からちょうど1オクターブ（±このセント数）飛んだ値を無効とみなす。
+   * 減衰末期に基音が消えて2倍音へ飛ぶ誤検出を、無音扱いに落とすため
+   */
+  octaveRejectCents: number;
 }
 
 export interface PitchSmoother {
@@ -30,7 +35,14 @@ export const DEFAULT_SMOOTHER_OPTIONS: PitchSmootherOptions = {
   minHz: 60,
   maxHz: 1200,
   maxMisses: 3,
+  octaveRejectCents: 50,
 };
+
+function isOctaveJump(hz: number, window: number[], toleranceCents: number): boolean {
+  if (window.length === 0) return false;
+  const cents = Math.abs(1200 * Math.log2(hz / median(window)));
+  return Math.abs(cents - 1200) <= toleranceCents;
+}
 
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
@@ -54,7 +66,8 @@ export function createPitchSmoother(
         Number.isFinite(hz) &&
         clarity >= opts.minClarity &&
         hz >= opts.minHz &&
-        hz <= opts.maxHz;
+        hz <= opts.maxHz &&
+        !isOctaveJump(hz, window, opts.octaveRejectCents);
 
       if (!isValid) {
         misses += 1;
