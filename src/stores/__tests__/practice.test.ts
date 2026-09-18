@@ -35,6 +35,12 @@ describe("extractVideoId", () => {
     );
   });
 
+  it("vが先頭でないwatch URLからもIDを抽出する", () => {
+    expect(
+      extractVideoId("https://m.youtube.com/watch?app=desktop&v=abcdefghijk&feature=share"),
+    ).toBe("abcdefghijk");
+  });
+
   it("shorts URLからIDを抽出する", () => {
     expect(extractVideoId("https://www.youtube.com/shorts/abcdefghijk")).toBe("abcdefghijk");
   });
