@@ -35,8 +35,8 @@ import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { usePitchDetector } from "@/features/tuner/hooks/usePitchDetector";
 import { usePracticeStore } from "@/stores/practice";
 import {
+  frequencyToNote,
   nearestStringInPreset,
-  noteToFrequency,
 } from "@/features/tuner/lib/pitch";
 
 /** 各弦の表示番号（6弦〜1弦） */
@@ -70,7 +70,11 @@ function formatCents(cents: number): string {
 export function TunerScreen() {
   const [selectedPreset, setSelectedPreset] =
     useState<TuningPresetKey>("standard");
-  const [focusedStringIndex, setFocusedStringIndex] = useState(0);
+  const [focusedStringIndex, setFocusedStringIndex] = useState<number | null>(
+    null,
+  );
+  /** 検出音がプリセット内のどの弦にも該当しないときの実際の音名（例: "G4"） */
+  const [freeNoteLabel, setFreeNoteLabel] = useState<string | null>(null);
   const [cents, setCents] = useState(0);
   const [tunedStrings, setTunedStrings] = useState<boolean[]>(UNTUNED_STRINGS);
 
@@ -101,11 +105,23 @@ export function TunerScreen() {
 
   // 検出周波数を最寄りの弦とセント差へ変換し、許容範囲内が続いた弦をチューニング済みにする
   useEffect(() => {
-    if (hz === null) {
+    const nearest = hz === null ? null : nearestStringInPreset(hz, preset.notes);
+
+    if (nearest === null) {
       inTuneSinceRef.current = null;
+      setFocusedStringIndex(null);
+      setCents(0);
+      lastNoteRef.current = null;
+      if (hz === null) {
+        setFreeNoteLabel(null);
+      } else {
+        const detected = frequencyToNote(hz);
+        setFreeNoteLabel(`${detected.noteName}${detected.octave}`);
+      }
       return;
     }
-    const nearest = nearestStringInPreset(hz, preset.notes);
+
+    setFreeNoteLabel(null);
     setFocusedStringIndex(nearest.index);
     setCents(nearest.cents);
 
@@ -152,7 +168,8 @@ export function TunerScreen() {
       }
       setSelectedPreset(key);
       setTunedStrings(UNTUNED_STRINGS);
-      setFocusedStringIndex(0);
+      setFocusedStringIndex(null);
+      setFreeNoteLabel(null);
       setCents(0);
       lastNoteRef.current = null;
     },
@@ -161,9 +178,13 @@ export function TunerScreen() {
 
   const meterRatio = centsToMeterRatio(isActive ? cents : 0);
   const meterColor = getMeterColor(cents);
-  const isTuned = isActive && hz !== null && Math.abs(cents) <= TUNING_THRESHOLD_CENTS;
-  const displayNote = preset.notes[focusedStringIndex] ?? "E2";
-  const displayHz = hz ?? noteToFrequency(displayNote);
+  const isTuned =
+    isActive && focusedStringIndex !== null && Math.abs(cents) <= TUNING_THRESHOLD_CENTS;
+  const displayNote =
+    focusedStringIndex !== null
+      ? preset.notes[focusedStringIndex]
+      : (freeNoteLabel ?? "--");
+  const displayHz = hz;
 
   // -50..+50 cents → -45deg..+45deg の針回転
   const needleAngleDeg = (meterRatio - 0.5) * 90;
@@ -223,7 +244,7 @@ export function TunerScreen() {
             >
               {/* Frequency Display */}
               <Text className="text-on-surface-variant text-[14px] font-medium" style={styles.hzText}>
-                {displayHz.toFixed(1)} Hz
+                {displayHz !== null ? `${displayHz.toFixed(1)} Hz` : "-- Hz"}
               </Text>
 
               {/* Central Note */}
@@ -272,7 +293,9 @@ export function TunerScreen() {
                 style={{ color: meterColor, fontVariant: ["tabular-nums"] }}
                 accessibilityLiveRegion="polite"
               >
-                {isActive && hz !== null ? formatCents(cents) : "-- cents"}
+                {isActive && focusedStringIndex !== null
+                  ? formatCents(cents)
+                  : "-- cents"}
               </Text>
 
               {/* Decoration glows */}
@@ -283,7 +306,8 @@ export function TunerScreen() {
             {/* String Selectors */}
             <View className="w-full mt-xl flex-row" style={{ gap: 12 }}>
               {preset.notes.map((note, idx) => {
-                const isFocused = isActive && hz !== null && idx === focusedStringIndex;
+                const isFocused =
+                  isActive && focusedStringIndex !== null && idx === focusedStringIndex;
                 const isTunedString = tunedStrings[idx];
                 const stringNum = STRING_NUMBERS[idx];
                 const displayLabel = idx === 0 ? note.toLowerCase() : note;

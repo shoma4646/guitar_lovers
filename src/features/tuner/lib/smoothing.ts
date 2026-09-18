@@ -60,6 +60,7 @@ export function createPitchSmoother(
         misses += 1;
         if (misses >= opts.maxMisses) {
           window = [];
+          misses = 0;
           return null;
         }
         return window.length > 0 ? median(window) : null;
