@@ -33,6 +33,11 @@ const PREFERRED_SAMPLE_RATE = 44100;
 const PREFERRED_BUFFER_LENGTH = 4096;
 /** stateの更新頻度の上限。短いバッファで来る端末でも再描画を抑える */
 const UI_UPDATE_INTERVAL_MS = 50;
+/**
+ * pitchyがこのRMS振幅（フルスケール1.0）未満のフレームを検出前に捨てる。減衰末期・無音時のオクターブ誤検出を防ぐ。
+ * 実機の減衰カーブで調整する。通常の弾き方で検出が遅れるなら小さく（0.002等）、減衰末期の誤検出が残るなら大きくする
+ */
+export const MIN_VOLUME_RMS = 0.003;
 
 /** 録音セッションを解放し、Practice画面のメトロノームが前提とする再生設定へ戻す */
 function restorePlaybackSession(): void {
@@ -121,10 +126,10 @@ export function usePitchDetector(): PitchDetectorState {
           const pcm = event.buffer.getChannelData(0);
           // 端末によって希望と異なる長さで届くため、実際の長さに合わせて検出器を作り直す
           if (detectorRef.current?.inputLength !== pcm.length) {
-            detectorRef.current = {
-              inputLength: pcm.length,
-              detector: PitchDetector.forFloat32Array(pcm.length),
-            };
+            const detector = PitchDetector.forFloat32Array(pcm.length);
+            // minVolumeDecibelsはパワー比（10^(dB/10)）で振幅に換算されるため、RMSを直接指定する
+            detector.minVolumeAbsolute = MIN_VOLUME_RMS;
+            detectorRef.current = { inputLength: pcm.length, detector };
           }
           const [detectedHz, detectedClarity] =
             detectorRef.current.detector.findPitch(pcm, event.buffer.sampleRate);

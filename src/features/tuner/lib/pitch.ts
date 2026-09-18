@@ -61,11 +61,23 @@ export function frequencyToNote(hz: number): DetectedNote {
   };
 }
 
-/** プリセットの弦の中で周波数に最も近い弦のインデックスとセント差を返す */
+/**
+ * 最寄りの弦からこれ以上離れていたら「どの弦でもない」とみなすセント数。
+ * 隣接弦の最小間隔400セントの半分。Drop D選択直後の6弦（D2から+200セント）を
+ * 案内できるよう境界を含める。2倍音への飛びは平滑化側のオクターブ拒否で防ぐ
+ */
+export const MAX_STRING_DISTANCE_CENTS = 200;
+// ちょうど境界に乗る値（他弦の2倍音や全音差）が浮動小数点誤差で割れないための余裕
+const DISTANCE_EPSILON_CENTS = 1e-6;
+
+/**
+ * プリセットの弦の中で周波数に最も近い弦のインデックスとセント差を返す。
+ * 最寄りの弦でもMAX_STRING_DISTANCE_CENTSを超えて離れている場合はnull（該当弦なし）
+ */
 export function nearestStringInPreset(
   hz: number,
   notes: string[],
-): { index: number; cents: number } {
+): { index: number; cents: number } | null {
   let best = { index: 0, cents: Number.POSITIVE_INFINITY };
   notes.forEach((note, index) => {
     const cents = centsBetween(hz, noteToFrequency(note));
@@ -73,5 +85,5 @@ export function nearestStringInPreset(
       best = { index, cents };
     }
   });
-  return best;
+  return Math.abs(best.cents) > MAX_STRING_DISTANCE_CENTS + DISTANCE_EPSILON_CENTS ? null : best;
 }
