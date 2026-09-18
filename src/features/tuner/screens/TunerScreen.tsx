@@ -249,11 +249,10 @@ export function TunerScreen() {
               <Text
                 className="text-on-surface-variant text-label-sm"
                 style={{ fontVariant: ["tabular-nums"] }}
-                accessibilityLabel="マイク入力レベル"
               >
                 {inputLevelDb !== null && Number.isFinite(inputLevelDb)
-                  ? `入力 ${inputLevelDb.toFixed(0)} dB`
-                  : "入力 -- dB"}
+                  ? `マイク入力 ${inputLevelDb.toFixed(0)} dB`
+                  : "マイク入力 -- dB"}
               </Text>
 
               {/* Central Note */}
