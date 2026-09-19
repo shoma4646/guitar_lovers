@@ -79,7 +79,7 @@ export function TunerScreen() {
   const [tunedStrings, setTunedStrings] = useState<boolean[]>(UNTUNED_STRINGS);
 
   const router = useRouter();
-  const { status, hz, start, stop } = usePitchDetector();
+  const { status, hz, inputLevelDb, start, stop } = usePitchDetector();
   const isActive = status === "listening";
 
   const inTuneSinceRef = useRef<number | null>(null);
@@ -245,6 +245,14 @@ export function TunerScreen() {
               {/* Frequency Display */}
               <Text className="text-on-surface-variant text-[14px] font-medium" style={styles.hzText}>
                 {displayHz !== null ? `${displayHz.toFixed(1)} Hz` : "-- Hz"}
+              </Text>
+              <Text
+                className="text-on-surface-variant text-label-sm"
+                style={{ fontVariant: ["tabular-nums"] }}
+              >
+                {inputLevelDb !== null && Number.isFinite(inputLevelDb)
+                  ? `マイク入力 ${inputLevelDb.toFixed(0)} dB`
+                  : "マイク入力 -- dB"}
               </Text>
 
               {/* Central Note */}

@@ -10,6 +10,7 @@ import { useFocusEffect } from "expo-router";
 import { AudioManager, AudioRecorder } from "react-native-audio-api";
 import { PitchDetector } from "pitchy";
 import { createPitchSmoother } from "@/features/tuner/lib/smoothing";
+import { computeRms, rmsToDbfs } from "@/features/tuner/lib/inputLevel";
 
 export type PitchDetectorStatus =
   | "idle"
@@ -24,6 +25,8 @@ export interface PitchDetectorState {
   hz: number | null;
   /** 直近の検出信頼度（0〜1） */
   clarity: number;
+  /** 直近フレームのマイク入力レベル（dBFS）。停止中はnull */
+  inputLevelDb: number | null;
   start: () => Promise<void>;
   stop: () => Promise<void>;
 }
@@ -34,10 +37,10 @@ const PREFERRED_BUFFER_LENGTH = 4096;
 /** stateの更新頻度の上限。短いバッファで来る端末でも再描画を抑える */
 const UI_UPDATE_INTERVAL_MS = 50;
 /**
- * pitchyがこのRMS振幅（フルスケール1.0）未満のフレームを検出前に捨てる。減衰末期・無音時のオクターブ誤検出を防ぐ。
- * 実機の減衰カーブで調整する。通常の弾き方で検出が遅れるなら小さく（0.002等）、減衰末期の誤検出が残るなら大きくする
+ * pitchyがこのRMS振幅（フルスケール1.0、-66 dBFS）未満のフレームを検出前に捨てる。減衰末期・無音時のオクターブ誤検出を防ぐ。
+ * 0.003では実機のマイク入力が全て捨てられて無反応になった。画面の入力レベル表示で実測してから上げる
  */
-export const MIN_VOLUME_RMS = 0.003;
+export const MIN_VOLUME_RMS = 0.0005;
 
 /** 録音セッションを解放し、Practice画面のメトロノームが前提とする再生設定へ戻す */
 function restorePlaybackSession(): void {
@@ -52,6 +55,7 @@ export function usePitchDetector(): PitchDetectorState {
   const [status, setStatus] = useState<PitchDetectorStatus>("idle");
   const [hz, setHz] = useState<number | null>(null);
   const [clarity, setClarity] = useState(0);
+  const [inputLevelDb, setInputLevelDb] = useState<number | null>(null);
 
   const recorderRef = useRef<AudioRecorder | null>(null);
   // 権限確認のawait中に再度startが呼ばれてレコーダーが二重生成されないよう、同期的に占有する
@@ -81,6 +85,7 @@ export function usePitchDetector(): PitchDetectorState {
     restorePlaybackSession();
     setHz(null);
     setClarity(0);
+    setInputLevelDb(null);
   }, []);
 
   const stop = useCallback(async () => {
@@ -140,6 +145,7 @@ export function usePitchDetector(): PitchDetectorState {
           lastUiUpdateRef.current = now;
           setHz(smoothed);
           setClarity(detectedClarity);
+          setInputLevelDb(rmsToDbfs(computeRms(pcm)));
         },
       );
 
@@ -176,5 +182,5 @@ export function usePitchDetector(): PitchDetectorState {
     };
   }, [stop]);
 
-  return { status, hz, clarity, start, stop };
+  return { status, hz, clarity, inputLevelDb, start, stop };
 }
