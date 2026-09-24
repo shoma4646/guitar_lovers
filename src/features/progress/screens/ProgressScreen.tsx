@@ -21,6 +21,7 @@ import { semantic } from "@/shared/theme/semantic";
 import type { PracticeSession, PracticeStats } from "@/shared/types/models";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { usePracticeStore } from "@/stores/practice";
+import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { usePracticeSessions } from "@/features/progress/api/usePracticeSessions";
 import { useSavePracticeSession } from "@/features/progress/api/useSavePracticeSession";
 import { useDeletePracticeSession } from "@/features/progress/api/useDeletePracticeSession";
@@ -44,6 +45,8 @@ type PhraseKind = "active" | "graduated";
 export function ProgressScreen() {
   const router = useRouter();
   const startPhrasePractice = usePracticeStore((s) => s.startPhrasePractice);
+  const activePractice = usePracticeStore((s) => s.activePhrasePractice);
+  const confirmSwitch = useConfirmPhraseSwitch();
 
   const { data: sessions = [] } = usePracticeSessions();
   const { data: attempts = [] } = usePhraseAttempts();
@@ -95,11 +98,21 @@ export function ProgressScreen() {
   }, [stats]);
 
   const handleOpenToday = useCallback(() => {
-    if (todayPick) {
-      startPhrasePractice(todayPick.phrase, todayPick.todayTargetBpm);
+    if (!todayPick) {
+      router.push("/(tabs)/practice");
+      return;
     }
-    router.push("/(tabs)/practice");
-  }, [todayPick, startPhrasePractice, router]);
+    // すでに同じフレーズを練習中なら、completedReps/startedAtをリセットしないよう
+    // startPhrasePracticeを呼ばずに練習タブへ戻るだけにする
+    if (activePractice?.phrase.id === todayPick.phrase.id) {
+      router.push("/(tabs)/practice");
+      return;
+    }
+    confirmSwitch(() => {
+      startPhrasePractice(todayPick.phrase, todayPick.todayTargetBpm);
+      router.push("/(tabs)/practice");
+    });
+  }, [todayPick, activePractice, confirmSwitch, startPhrasePractice, router]);
 
   const segmentItems: SegmentedItem<PhraseKind>[] = [
     { value: "active", label: "上達中", suffix: `${inProgress.length}` },

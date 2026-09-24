@@ -28,12 +28,15 @@ export type TodayProgress = {
  * @param now - 判定基準の現在日時
  */
 export function resolveTodayProgress(
-  phrase: Pick<PracticePhrase, "currentBpm" | "targetBpm">,
+  phrase: Pick<PracticePhrase, "currentBpm" | "targetBpm" | "initialBpm">,
   attempts: PhraseAttempt[],
   now: Date,
 ): TodayProgress {
   const attemptsBeforeToday = attempts.filter((a) => !isSameLocalDay(new Date(a.date), now));
-  const currentBpmBeforeToday = resolveCurrentBpm(phrase.currentBpm, attemptsBeforeToday);
+  // phrase.currentBpmは当日のok記録で既に書き換わっていることがあるため、そのまま起点にすると
+  // 当日の結果が「当日開始前の到達BPM」に混入する。保存時のBPM（initialBpm）を起点に、
+  // 当日より前のok記録だけから到達BPMを再構築する
+  const currentBpmBeforeToday = resolveCurrentBpm(phrase.initialBpm ?? phrase.currentBpm, attemptsBeforeToday);
   const targetBeforeToday = computeTodayTargetBpm(
     currentBpmBeforeToday,
     getLatestAttempt(attemptsBeforeToday),

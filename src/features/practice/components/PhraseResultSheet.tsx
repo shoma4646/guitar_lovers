@@ -15,7 +15,7 @@ import { ProgressBar } from "@/shared/components/atoms/ProgressBar";
 import { colors, radius } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
 import { formatDuration } from "@/features/practice/lib/formatters";
-import { stepBpm } from "@/features/practice/lib/tempo";
+import { computeTodayTargetBpm } from "@/features/practice/lib/progression";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import type { PhraseProgressSummary } from "@/features/progress/lib/phraseProgress";
 
@@ -58,20 +58,27 @@ export function PhraseResultSheet({
   onSubmit,
 }: Props) {
   const [result, setResult] = useState<Result>("ok");
-  /**
-   * 次回の提案BPM。あくまでこのシート上だけのUI表示で、既存の記録フロー（attempt / フレーズのtargetBpm）には
-   * 保存しない。開いた時点のBPMから見た目上の提案値を計算するだけの値
-   */
-  const [nextTargetBpm, setNextTargetBpm] = useState(bpm);
 
   useEffect(() => {
     if (visible) {
       setResult("ok");
-      setNextTargetBpm(stepBpm(bpm, 5));
     }
-  }, [visible, bpm]);
+  }, [visible]);
 
   if (!phrase) return null;
+
+  /**
+   * 次回の目標BPMの自動プレビュー。保存はしない（保存対象にできる既存フィールドが無いため）。
+   * progression.tsのcomputeTodayTargetBpmを、いま選んでいる結果(○/△/×)とこのBPMをそのまま
+   * 「今回の記録」とみなして呼び出し、実際に記録した場合に決まる値をそのまま表示する
+   */
+  const nextTargetBpm = progress
+    ? computeTodayTargetBpm(
+        result === "ok" ? Math.max(progress.currentBpm, bpm) : progress.currentBpm,
+        { id: "", phraseId: phrase.id, date: "", bpm, result },
+        progress.targetBpm,
+      )
+    : bpm;
 
   const diffFromPrevious = progress ? bpm - progress.currentBpm : 0;
   const bpmToGraduate = progress ? Math.max(0, progress.targetBpm - bpm) : 0;
@@ -166,13 +173,16 @@ export function PhraseResultSheet({
           decrementDisabled={completedReps === 0}
         />
 
-        <Stepper
-          label="次回の目標"
-          value={nextTargetBpm}
-          suffix="BPM"
-          onDecrement={() => setNextTargetBpm((v) => stepBpm(v, -1))}
-          onIncrement={() => setNextTargetBpm((v) => stepBpm(v, 1))}
-        />
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: colors.onSurfaceVariant }}>
+            次回の目標（自動）
+          </Text>
+          <Text
+            style={{ fontSize: 16, fontWeight: "800", color: colors.onSurface, fontVariant: ["tabular-nums"] }}
+          >
+            {nextTargetBpm} BPM
+          </Text>
+        </View>
 
         <View style={{ gap: 8 }}>
           <Button

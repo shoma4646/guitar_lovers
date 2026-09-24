@@ -3,7 +3,7 @@ import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
 // TZは jest.setup.js で Asia/Tokyo に固定している
 
-type Phrase = Pick<PracticePhrase, "currentBpm" | "targetBpm">;
+type Phrase = Pick<PracticePhrase, "currentBpm" | "targetBpm" | "initialBpm">;
 
 function attempt(overrides: Partial<PhraseAttempt> = {}): PhraseAttempt {
   return {
@@ -143,5 +143,25 @@ describe("resolveTodayProgress", () => {
 
     expect(progress.todayBestOkBpm).toBe(90);
     expect(progress.reached).toBe(true);
+  });
+
+  it("当日のok記録でphrase.currentBpmが既に書き換わっていても、当日開始前の目標はinitialBpmから再構築する", () => {
+    // 前日までの到達80（initialBpm70から前日okで到達）・今日の目標85のとき、
+    // 今日83でokしてphrase.currentBpmが83に更新されていても、目標は85のまま・未達成
+    const phrase: Phrase = { currentBpm: 83, targetBpm: 120, initialBpm: 70 };
+    const now = new Date("2026-09-24T12:00:00.000Z");
+    const yesterday = attempt({
+      id: "yesterday",
+      date: "2026-09-23T10:00:00.000Z",
+      result: "ok",
+      bpm: 80,
+    });
+    const today = attempt({ id: "today", date: "2026-09-24T10:00:00.000Z", result: "ok", bpm: 83 });
+
+    const progress = resolveTodayProgress(phrase, [yesterday, today], now);
+
+    expect(progress.targetBeforeToday).toBe(85);
+    expect(progress.todayBestOkBpm).toBe(83);
+    expect(progress.reached).toBe(false);
   });
 });

@@ -21,7 +21,7 @@ type Props = {
   onClose: () => void;
 };
 
-type SheetState = "idle" | "checking" | "error";
+type SheetState = "idle" | "error";
 type ErrorKind = "url" | "embed";
 
 /** シート内に表示する最近開いた動画の件数 */
@@ -66,13 +66,14 @@ export function AddVideoSheet({ visible, onClose }: Props) {
 
   const handleSubmit = () => {
     if (!url.trim()) return;
-    setState("checking");
     const videoId = extractVideoId(url.trim());
     if (!videoId) {
       setState("error");
       setErrorKind("url");
       return;
     }
+    // openVideoはconfirmSwitch経由のAlertを挟むことがあり、Alert表示中はネイティブモーダルが
+    // 入力を遮るため、ここで別途「送信中」の無効化状態を持つ必要はない
     openVideo(videoId, `YouTube動画 (${videoId})`);
   };
 
@@ -107,11 +108,7 @@ export function AddVideoSheet({ visible, onClose }: Props) {
             }}
             accessibilityLabel="YouTube URL入力"
           />
-          <Button
-            label="読み込む"
-            onPress={handleSubmit}
-            disabled={state === "checking"}
-          />
+          <Button label="読み込む" onPress={handleSubmit} />
         </View>
 
         {state === "error" && errorKind !== null && (

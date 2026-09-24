@@ -258,22 +258,28 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     [loadedVideoId, videoTitle, abLoop, playbackRate, savePhrase, promptReminderPermission],
   );
 
+  // 確認ダイアログを経由せずフレーズ練習を開始する。「記録して次の1本へ」など、直前に
+  // recordResultAsyncで保存済みで未保存の記録が無いことが分かっている遷移から使う
+  const startPhraseDirectly = useCallback(
+    (phrase: PracticePhrase, todayTargetBpm: number) => {
+      startPhrasePractice(phrase, todayTargetBpm);
+      // 読み込み前の一覧はScrollViewだが、読み込み後は同じ画面のまま切り替わるため
+      // 一覧を開いていた場合に備えて先頭へ戻しておく（読み込み後は無関係でno-op）
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    },
+    [startPhrasePractice],
+  );
+
   const handleStartPhrase = useCallback(
     (phrase: PracticePhrase, todayTargetBpm: number) => {
-      const start = () => {
-        startPhrasePractice(phrase, todayTargetBpm);
-        // 読み込み前の一覧はScrollViewだが、読み込み後は同じ画面のまま切り替わるため
-        // 一覧を開いていた場合に備えて先頭へ戻しておく（読み込み後は無関係でno-op）
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-      };
       // 今練習中のフレーズを選び直しただけなら確認不要
       if (activePractice?.phrase.id === phrase.id) {
-        start();
+        startPhraseDirectly(phrase, todayTargetBpm);
         return;
       }
-      confirmSwitch(start);
+      confirmSwitch(() => startPhraseDirectly(phrase, todayTargetBpm));
     },
-    [activePractice, confirmSwitch, startPhrasePractice],
+    [activePractice, confirmSwitch, startPhraseDirectly],
   );
 
   const handleFinishPractice = useCallback(() => {
@@ -288,6 +294,17 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     () => buildTodayMenu(allPhrases, allPhraseAttempts),
     [allPhrases, allPhraseAttempts],
   );
+
+  // 卒業済みに加え、当日すでに目標へ到達したフレーズも除いた「今日まだ残っている」メニュー。
+  // ヘッダーの「残りN本」表示と「次の1本へ」の候補選びの両方をこの1つの集合に揃える
+  const openMenuEntries = useMemo(() => {
+    const now = new Date();
+    return todayMenu.filter((entry) => {
+      if (entry.priority === "graduated") return false;
+      const phraseAttempts = allPhraseAttempts.filter((a) => a.phraseId === entry.phrase.id);
+      return !resolveTodayProgress(entry.phrase, phraseAttempts, now).reached;
+    });
+  }, [todayMenu, allPhraseAttempts]);
 
   const handleSubmitResult = useCallback(
     async ({ result }: { result: "ok" | "partial" | "ng" }, action: "next" | "finish") => {
@@ -324,11 +341,13 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           graduatePhrase({ id: phrase.id, graduatedAt });
         }
         setShowResultSheet(false);
+        // 保存済みなので、次のフレーズへ進む前に完了させる。先に完了させないと、直後の
+        // 遷移がconfirmSwitchの「未保存の記録」として誤検知したり、再送時に同じattempt IDを
+        // 使い回して今回の記録を上書きしてしまう
+        setActivePractice(null);
 
         if (action === "next") {
-          const nextEntry = todayMenu.find(
-            (entry) => entry.phrase.id !== phrase.id && entry.priority !== "graduated",
-          );
+          const nextEntry = openMenuEntries.find((entry) => entry.phrase.id !== phrase.id);
           if (nextEntry) {
             const nextPhraseAttempts = allPhraseAttempts.filter(
               (a) => a.phraseId === nextEntry.phrase.id,
@@ -336,11 +355,10 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
             // TodayPhraseRows等と同じ「今日の記録を除いた目標」に揃える（buildTodayMenuの
             // todayTargetBpmは当日の記録を含むため、そのまま使うと導線ごとに値がずれる）
             const { targetBeforeToday } = resolveTodayProgress(nextEntry.phrase, nextPhraseAttempts, new Date());
-            handleStartPhrase(nextEntry.phrase, targetBeforeToday);
-            return;
+            // 直前に保存が成功しており未保存の記録は無いため、確認ダイアログを経由せず開始する
+            startPhraseDirectly(nextEntry.phrase, targetBeforeToday);
           }
         }
-        setActivePractice(null);
       } finally {
         setIsSubmittingResult(false);
       }
@@ -354,8 +372,8 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       setActivePractice,
       allPhraseAttempts,
       metronomeBpm,
-      todayMenu,
-      handleStartPhrase,
+      openMenuEntries,
+      startPhraseDirectly,
     ],
   );
 
@@ -433,7 +451,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       }
     : null;
 
-  const remainingCount = todayMenu.filter((entry) => entry.priority !== "graduated").length;
+  const remainingCount = openMenuEntries.length;
   const headerTitle = activePractice?.phrase.name ?? (videoTitle || "動画を再生中");
   const headerSubtitle = activePractice ? `今日の1本・残り${remainingCount}本` : null;
 
