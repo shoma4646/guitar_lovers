@@ -10,6 +10,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as Notifications from "expo-notifications";
+import { ReducedMotionConfig, ReduceMotion } from "react-native-reanimated";
 import { colors } from "@/shared/theme";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { ReminderBridge } from "@/features/reminder/components/ReminderBridge";
@@ -34,6 +35,7 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
+        <ReducedMotionConfig mode={ReduceMotion.System} />
         <StatusBar style="dark" backgroundColor={colors.surface} />
         <Stack
           screenOptions={{
