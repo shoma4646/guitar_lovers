@@ -1,51 +1,67 @@
 /**
- * 進捗画面（Stitch modern_2 風のレイアウトを踏襲）
+ * 進捗画面
  *
- * - AppBar: プロフィール + "練習の記録" + settings
- * - フレーズの上達（BPM推移）: 保存済みフレーズがある場合のみ表示、最上段の主役
- * - 統計: 主指標「今週の練習日数」の大カード + 今週の時間 / 累計時間 / 回数の補助カード
- * - WEEKLY RHYTHM バーチャート
- * - RECENT SESSIONS リスト
- * - FAB（右下に追加ボタン）
+ * iPhone 16 Pro で縦スクロールなしの1画面に収める構成:
+ * ヘッダー(最近の記録/シェア/設定) → 今週のカード（練習日数+連続日数+週バー）
+ * → 上達中/卒業のセグメント → フレーズ一覧（最大4行） → 今日の1本を開くボタン。
+ * 手動記録の追加・全件表示はシートへ逃がす。
  */
 
-import React, { useState, useCallback, useMemo } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  Share,
-  StyleSheet,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useCallback, useMemo, useState } from "react";
+import { View, Text, Share, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors, shadows } from "@/shared/theme";
+import { IconButton } from "@/shared/components/atoms/IconButton";
+import { Button } from "@/shared/components/atoms/Button";
+import { SegmentedControl, type SegmentedItem } from "@/shared/components/atoms/SegmentedControl";
+import { Card } from "@/shared/components/molecules/Card";
+import { ScreenFrame } from "@/shared/components/molecules/ScreenFrame";
+import { colors } from "@/shared/theme";
+import { semantic } from "@/shared/theme/semantic";
 import type { PracticeSession, PracticeStats } from "@/shared/types/models";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
+import { usePracticeStore } from "@/stores/practice";
 import { usePracticeSessions } from "@/features/progress/api/usePracticeSessions";
 import { useSavePracticeSession } from "@/features/progress/api/useSavePracticeSession";
 import { useDeletePracticeSession } from "@/features/progress/api/useDeletePracticeSession";
+import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
+import { buildTodayMenu, pickTodayPick } from "@/features/practice/lib/progression";
 import { calcStats } from "@/features/progress/lib/calcStats";
-import { formatDurationLong } from "@/features/progress/lib/formatters";
-import { StatCard } from "@/features/progress/components/StatCard";
+import { usePhraseProgressSummaries } from "@/features/progress/hooks/usePhraseProgressSummaries";
 import { WeekBarChart } from "@/features/progress/components/WeekBarChart";
-import { SessionRow } from "@/features/progress/components/SessionRow";
 import { AddSessionModal } from "@/features/progress/components/AddSessionModal";
 import { PhraseProgressList } from "@/features/progress/components/PhraseProgressList";
 import { GraduatedPhraseList } from "@/features/progress/components/GraduatedPhraseList";
+import { RecentSessionsSheet } from "@/features/progress/components/RecentSessionsSheet";
+import { AllPhrasesProgressSheet } from "@/features/progress/components/AllPhrasesProgressSheet";
+
+/** 画面本体で表示するフレーズ一覧の上限行数（超過時は最終行が「他N本を見る」になる） */
+const LIST_MAX_ROWS = 4;
+
+type PhraseKind = "active" | "graduated";
 
 export function ProgressScreen() {
+  const router = useRouter();
+  const startPhrasePractice = usePracticeStore((s) => s.startPhrasePractice);
+
   const { data: sessions = [] } = usePracticeSessions();
   const { data: attempts = [] } = usePhraseAttempts();
+  const { data: phrases = [] } = usePracticePhrases();
   const { mutateAsync: saveSession } = useSavePracticeSession();
   const { mutateAsync: deleteSession } = useDeletePracticeSession();
+  const { inProgress, graduated } = usePhraseProgressSummaries();
+
+  const [phraseKind, setPhraseKind] = useState<PhraseKind>("active");
+  const [showRecentSheet, setShowRecentSheet] = useState(false);
+  const [showAllPhrasesSheet, setShowAllPhrasesSheet] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const stats = useMemo<PracticeStats>(
-    () => calcStats(sessions, attempts),
-    [sessions, attempts],
+  const stats = useMemo<PracticeStats>(() => calcStats(sessions, attempts), [sessions, attempts]);
+
+  const todayPick = useMemo(
+    () => pickTodayPick(buildTodayMenu(phrases, attempts)),
+    [phrases, attempts],
   );
 
   const handleDelete = useCallback(
@@ -78,167 +94,230 @@ export function ProgressScreen() {
     }
   }, [stats]);
 
+  const handleOpenToday = useCallback(() => {
+    if (todayPick) {
+      startPhrasePractice(todayPick.phrase, todayPick.todayTargetBpm);
+    }
+    router.push("/(tabs)/practice");
+  }, [todayPick, startPhrasePractice, router]);
+
+  const segmentItems: SegmentedItem<PhraseKind>[] = [
+    { value: "active", label: "上達中", suffix: `${inProgress.length}` },
+    {
+      value: "graduated",
+      label: "卒業",
+      suffix: `${graduated.length}`,
+      suffixColor: semantic.graduated,
+    },
+  ];
+
+  const activeCount = phraseKind === "active" ? inProgress.length : graduated.length;
+  const showMoreCount = activeCount > LIST_MAX_ROWS ? activeCount - (LIST_MAX_ROWS - 1) : 0;
+  const listCap = showMoreCount > 0 ? LIST_MAX_ROWS - 1 : LIST_MAX_ROWS;
+
   return (
     <ErrorBoundary>
-      <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
-        {/* Top App Bar */}
-        <View className="flex-row items-center justify-between px-margin-mobile h-16">
-          <View className="flex-row items-center" style={{ gap: 12 }}>
-            <View className="w-10 h-10 rounded-full bg-surface-container-highest items-center justify-center">
-              <Icon name="school" size={20} color={colors.onSurfaceVariant} />
-            </View>
-            <Text className="font-bold text-headline-lg text-on-surface">
-              練習の記録
-            </Text>
+      <ScreenFrame>
+        {/* ヘッダー */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>
+            進捗
+          </Text>
+          <View style={styles.headerActions}>
+            <IconButton
+              name="history"
+              accessibilityLabel={`最近の記録 ${sessions.length}件`}
+              onPress={() => setShowRecentSheet(true)}
+            />
+            <IconButton
+              name="share"
+              accessibilityLabel="今週の記録をシェア"
+              onPress={handleShare}
+            />
+            <IconButton
+              name="settings"
+              accessibilityLabel="設定を開く"
+              onPress={() => router.push("/settings")}
+            />
           </View>
-          <Pressable
-            onPress={handleShare}
-            className="active:opacity-70"
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="練習記録をシェア"
-          >
-            <Icon name="share" size={22} color={colors.onSurfaceVariant} />
-          </Pressable>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* フレーズの上達（BPM推移） */}
-          <PhraseProgressList />
-          <GraduatedPhraseList />
-
-          {/* Stats: 主指標 + 補助 */}
-          <View style={styles.statsGrid}>
-            <View className="flex-row">
-              <StatCard
-                label="今週の練習日数"
-                value={`${stats.weeklyPracticeDays}/7日`}
-                emphasized
-                caption={stats.streakDays > 0 ? `連続${stats.streakDays}日` : undefined}
-              />
+        {/* 今週のカード */}
+        <Card elevation="low" padding={12}>
+          <View style={styles.weekHeader}>
+            <View>
+              <Text style={styles.weekLabel}>今週の練習日数</Text>
+              <View style={styles.weekValueRow}>
+                <Text style={styles.weekValue} maxFontSizeMultiplier={1.2}>
+                  {stats.weeklyPracticeDays}
+                </Text>
+                <Text style={styles.weekValueSuffix} maxFontSizeMultiplier={1.2}>
+                  / 7日
+                </Text>
+              </View>
             </View>
-            <View className="flex-row" style={{ gap: 12, marginTop: 12 }}>
-              <StatCard
-                label="THIS WEEK"
-                value={formatDurationLong(stats.weeklyDuration)}
-              />
-              <StatCard
-                label="HOURS"
-                value={formatDurationLong(stats.totalDuration)}
-              />
-              <StatCard label="SESSIONS" value={`${stats.totalSessions}`} />
-            </View>
+            {stats.streakDays > 0 ? (
+              <View style={styles.streakBadge} accessibilityLabel={`連続${stats.streakDays}日`}>
+                <Icon name="bolt" size={14} color={semantic.streak} />
+                <Text style={styles.streakText} maxFontSizeMultiplier={1.3}>
+                  {stats.streakDays}日連続
+                </Text>
+              </View>
+            ) : null}
           </View>
-
-          {/* Weekly Rhythm Chart */}
-          <View style={{ marginBottom: 24 }}>
+          <View style={styles.weekChart}>
             <WeekBarChart weeklyPracticedDays={stats.weeklyPracticedDays} />
           </View>
+        </Card>
 
-          {/* Recent Sessions */}
-          <Text
-            className="text-label-sm mb-sm"
-            style={{
-              color: colors.outline,
-              letterSpacing: 1.2,
-              textTransform: "uppercase",
-              fontWeight: "600",
-              paddingHorizontal: 4,
-            }}
-          >
-            RECENT SESSIONS
-          </Text>
-          {sessions.length === 0 ? (
-            <View
-              className="bg-surface-container-lowest items-center"
-              style={[styles.emptyState, shadowStyle]}
-            >
-              <Icon name="music_note" size={40} color={colors.outline} />
-              <Text
-                className="text-headline-lg mt-md"
-                style={{ color: colors.onSurface, fontWeight: "700" }}
-              >
-                練習記録がありません
-              </Text>
-              <Text
-                className="text-body-md mt-xs"
-                style={{ color: colors.onSurfaceVariant, textAlign: "center" }}
-              >
-                右下のボタンから記録を追加してください
-              </Text>
-            </View>
+        {/* 上達中/卒業セグメント */}
+        <SegmentedControl
+          items={segmentItems}
+          value={phraseKind}
+          onChange={setPhraseKind}
+          role="tab"
+          accessibilityLabel="進捗の種類"
+        />
+
+        {/* フレーズ一覧 */}
+        <Card elevation="low" padding={12} style={styles.listCard}>
+          {phraseKind === "active" ? (
+            <PhraseProgressList items={inProgress} maxItems={listCap} />
           ) : (
-            <View style={{ gap: 12 }}>
-              {sessions.map((session) => (
-                <SessionRow
-                  key={session.id}
-                  session={session}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </View>
+            <GraduatedPhraseList items={graduated} maxItems={listCap} />
           )}
-        </ScrollView>
+          {showMoreCount > 0 ? (
+            <Button
+              label={`他${showMoreCount}本を見る`}
+              variant="ghost"
+              size="sm"
+              onPress={() => setShowAllPhrasesSheet(true)}
+              style={styles.showMoreButton}
+            />
+          ) : null}
+        </Card>
 
-        {/* Floating Action Button */}
-        <Pressable
-          onPress={() => setShowAddModal(true)}
-          className="active:scale-90"
-          style={[styles.fab, fabShadow]}
-          accessibilityRole="button"
-          accessibilityLabel="練習を記録する"
-        >
-          <Icon name="add" size={28} color={colors.onPrimary} />
-        </Pressable>
+        {/* 今日の1本 */}
+        <View style={styles.bottomArea}>
+          <Button
+            label={todayPick ? "今日の1本を開く" : "フレーズを追加する"}
+            onPress={handleOpenToday}
+            variant="primary"
+            size="lg"
+            icon={todayPick ? "play_arrow" : "add"}
+            fullWidth
+          />
+          {todayPick ? (
+            <Text style={styles.bottomCaption} numberOfLines={1}>
+              {todayPick.phrase.name}
+            </Text>
+          ) : null}
+        </View>
+
+        <RecentSessionsSheet
+          visible={showRecentSheet}
+          onClose={() => setShowRecentSheet(false)}
+          sessions={sessions}
+          onDelete={handleDelete}
+          onAddPress={() => setShowAddModal(true)}
+        />
+
+        <AllPhrasesProgressSheet
+          visible={showAllPhrasesSheet}
+          onClose={() => setShowAllPhrasesSheet(false)}
+          inProgress={inProgress}
+          graduated={graduated}
+          initialKind={phraseKind}
+        />
 
         <AddSessionModal
           visible={showAddModal}
           onClose={() => setShowAddModal(false)}
           onSave={handleSaveSession}
         />
-      </SafeAreaView>
+      </ScreenFrame>
     </ErrorBoundary>
   );
 }
 
-const shadowStyle = {
-  ...shadows.layered,
-};
-
-const fabShadow = {
-  shadowColor: "#000",
-  shadowOpacity: 0.2,
-  shadowRadius: 16,
-  shadowOffset: { width: 0, height: 6 },
-  elevation: 8,
-};
-
 const styles = StyleSheet.create({
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 120,
-  },
-  statsGrid: {
-    marginBottom: 24,
-  },
-  emptyState: {
-    paddingVertical: 40,
-    paddingHorizontal: 24,
-    borderRadius: 16,
+  header: {
+    height: 44,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
   },
-  fab: {
-    position: "absolute",
-    right: 24,
-    bottom: 100,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  headerTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: "800",
+    color: colors.onSurface,
+  },
+  headerActions: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primary,
+    gap: 4,
+  },
+  weekHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  weekLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.onSurfaceVariant,
+  },
+  weekValueRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 4,
+    marginTop: 4,
+  },
+  weekValue: {
+    fontSize: 44,
+    fontWeight: "800",
+    lineHeight: 48,
+    color: colors.primary,
+    fontVariant: ["tabular-nums"],
+  },
+  weekValueSuffix: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.onSurfaceVariant,
+    marginBottom: 6,
+  },
+  streakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 9999,
+    backgroundColor: colors.secondaryFixed,
+  },
+  streakText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: semantic.streak,
+    fontVariant: ["tabular-nums"],
+  },
+  weekChart: {
+    marginTop: 12,
+  },
+  listCard: {
+    flex: 1,
+  },
+  showMoreButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 0,
+  },
+  bottomArea: {
+    gap: 4,
+  },
+  bottomCaption: {
+    textAlign: "center",
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
   },
 });
