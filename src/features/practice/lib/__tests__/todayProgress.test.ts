@@ -135,6 +135,27 @@ describe("resolveTodayProgress", () => {
     expect(progress.reached).toBe(false);
   });
 
+  it("記録が1件も無いフレーズは保存時のBPMがそのまま今日の目標になる", () => {
+    const phrase: Phrase = { currentBpm: 90, targetBpm: 120 };
+    const now = new Date("2026-09-24T12:00:00.000Z");
+
+    expect(resolveTodayProgress(phrase, [], now)).toEqual({
+      targetBeforeToday: 90,
+      todayBestOkBpm: undefined,
+      reached: false,
+    });
+  });
+
+  it("卒業済みのフレーズでは目標BPMを超えて前進しない", () => {
+    const phrase: Phrase = { currentBpm: 120, targetBpm: 120 };
+    const now = new Date("2026-09-24T12:00:00.000Z");
+    const yesterday = attempt({ id: "y", date: "2026-09-23T10:00:00.000Z", result: "ok", bpm: 120 });
+
+    const progress = resolveTodayProgress(phrase, [yesterday], now);
+
+    expect(progress.targetBeforeToday).toBe(120);
+  });
+
   it("UTCでは同日でもJSTでは別日になる記録は「当日」に含めない", () => {
     const phrase: Phrase = { currentBpm: 90, targetBpm: 120 };
     const now = new Date("2026-09-24T18:00:00.000Z");

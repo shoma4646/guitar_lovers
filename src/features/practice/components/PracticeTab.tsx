@@ -109,6 +109,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const [showResultSheet, setShowResultSheet] = useState(false);
   const [showSavePhrase, setShowSavePhrase] = useState(false);
   const [isSubmittingResult, setIsSubmittingResult] = useState(false);
+  const isSubmittingResultRef = useRef(false);
   const [phraseElapsedSeconds, setPhraseElapsedSeconds] = useState(0);
   const playerError = usePracticeStore((s) => s.playerError);
   const setPlayerError = usePracticeStore((s) => s.setPlayerError);
@@ -308,7 +309,10 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
 
   const handleSubmitResult = useCallback(
     async ({ result }: { result: "ok" | "partial" | "ng" }, action: "next" | "finish") => {
-      if (!activePractice || isSubmittingResult) return;
+      // stateの更新は次のレンダーまで反映されないため、同一イベントループ内の二度押しは
+      // refで止める。押し分けられた2つのボタンから同時に走るのを防ぐ
+      if (!activePractice || isSubmittingResultRef.current) return;
+      isSubmittingResultRef.current = true;
       setIsSubmittingResult(true);
       try {
         const date = new Date().toISOString();
@@ -344,8 +348,11 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         setShowResultSheet(false);
         // 保存済みなので、次のフレーズへ進む前に完了させる。先に完了させないと、直後の
         // 遷移がconfirmSwitchの「未保存の記録」として誤検知したり、再送時に同じattempt IDを
-        // 使い回して今回の記録を上書きしてしまう
-        setActivePractice(null);
+        // 使い回して今回の記録を上書きしてしまう。
+        // 記録した本人が今も練習中のときだけ消す（この後に別フレーズが始まっていたら消さない）
+        if (usePracticeStore.getState().activePhrasePractice?.phrase.id === phrase.id) {
+          setActivePractice(null);
+        }
 
         if (action === "next") {
           const nextEntry = openMenuEntries.find((entry) => entry.phrase.id !== phrase.id);
@@ -361,12 +368,12 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           }
         }
       } finally {
+        isSubmittingResultRef.current = false;
         setIsSubmittingResult(false);
       }
     },
     [
       activePractice,
-      isSubmittingResult,
       pendingAttemptId,
       recordResultAsync,
       graduatePhrase,

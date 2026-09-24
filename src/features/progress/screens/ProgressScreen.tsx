@@ -28,6 +28,7 @@ import { useDeletePracticeSession } from "@/features/progress/api/useDeletePract
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { buildTodayMenu, pickTodayPick } from "@/features/practice/lib/progression";
+import { resolveTodayProgress } from "@/features/practice/lib/todayCompletion";
 import { calcStats } from "@/features/progress/lib/calcStats";
 import { usePhraseProgressSummaries } from "@/features/progress/hooks/usePhraseProgressSummaries";
 import { WeekBarChart } from "@/features/progress/components/WeekBarChart";
@@ -109,10 +110,12 @@ export function ProgressScreen() {
       return;
     }
     confirmSwitch(() => {
-      startPhrasePractice(todayPick.phrase, todayPick.todayTargetBpm);
+      const phraseAttempts = attempts.filter((a) => a.phraseId === todayPick.phrase.id);
+      const { targetBeforeToday } = resolveTodayProgress(todayPick.phrase, phraseAttempts, new Date());
+      startPhrasePractice(todayPick.phrase, targetBeforeToday);
       router.push("/(tabs)/practice");
     });
-  }, [todayPick, activePractice, confirmSwitch, startPhrasePractice, router]);
+  }, [todayPick, attempts, activePractice, confirmSwitch, startPhrasePractice, router]);
 
   const segmentItems: SegmentedItem<PhraseKind>[] = [
     { value: "active", label: "上達中", suffix: `${inProgress.length}` },

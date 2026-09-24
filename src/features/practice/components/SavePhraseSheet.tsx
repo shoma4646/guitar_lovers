@@ -27,12 +27,14 @@ type Props = {
 };
 
 export function SavePhraseSheet({ visible, onClose, defaultBpm, onSave }: Props) {
+  const [isSaving, setIsSaving] = useState(false);
   const [name, setName] = useState("");
   const [currentBpm, setCurrentBpm] = useState(String(defaultBpm));
   const [targetBpm, setTargetBpm] = useState(String(clampBpm(defaultBpm + 20)));
 
   useEffect(() => {
     if (visible) {
+      setIsSaving(false);
       setName("");
       setCurrentBpm(String(defaultBpm));
       setTargetBpm(String(clampBpm(defaultBpm + 20)));
@@ -40,6 +42,9 @@ export function SavePhraseSheet({ visible, onClose, defaultBpm, onSave }: Props)
   }, [visible, defaultBpm]);
 
   const handleSave = () => {
+    // 保存は非同期に走り、完了までシートが開いたままなので連打で同じ区間が二重登録される
+    if (isSaving) return;
+    setIsSaving(true);
     if (!name.trim()) {
       Alert.alert("エラー", "フレーズの名前を入力してください");
       return;
@@ -120,7 +125,7 @@ export function SavePhraseSheet({ visible, onClose, defaultBpm, onSave }: Props)
           </View>
         </View>
 
-        <Button label="保存する" onPress={handleSave} fullWidth />
+        <Button label="保存する" onPress={handleSave} disabled={isSaving} fullWidth />
       </View>
     </BottomSheet>
   );

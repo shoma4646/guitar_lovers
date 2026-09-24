@@ -17,6 +17,7 @@ import {
   pickTodayPick,
   type TodayMenuPriority,
 } from "@/features/practice/lib/progression";
+import { resolveTodayProgress } from "@/features/practice/lib/todayCompletion";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { formatDuration } from "@/features/practice/lib/formatters";
 import type { PracticePhrase } from "@/shared/types/models";
@@ -69,8 +70,15 @@ export function TodayPickCard({ onStartPhrase, onTryPreset }: Props) {
     );
   }
 
-  const { phrase, todayTargetBpm, priority } = todayPick;
+  const { phrase, priority } = todayPick;
   const phraseAttempts = (attempts ?? []).filter((a) => a.phraseId === phrase.id);
+  // 目標は他の導線と同じく当日の記録を除いて求める。buildTodayMenuの値は当日の結果を
+  // 含むため、同じフレーズでも入口によって目標BPMが変わってしまう
+  const { targetBeforeToday: todayTargetBpm } = resolveTodayProgress(
+    phrase,
+    phraseAttempts,
+    new Date(),
+  );
   const progress = summarizePhraseProgress(phrase, phraseAttempts);
   const bpmToGoal = Math.max(0, phrase.targetBpm - todayTargetBpm);
   // pickTodayPickはgraduatedを選ばないため、ここでのpriorityは必ずTODAY_PICK_REASONSに存在する
