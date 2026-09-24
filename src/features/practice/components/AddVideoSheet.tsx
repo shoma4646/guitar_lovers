@@ -14,6 +14,7 @@ import { colors, radius } from "@/shared/theme";
 import { usePracticeStore, extractVideoId } from "@/stores/practice";
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { useRecentVideos } from "@/features/practice/api/useRecentVideos";
+import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 
 type Props = {
   visible: boolean;
@@ -36,6 +37,7 @@ export function AddVideoSheet({ visible, onClose }: Props) {
   const playerError = usePracticeStore((s) => s.playerError);
   const { mutate: addRecent } = useAddRecentVideo();
   const { data: recents = [] } = useRecentVideos();
+  const confirmSwitch = useConfirmPhraseSwitch();
 
   // 開いた瞬間だけリセットする。開いている間にplayerErrorが変化しても入力中のURLを消さない
   const wasVisibleRef = useRef(false);
@@ -54,10 +56,12 @@ export function AddVideoSheet({ visible, onClose }: Props) {
   }, [visible, playerError]);
 
   const openVideo = (videoId: string, title: string) => {
-    loadVideo(videoId, title);
-    addRecent({ videoId, title, lastWatchedAt: new Date().toISOString() });
-    setPracticeSubTab("practice");
-    onClose();
+    confirmSwitch(() => {
+      loadVideo(videoId, title);
+      addRecent({ videoId, title, lastWatchedAt: new Date().toISOString() });
+      setPracticeSubTab("practice");
+      onClose();
+    });
   };
 
   const handleSubmit = () => {

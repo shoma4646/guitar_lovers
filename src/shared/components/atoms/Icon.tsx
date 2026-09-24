@@ -59,6 +59,9 @@ const ICON_MAP: Record<
   search: { set: "material", name: "search" },
   arrow_back: { set: "material", name: "arrow-back" },
   more_vert: { set: "material", name: "more-vert" },
+  menu: { set: "material", name: "menu" },
+  content_cut: { set: "material", name: "content-cut" },
+  metronome: { set: "community", name: "metronome" },
 };
 
 export type IconName = keyof typeof ICON_MAP;

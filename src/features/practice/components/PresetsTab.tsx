@@ -21,12 +21,14 @@ import { usePracticeStore } from "@/stores/practice";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { CATEGORY_LABELS } from "@/features/practice/lib/formatters";
+import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 
 export function PresetsTab() {
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const setPracticeSubTab = usePracticeStore((s) => s.setPracticeSubTab);
   const { data: presets = [] } = useVideoPresets();
   const { mutate: addRecent } = useAddRecentVideo();
+  const confirmSwitch = useConfirmPhraseSwitch();
 
   const grouped = useMemo(
     () =>
@@ -40,15 +42,17 @@ export function PresetsTab() {
 
   const handlePlay = useCallback(
     (preset: VideoPreset) => {
-      loadVideo(preset.videoId, preset.title);
-      addRecent({
-        videoId: preset.videoId,
-        title: preset.title,
-        lastWatchedAt: new Date().toISOString(),
+      confirmSwitch(() => {
+        loadVideo(preset.videoId, preset.title);
+        addRecent({
+          videoId: preset.videoId,
+          title: preset.title,
+          lastWatchedAt: new Date().toISOString(),
+        });
+        setPracticeSubTab("practice");
       });
-      setPracticeSubTab("practice");
     },
-    [loadVideo, addRecent, setPracticeSubTab],
+    [confirmSwitch, loadVideo, addRecent, setPracticeSubTab],
   );
 
   return (

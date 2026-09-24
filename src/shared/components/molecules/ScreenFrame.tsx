@@ -9,7 +9,11 @@ import type { ReactNode } from "react";
 import { ScrollView, useWindowDimensions, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/shared/theme";
-import { MIN_ONE_SCREEN_BUDGET, TAB_BAR_CONTENT_HEIGHT } from "@/shared/constants/layout";
+import {
+  MIN_ONE_SCREEN_BUDGET,
+  SCREEN_HORIZONTAL_PADDING,
+  TAB_BAR_CONTENT_HEIGHT,
+} from "@/shared/constants/layout";
 
 type Props = {
   children: ReactNode;
@@ -24,7 +28,9 @@ export function ScreenFrame({ children, paddingBottom = 12 }: Props) {
   const fits = budget >= MIN_ONE_SCREEN_BUDGET;
 
   const content = (
-    <View style={{ flex: 1, paddingHorizontal: 16, paddingBottom, gap: 12 }}>{children}</View>
+    <View style={{ flex: 1, paddingHorizontal: SCREEN_HORIZONTAL_PADDING, paddingBottom, gap: 12 }}>
+      {children}
+    </View>
   );
 
   return (

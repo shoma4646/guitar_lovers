@@ -1,8 +1,11 @@
 /**
  * 再生速度選択チップ
+ *
+ * 動画のすぐ下に「速度」ラベルと1行で並べる。
  */
 
-import { View, Text, Pressable } from "react-native";
+import { View, Text } from "react-native";
+import { Chip } from "@/shared/components/atoms/Chip";
 import { colors } from "@/shared/theme";
 import { PLAYBACK_RATES, type PlaybackRate } from "@/stores/practice";
 
@@ -13,50 +16,19 @@ type Props = {
 
 export function PlaybackRateChips({ value, onChange }: Props) {
   return (
-    <View style={{ marginBottom: 16 }}>
-      <Text
-        className="text-label-sm mb-sm"
-        style={{
-          color: colors.onSurfaceVariant,
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
-          fontWeight: "600",
-          paddingHorizontal: 4,
-        }}
-      >
-        再生速度
-      </Text>
-      <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-        {PLAYBACK_RATES.map((rate) => {
-          const active = value === rate;
-          return (
-            <Pressable
-              key={rate}
-              onPress={() => onChange(rate as PlaybackRate)}
-              className="active:opacity-80"
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                borderRadius: 9999,
-                backgroundColor: active
-                  ? colors.primary
-                  : colors.surfaceContainer,
-              }}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: active }}
-            >
-              <Text
-                className="text-label-sm"
-                style={{
-                  color: active ? colors.onPrimary : colors.onSurfaceVariant,
-                  fontWeight: "600",
-                }}
-              >
-                {rate}x
-              </Text>
-            </Pressable>
-          );
-        })}
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <Text style={{ fontSize: 12, fontWeight: "700", color: colors.onSurfaceVariant }}>速度</Text>
+      <View style={{ flex: 1, flexDirection: "row", gap: 6 }}>
+        {PLAYBACK_RATES.map((rate) => (
+          <Chip
+            key={rate}
+            label={`${rate}x`}
+            selected={value === rate}
+            onPress={() => onChange(rate as PlaybackRate)}
+            accessibilityLabel={`再生速度${rate}倍`}
+            grow
+          />
+        ))}
       </View>
     </View>
   );

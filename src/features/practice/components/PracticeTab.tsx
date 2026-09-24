@@ -1,53 +1,62 @@
 /**
  * 練習タブ
  *
- * 動画読み込み前は今日の1本＋今日のフレーズ一覧、読み込み後は動画プレイヤー・タイマー・
- * 再生速度・ABループ・ブックマーク・メトロノームの各カードを束ねるコンテナ。
+ * 動画読み込み前は今日の1本＋今日のフレーズ一覧、読み込み後は動画プレイヤー・操作パネル
+ * （シークバー・ABループ・BPM・メトロノーム）・練習中バーの1画面を束ねるコンテナ。
  * WebViewの再生制御（sendToPlayer）はここで一元管理し、子コンポーネントへはpropsとして渡す。
+ * メトロノームのエンジン（useMetronomeEngine）はloadedVideoIdの有無に関わらず常時呼び出す。
+ * 動画エラーでPracticeControlPanelごと消えても音が止まらないようにするためと、
+ * 動画読み込み前でもPracticeMenuSheet経由でメトロノーム単体を使えるようにするため。
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, Alert, StyleSheet } from "react-native";
 import WebView from "react-native-webview";
+import { useSharedValue } from "react-native-reanimated";
+import { useRouter } from "expo-router";
 import { randomUUID } from "expo-crypto";
 import { usePracticeStore, type PlaybackRate } from "@/stores/practice";
 import { colors } from "@/shared/theme";
 import { Icon } from "@/shared/components/atoms/Icon";
-import type { ABLoop, PhraseAttempt, PracticePhrase } from "@/shared/types/models";
+import { IconButton } from "@/shared/components/atoms/IconButton";
+import { Card } from "@/shared/components/molecules/Card";
+import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import { useSavePracticeSession } from "@/features/progress/api/useSavePracticeSession";
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { useSavePracticePhrase } from "@/features/practice/api/useSavePracticePhrase";
 import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseResult";
 import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePracticePhrase";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
+import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { PhraseNotFoundError } from "@/shared/services/storage";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
-import { resolveGraduatedAt } from "@/features/practice/lib/progression";
+import { buildTodayMenu, resolveCurrentBpm, resolveGraduatedAt } from "@/features/practice/lib/progression";
+import { resolveTodayProgress } from "@/features/practice/lib/todayCompletion";
+import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { describePlayerError } from "@/features/practice/lib/playerError";
-import { MetronomeWidget } from "./MetronomeWidget";
+import { formatDuration } from "@/features/practice/lib/formatters";
+import { applyPoint, isValidLoopRange, shouldLoopBack } from "@/features/practice/lib/abLoop";
+import { stepBpm } from "@/features/practice/lib/tempo";
+import { useMetronomeEngine } from "@/features/practice/hooks/useMetronomeEngine";
+import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { VideoPlayerCard } from "./VideoPlayerCard";
-import { PracticeTimerCard } from "./PracticeTimerCard";
 import { PlaybackRateChips } from "./PlaybackRateChips";
-import { ABLoopCard, type SavePhraseInput } from "./ABLoopCard";
-import { BookmarksCard } from "./BookmarksCard";
+import { PracticeControlPanel } from "./PracticeControlPanel";
+import { SavePhraseSheet, type SavePhraseInput } from "./SavePhraseSheet";
 import { TodayPickCard } from "./TodayPickCard";
 import { TodayPhraseRows } from "./TodayPhraseRows";
 import { AllPhrasesSheet } from "./AllPhrasesSheet";
 import { PhraseResultSheet } from "./PhraseResultSheet";
-import { ActivePracticeBar } from "./ActivePracticeBar";
-import { cardShadowStyle, cardStyle } from "./cardStyle";
+import { PracticeSessionBar } from "./PracticeSessionBar";
+import { PracticeMenuSheet } from "./PracticeMenuSheet";
 
-/** A点とB点が両方設定され、B点がA点より後にあるか */
-function isValidLoopRange(abLoop: ABLoop): boolean {
-  return (
-    abLoop.pointA !== null &&
-    abLoop.pointB !== null &&
-    abLoop.pointA < abLoop.pointB
-  );
-}
+type Props = {
+  /** ヘッダーメニューの「別の動画を開く」から呼ぶ。AddVideoSheetの開閉はPracticeScreen側で持つ */
+  onOpenAddVideo: () => void;
+};
 
-export function PracticeTab() {
+export function PracticeTab({ onOpenAddVideo }: Props) {
   const loadedVideoId = usePracticeStore((s) => s.loadedVideoId);
   const videoTitle = usePracticeStore((s) => s.videoTitle);
   const elapsedSeconds = usePracticeStore((s) => s.elapsedSeconds);
@@ -55,11 +64,9 @@ export function PracticeTab() {
   const abLoop = usePracticeStore((s) => s.abLoop);
   const bookmarks = usePracticeStore((s) => s.bookmarks);
   const playbackRate = usePracticeStore((s) => s.playbackRate);
-  const metronomeBpm = usePracticeStore((s) => s.metronomeBpm);
-
-  const currentTime = usePracticeStore((s) => s.currentTime);
-  const setCurrentTime = usePracticeStore((s) => s.setCurrentTime);
   const setDuration = usePracticeStore((s) => s.setDuration);
+  const duration = usePracticeStore((s) => s.duration);
+  const setCurrentTime = usePracticeStore((s) => s.setCurrentTime);
 
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const setABLoop = usePracticeStore((s) => s.setABLoop);
@@ -75,21 +82,34 @@ export function PracticeTab() {
   const videoInitialRate = usePracticeStore((s) => s.videoInitialRate);
   const videoLoadNonce = usePracticeStore((s) => s.videoLoadNonce);
   const clearVideo = usePracticeStore((s) => s.clearVideo);
-  // 「今日の練習メニュー」から開始したフレーズ練習。サブタブ切替をまたいで保持するためストアで管理する
+  // 「今日の練習メニュー」から開始した練習中フレーズ。サブタブ切替をまたいで保持するためストアで管理する
   const activePractice = usePracticeStore((s) => s.activePhrasePractice);
   const setActivePractice = usePracticeStore((s) => s.setActivePhrasePractice);
   const incrementCompletedReps = usePracticeStore((s) => s.incrementCompletedReps);
+  const decrementCompletedReps = usePracticeStore((s) => s.decrementCompletedReps);
+  const setMetronomeBpm = usePracticeStore((s) => s.setMetronomeBpm);
+  const setMetronomeEnabled = usePracticeStore((s) => s.setMetronomeEnabled);
+  // 動画読み込み前後・PracticeScreenのヘッダーからも同じシートを開けるよう、開閉状態はストアで持つ
+  const showMenu = usePracticeStore((s) => s.toolsSheetOpen);
+  const setShowMenu = usePracticeStore((s) => s.setToolsSheetOpen);
 
+  const router = useRouter();
   const { mutate: addRecent } = useAddRecentVideo();
   const { mutateAsync: saveSession } = useSavePracticeSession();
   const { mutate: savePhrase } = useSavePracticePhrase();
   const { mutateAsync: recordResultAsync } = useRecordPhraseResult();
   const { mutate: graduatePhrase } = useGraduatePracticePhrase();
   const { data: allPhraseAttempts = [] } = usePhraseAttempts();
+  const { data: allPhrases = [] } = usePracticePhrases();
   const { data: presets = [] } = useVideoPresets();
   const promptReminderPermission = useReminderPermissionPrompt();
+  const confirmSwitch = useConfirmPhraseSwitch();
+  const { bpm: metronomeBpm, enabled: metronomeEnabled, activeBeat, beatsPerBar } = useMetronomeEngine();
 
   const [showResultSheet, setShowResultSheet] = useState(false);
+  const [showSavePhrase, setShowSavePhrase] = useState(false);
+  const [isSubmittingResult, setIsSubmittingResult] = useState(false);
+  const [phraseElapsedSeconds, setPhraseElapsedSeconds] = useState(0);
   const playerError = usePracticeStore((s) => s.playerError);
   const setPlayerError = usePracticeStore((s) => s.setPlayerError);
   const pendingAttemptId = usePracticeStore((s) => s.pendingAttemptId);
@@ -97,7 +117,6 @@ export function PracticeTab() {
 
   const webViewRef = useRef<WebView>(null);
   const scrollViewRef = useRef<ScrollView>(null);
-  const [practiceBarHeight, setPracticeBarHeight] = useState(0);
   const [showAllPhrases, setShowAllPhrases] = useState(false);
 
   const sendToPlayer = useCallback((cmd: Record<string, unknown>) => {
@@ -121,15 +140,54 @@ export function PracticeTab() {
     return () => clearInterval(timer);
   }, [isTimerRunning, elapsedSeconds, practiceStartTime]);
 
-  // ABループ: B 点到達時に A 点へシーク
+  // 再生位置の高頻度な値（onTimeUpdateは200msごと）はここに集約する。
+  // currentTimeRef=JS側の同期読み取り用、currentTimeShared=シークバー描画用で、
+  // どちらもZustandを経由しないためツリー全体の再レンダリングを起こさない
+  const currentTimeRef = useRef(0);
+  const currentTimeShared = useSharedValue(0);
+  const abLoopRef = useRef(abLoop);
+  const isScrubbingRef = useRef(false);
+
   useEffect(() => {
-    if (!abLoop.enabled || abLoop.pointA === null || abLoop.pointB === null) {
-      return;
-    }
-    if (currentTime >= abLoop.pointB) {
-      sendToPlayer({ action: "seek", time: abLoop.pointA });
-    }
-  }, [currentTime, abLoop, sendToPlayer]);
+    abLoopRef.current = abLoop;
+  }, [abLoop]);
+
+  const handleTimeUpdate = useCallback(
+    (time: number) => {
+      currentTimeRef.current = time;
+      currentTimeShared.value = time;
+
+      // ドラッグ中はユーザーのシークとループ巻き戻しが競合するため判定自体を止める
+      if (!isScrubbingRef.current && shouldLoopBack(time, abLoopRef.current)) {
+        const target = abLoopRef.current.pointA;
+        if (target !== null) sendToPlayer({ action: "seek", time: target });
+      }
+
+      // ストアのcurrentTimeはこのタブでは購読せず（毎秒の再レンダリングを避けるため）書き込みだけ残す
+      setCurrentTime(time);
+    },
+    [currentTimeShared, sendToPlayer, setCurrentTime],
+  );
+
+  const handleScrubStart = useCallback(() => {
+    sendToPlayer({ action: "pause" });
+  }, [sendToPlayer]);
+
+  const handleScrubEnd = useCallback(
+    (time: number) => {
+      currentTimeRef.current = time;
+      currentTimeShared.value = time;
+      setCurrentTime(time);
+      sendToPlayer({ action: "seek", time });
+      sendToPlayer({ action: "play" });
+    },
+    [currentTimeShared, sendToPlayer, setCurrentTime],
+  );
+
+  const handleScrubCancel = useCallback(() => {
+    // ドラッグの異常終了。位置は確定させず一時停止だけ解除する
+    sendToPlayer({ action: "play" });
+  }, [sendToPlayer]);
 
   const handleSaveSession = useCallback(async () => {
     const performSave = async () => {
@@ -155,11 +213,11 @@ export function PracticeTab() {
   const handleAddBookmark = useCallback(() => {
     addBookmark({
       id: randomUUID(),
-      time: Math.floor(currentTime),
+      time: Math.floor(currentTimeRef.current),
       label: `ブックマーク ${bookmarks.length + 1}`,
       createdAt: new Date().toISOString(),
     });
-  }, [addBookmark, bookmarks.length, currentTime]);
+  }, [addBookmark, bookmarks.length]);
 
   const handleSavePhrase = useCallback(
     (input: SavePhraseInput) => {
@@ -188,10 +246,12 @@ export function PracticeTab() {
           updatedAt: now,
         },
         {
-          onSuccess: () =>
+          onSuccess: () => {
+            setShowSavePhrase(false);
             Alert.alert("保存しました", `「${input.name}」を今日の練習メニューに追加しました`, [
               { text: "OK", onPress: () => void promptReminderPermission() },
-            ]),
+            ]);
+          },
         },
       );
     },
@@ -200,225 +260,365 @@ export function PracticeTab() {
 
   const handleStartPhrase = useCallback(
     (phrase: PracticePhrase, todayTargetBpm: number) => {
-      startPhrasePractice(phrase, todayTargetBpm);
-      // 読み込み後は今日の1本/今日のフレーズが消え、動画プレイヤーが先頭に来るため常に上端へ戻す
-      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      const start = () => {
+        startPhrasePractice(phrase, todayTargetBpm);
+        // 読み込み前の一覧はScrollViewだが、読み込み後は同じ画面のまま切り替わるため
+        // 一覧を開いていた場合に備えて先頭へ戻しておく（読み込み後は無関係でno-op）
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      };
+      // 今練習中のフレーズを選び直しただけなら確認不要
+      if (activePractice?.phrase.id === phrase.id) {
+        start();
+        return;
+      }
+      confirmSwitch(start);
     },
-    [startPhrasePractice],
+    [activePractice, confirmSwitch, startPhrasePractice],
   );
 
   const handleFinishPractice = useCallback(() => {
     beginResultEntry(randomUUID());
+    setPhraseElapsedSeconds(
+      activePractice ? Math.max(0, Math.floor((Date.now() - activePractice.startedAt) / 1000)) : 0,
+    );
     setShowResultSheet(true);
-  }, [beginResultEntry]);
+  }, [activePractice, beginResultEntry]);
 
-  const handleCountRep = useCallback(() => {
-    const completedReps = incrementCompletedReps();
-    // 到達した瞬間だけ開く。シートを閉じた後に回数を重ねても開き直さない
-    if (activePractice && completedReps === activePractice.targetReps) {
-      handleFinishPractice();
-    }
-  }, [activePractice, incrementCompletedReps, handleFinishPractice]);
+  const todayMenu = useMemo(
+    () => buildTodayMenu(allPhrases, allPhraseAttempts),
+    [allPhrases, allPhraseAttempts],
+  );
 
   const handleSubmitResult = useCallback(
-    async ({ bpm, result }: { bpm: number; result: "ok" | "partial" | "ng" }) => {
-      if (!activePractice) return;
-      const date = new Date().toISOString();
-      const attempt: PhraseAttempt = {
-        id: pendingAttemptId ?? randomUUID(),
-        phraseId: activePractice.phrase.id,
-        date,
-        bpm,
-        result,
-        ...(activePractice.completedReps > 0 ? { reps: activePractice.completedReps } : {}),
-      };
+    async ({ result }: { result: "ok" | "partial" | "ng" }, action: "next" | "finish") => {
+      if (!activePractice || isSubmittingResult) return;
+      setIsSubmittingResult(true);
       try {
-        await recordResultAsync(attempt);
-      } catch (error) {
-        if (error instanceof PhraseNotFoundError) {
-          Alert.alert("記録できません", "このフレーズは削除されています");
-          setShowResultSheet(false);
-          setActivePractice(null);
+        const date = new Date().toISOString();
+        const bpm = metronomeBpm;
+        const attempt: PhraseAttempt = {
+          id: pendingAttemptId ?? randomUUID(),
+          phraseId: activePractice.phrase.id,
+          date,
+          bpm,
+          result,
+          ...(activePractice.completedReps > 0 ? { reps: activePractice.completedReps } : {}),
+        };
+        try {
+          await recordResultAsync(attempt);
+        } catch (error) {
+          if (error instanceof PhraseNotFoundError) {
+            Alert.alert("記録できません", "このフレーズは削除されています");
+            setShowResultSheet(false);
+            setActivePractice(null);
+            return;
+          }
+          // 保存失敗はshowMutationErrorがAlertを表示済み。シートと練習状態は保持し再送できるようにする
           return;
         }
-        // 保存失敗はshowMutationErrorがAlertを表示済み。シートと練習状態は保持し再送できるようにする
-        return;
+        const { phrase } = activePractice;
+        if (result === "ok" && bpm >= phrase.targetBpm && !phrase.graduatedAt) {
+          const phraseAttempts = allPhraseAttempts.filter((a) => a.phraseId === phrase.id);
+          // 到達済みフレーズの卒業日が再記録のたびに今日へ前進しないよう、記録から最初の到達日を再計算する
+          const graduatedAt = resolveGraduatedAt(phrase, [...phraseAttempts, attempt]) ?? date;
+          graduatePhrase({ id: phrase.id, graduatedAt });
+        }
+        setShowResultSheet(false);
+
+        if (action === "next") {
+          const nextEntry = todayMenu.find(
+            (entry) => entry.phrase.id !== phrase.id && entry.priority !== "graduated",
+          );
+          if (nextEntry) {
+            const nextPhraseAttempts = allPhraseAttempts.filter(
+              (a) => a.phraseId === nextEntry.phrase.id,
+            );
+            // TodayPhraseRows等と同じ「今日の記録を除いた目標」に揃える（buildTodayMenuの
+            // todayTargetBpmは当日の記録を含むため、そのまま使うと導線ごとに値がずれる）
+            const { targetBeforeToday } = resolveTodayProgress(nextEntry.phrase, nextPhraseAttempts, new Date());
+            handleStartPhrase(nextEntry.phrase, targetBeforeToday);
+            return;
+          }
+        }
+        setActivePractice(null);
+      } finally {
+        setIsSubmittingResult(false);
       }
-      const { phrase } = activePractice;
-      if (result === "ok" && bpm >= phrase.targetBpm && !phrase.graduatedAt) {
-        const phraseAttempts = allPhraseAttempts.filter((a) => a.phraseId === phrase.id);
-        // 到達済みフレーズの卒業日が再記録のたびに今日へ前進しないよう、記録から最初の到達日を再計算する
-        const graduatedAt = resolveGraduatedAt(phrase, [...phraseAttempts, attempt]) ?? date;
-        graduatePhrase({ id: phrase.id, graduatedAt });
-      }
-      setShowResultSheet(false);
-      setActivePractice(null);
     },
     [
       activePractice,
+      isSubmittingResult,
       pendingAttemptId,
       recordResultAsync,
       graduatePhrase,
       setActivePractice,
       allPhraseAttempts,
+      metronomeBpm,
+      todayMenu,
+      handleStartPhrase,
     ],
   );
 
   const handleTryPreset = useCallback(() => {
     const preset = presets[0];
     if (!preset) return;
-    loadVideo(preset.videoId, preset.title);
-    addRecent({
-      videoId: preset.videoId,
-      title: preset.title,
-      lastWatchedAt: new Date().toISOString(),
+    confirmSwitch(() => {
+      loadVideo(preset.videoId, preset.title);
+      addRecent({
+        videoId: preset.videoId,
+        title: preset.title,
+        lastWatchedAt: new Date().toISOString(),
+      });
     });
-  }, [presets, loadVideo, addRecent]);
+  }, [presets, confirmSwitch, loadVideo, addRecent]);
 
-  return (
-    <View style={styles.container}>
-      <ScrollView
-        ref={scrollViewRef}
-        contentContainerStyle={[
-          styles.scrollContent,
-          activePractice && { paddingBottom: styles.scrollContent.paddingBottom + practiceBarHeight },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* 動画読み込み前: 今日の1本 + 今日のフレーズ一覧 */}
-        {!loadedVideoId && (
-          <View style={{ gap: 12, marginBottom: 16 }}>
+  const handleCloseVideo = useCallback(() => {
+    confirmSwitch(() => {
+      setShowMenu(false);
+      clearVideo();
+    });
+  }, [confirmSwitch, setShowMenu, clearVideo]);
+
+  const handleTapPoint = useCallback(
+    (point: "A" | "B") => {
+      const time = point === "A" ? abLoop.pointA : abLoop.pointB;
+      if (time === null) return;
+      // WebView側のonTimeUpdate（約200ms間隔）を待たず、シーク直後からシークバー表示を正しい位置にする
+      currentTimeRef.current = time;
+      currentTimeShared.value = time;
+      sendToPlayer({ action: "seek", time });
+    },
+    [abLoop, currentTimeShared, sendToPlayer],
+  );
+
+  const handleSetPoint = useCallback(
+    (point: "A" | "B") => {
+      setABLoop(applyPoint(abLoop, point, Math.floor(currentTimeRef.current)));
+    },
+    [abLoop, setABLoop],
+  );
+
+  const handleToggleLoop = useCallback(() => {
+    if (!isValidLoopRange(abLoop)) return;
+    setABLoop({ enabled: !abLoop.enabled });
+  }, [abLoop, setABLoop]);
+
+  const handleStepMetronomeBpm = useCallback(
+    (delta: number) => setMetronomeBpm(stepBpm(metronomeBpm, delta)),
+    [metronomeBpm, setMetronomeBpm],
+  );
+
+  const handleToggleMetronome = useCallback(
+    () => setMetronomeEnabled(!metronomeEnabled),
+    [metronomeEnabled, setMetronomeEnabled],
+  );
+
+  const activePhraseAttempts = useMemo(
+    () =>
+      activePractice
+        ? allPhraseAttempts.filter((a) => a.phraseId === activePractice.phrase.id)
+        : [],
+    [activePractice, allPhraseAttempts],
+  );
+
+  const resultSheetProgress = useMemo(
+    () => (activePractice ? summarizePhraseProgress(activePractice.phrase, activePhraseAttempts) : null),
+    [activePractice, activePhraseAttempts],
+  );
+
+  const panelPhraseProgress = activePractice
+    ? {
+        lastReachedBpm: resolveCurrentBpm(activePractice.phrase.currentBpm, activePhraseAttempts),
+        bpmToGraduate: Math.max(0, activePractice.phrase.targetBpm - metronomeBpm),
+      }
+    : null;
+
+  const remainingCount = todayMenu.filter((entry) => entry.priority !== "graduated").length;
+  const headerTitle = activePractice?.phrase.name ?? (videoTitle || "動画を再生中");
+  const headerSubtitle = activePractice ? `今日の1本・残り${remainingCount}本` : null;
+
+  const menuSheet = (
+    <PracticeMenuSheet
+      visible={showMenu}
+      onClose={() => setShowMenu(false)}
+      activePhraseId={activePractice?.phrase.id ?? null}
+      onSelectPhrase={handleStartPhrase}
+      metronomeBpm={metronomeBpm}
+      metronomeEnabled={metronomeEnabled}
+      metronomeActiveBeat={activeBeat}
+      metronomeBeatsPerBar={beatsPerBar}
+      onStepMetronomeBpm={handleStepMetronomeBpm}
+      onToggleMetronome={handleToggleMetronome}
+      displaySeconds={displaySeconds}
+      isTimerRunning={isTimerRunning}
+      onToggleTimer={isTimerRunning ? stopPracticeTimer : startPracticeTimer}
+      onSaveSession={() => void handleSaveSession()}
+      hasVideo={loadedVideoId !== null}
+      bookmarks={bookmarks}
+      onAddBookmark={handleAddBookmark}
+      onRemoveBookmark={removeBookmark}
+      onOpenAddVideo={() => {
+        setShowMenu(false);
+        onOpenAddVideo();
+      }}
+      onCloseVideo={handleCloseVideo}
+    />
+  );
+
+  if (!loadedVideoId) {
+    return (
+      <View style={styles.container}>
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ gap: 12 }}>
             <TodayPickCard onStartPhrase={handleStartPhrase} onTryPreset={handleTryPreset} />
             <TodayPhraseRows
               onStartPhrase={handleStartPhrase}
               onOpenAllPhrases={() => setShowAllPhrases(true)}
             />
           </View>
-        )}
+        </ScrollView>
 
-        {/* Video Player (if loaded) */}
-        <View>
-          {loadedVideoId && playerError !== null && (
-            <View
-              className="bg-surface-container-lowest items-center"
-              style={[cardStyle, cardShadowStyle, { marginBottom: 16, gap: 12 }]}
+        <AllPhrasesSheet
+          visible={showAllPhrases}
+          onClose={() => setShowAllPhrases(false)}
+          onStartPhrase={(phrase, todayTargetBpm) => {
+            setShowAllPhrases(false);
+            handleStartPhrase(phrase, todayTargetBpm);
+          }}
+        />
+
+        {menuSheet}
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, justifyContent: "space-between" }}>
+      <View style={{ gap: 10 }}>
+        <View style={styles.header}>
+          <IconButton name="menu" accessibilityLabel="メニューを開く" onPress={() => setShowMenu(true)} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {headerTitle}
+            </Text>
+            {headerSubtitle && (
+              <Text style={styles.headerSubtitle} numberOfLines={1}>
+                {headerSubtitle}
+              </Text>
+            )}
+          </View>
+          <Text style={styles.headerTimer}>{formatDuration(displaySeconds)}</Text>
+          <IconButton name="tune" accessibilityLabel="チューナーを開く" onPress={() => router.push("/(tabs)/tuner")} />
+          <IconButton name="settings" accessibilityLabel="設定を開く" onPress={() => router.push("/settings")} />
+        </View>
+
+        {playerError !== null ? (
+          <Card style={{ alignItems: "center", gap: 12 }}>
+            <Icon name="error" size={28} color={colors.error} />
+            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.onSurface, textAlign: "center" }}>
+              この動画は再生できません
+            </Text>
+            <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, textAlign: "center" }}>
+              {describePlayerError(playerError)}
+            </Text>
+            <Pressable
+              onPress={clearVideo}
+              className="active:opacity-90"
+              style={{
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderRadius: 9999,
+                backgroundColor: colors.primary,
+              }}
+              accessibilityRole="button"
             >
-              <Icon name="error" size={28} color={colors.error} />
-              <Text
-                className="text-body-md text-center"
-                style={{ color: colors.onSurface, fontWeight: "600" }}
-              >
-                この動画は再生できません
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.onPrimary }}>
+                別の動画を読み込む
               </Text>
-              <Text
-                className="text-label-sm text-center"
-                style={{ color: colors.onSurfaceVariant }}
-              >
-                {describePlayerError(playerError)}
-              </Text>
-              <Pressable
-                onPress={clearVideo}
-                className="active:opacity-90"
-                style={{
-                  paddingHorizontal: 20,
-                  paddingVertical: 10,
-                  borderRadius: 9999,
-                  backgroundColor: colors.primary,
-                }}
-                accessibilityRole="button"
-              >
-                <Text
-                  className="text-label-sm"
-                  style={{ color: colors.onPrimary, fontWeight: "700" }}
-                >
-                  別の動画を読み込む
-                </Text>
-              </Pressable>
-            </View>
-          )}
-          {loadedVideoId && playerError === null && (
+            </Pressable>
+          </Card>
+        ) : (
+          <>
             <VideoPlayerCard
               key={videoLoadNonce}
               ref={webViewRef}
               videoId={loadedVideoId}
               startSeconds={videoStartSeconds}
               initialRate={videoInitialRate}
-              onTimeUpdate={setCurrentTime}
+              onTimeUpdate={handleTimeUpdate}
               onDurationReady={setDuration}
               onPlayerError={setPlayerError}
             />
-          )}
-        </View>
 
-        {/* Timer Card */}
-        <PracticeTimerCard
-          displaySeconds={displaySeconds}
-          isTimerRunning={isTimerRunning}
-          onToggleTimer={isTimerRunning ? stopPracticeTimer : startPracticeTimer}
-          onSaveSession={() => void handleSaveSession()}
-        />
+            <PlaybackRateChips
+              value={playbackRate}
+              onChange={(rate: PlaybackRate) => {
+                setPlaybackRate(rate);
+                sendToPlayer({ action: "setRate", rate });
+              }}
+            />
 
-        {/* Playback Rate Chips */}
-        <PlaybackRateChips
-          value={playbackRate}
-          onChange={(rate: PlaybackRate) => {
-            setPlaybackRate(rate);
-            sendToPlayer({ action: "setRate", rate });
-          }}
-        />
+            <PracticeControlPanel
+              abLoop={abLoop}
+              currentTimeShared={currentTimeShared}
+              duration={duration}
+              onToggleLoop={handleToggleLoop}
+              onClearLoop={clearABLoop}
+              onTapPoint={handleTapPoint}
+              onSetPoint={handleSetPoint}
+              onScrubStart={handleScrubStart}
+              onScrubEnd={handleScrubEnd}
+              onScrubCancel={handleScrubCancel}
+              scrubbingRef={isScrubbingRef}
+              bookmarkCount={bookmarks.length}
+              onAddBookmark={handleAddBookmark}
+              onOpenSavePhrase={() => setShowSavePhrase(true)}
+              metronomeBpm={metronomeBpm}
+              metronomeEnabled={metronomeEnabled}
+              metronomeActiveBeat={activeBeat}
+              metronomeBeatsPerBar={beatsPerBar}
+              onStepMetronomeBpm={handleStepMetronomeBpm}
+              onToggleMetronome={handleToggleMetronome}
+              phraseProgress={panelPhraseProgress}
+            />
+          </>
+        )}
+      </View>
 
-        {/* AB Loop Card */}
-        <ABLoopCard
-          abLoop={abLoop}
-          currentTime={currentTime}
-          onSetPointA={() => setABLoop({ pointA: Math.floor(currentTime) })}
-          onSetPointB={() => setABLoop({ pointB: Math.floor(currentTime) })}
-          onToggleLoop={() => {
-            if (!abLoop.enabled && !isValidLoopRange(abLoop)) {
-              Alert.alert("エラー", "B点はA点より後に設定してください");
-              return;
-            }
-            setABLoop({ enabled: !abLoop.enabled });
-          }}
-          onClear={clearABLoop}
-          defaultBpm={metronomeBpm}
-          onSavePhrase={handleSavePhrase}
-        />
-
-        {/* Bookmarks Card */}
-        <BookmarksCard
-          bookmarks={bookmarks}
-          onAdd={handleAddBookmark}
-          onRemove={removeBookmark}
-        />
-
-        {/* Metronome */}
-        <MetronomeWidget />
-      </ScrollView>
       {activePractice && (
-        <View onLayout={(e) => setPracticeBarHeight(e.nativeEvent.layout.height)}>
-          <ActivePracticeBar
-            practice={activePractice}
-            onCountRep={handleCountRep}
-            onFinish={handleFinishPractice}
-          />
-        </View>
+        <PracticeSessionBar
+          practice={activePractice}
+          metronomeBpm={metronomeBpm}
+          onIncrement={incrementCompletedReps}
+          onDecrement={decrementCompletedReps}
+          onFinish={handleFinishPractice}
+        />
       )}
+
       <PhraseResultSheet
         visible={showResultSheet}
         phrase={activePractice?.phrase ?? null}
-        todayTargetBpm={activePractice?.todayTargetBpm ?? 0}
+        bpm={metronomeBpm}
+        progress={resultSheetProgress}
+        phraseElapsedSeconds={phraseElapsedSeconds}
         completedReps={activePractice?.completedReps ?? 0}
+        onChangeCompletedReps={(delta) => (delta > 0 ? incrementCompletedReps() : decrementCompletedReps())}
+        isSubmitting={isSubmittingResult}
         onClose={() => setShowResultSheet(false)}
         onSubmit={handleSubmitResult}
       />
-      <AllPhrasesSheet
-        visible={showAllPhrases}
-        onClose={() => setShowAllPhrases(false)}
-        onStartPhrase={(phrase, todayTargetBpm) => {
-          setShowAllPhrases(false);
-          handleStartPhrase(phrase, todayTargetBpm);
-        }}
+
+      {menuSheet}
+
+      <SavePhraseSheet
+        visible={showSavePhrase}
+        onClose={() => setShowSavePhrase(false)}
+        defaultBpm={metronomeBpm}
+        onSave={handleSavePhrase}
       />
     </View>
   );
@@ -431,5 +631,27 @@ const styles = StyleSheet.create({
   scrollContent: {
     // 画面の横paddingはPracticeScreenのScreenFrameが担うため、ここでは付けない
     paddingBottom: 32,
+  },
+  header: {
+    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  headerTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: colors.onSurface,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
+  },
+  headerTimer: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.onSurfaceVariant,
+    fontVariant: ["tabular-nums"],
+    marginRight: 4,
   },
 });

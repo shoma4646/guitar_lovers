@@ -9,3 +9,6 @@ export const TAB_BAR_CONTENT_HEIGHT = 56;
 
 /** 1画面に収めるために最低限必要な作業領域の高さ。これを下回る端末ではスクロールへ切り替える */
 export const MIN_ONE_SCREEN_BUDGET = 680;
+
+/** ScreenFrameの左右パディング。フルブリード表示したい要素はこの値ぶん逆マージンで打ち消す */
+export const SCREEN_HORIZONTAL_PADDING = 16;
