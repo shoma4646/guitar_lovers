@@ -1,20 +1,16 @@
 /**
- * 練習タブ（Stitch modern_3 風）
+ * 練習タブ
  *
- * URL入力・動画プレイヤー・タイマー・再生速度・ABループ・ブックマーク・メトロノームの
- * 各カードを束ねるコンテナ。WebViewの再生制御（sendToPlayer）はここで一元管理し、
- * 子コンポーネントへはpropsとして渡す。
+ * 動画読み込み前は今日の1本＋今日のフレーズ一覧、読み込み後は動画プレイヤー・タイマー・
+ * 再生速度・ABループ・ブックマーク・メトロノームの各カードを束ねるコンテナ。
+ * WebViewの再生制御（sendToPlayer）はここで一元管理し、子コンポーネントへはpropsとして渡す。
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, Pressable, ScrollView, Alert, StyleSheet } from "react-native";
 import WebView from "react-native-webview";
 import { randomUUID } from "expo-crypto";
-import {
-  usePracticeStore,
-  extractVideoId,
-  type PlaybackRate,
-} from "@/stores/practice";
+import { usePracticeStore, type PlaybackRate } from "@/stores/practice";
 import { colors } from "@/shared/theme";
 import { Icon } from "@/shared/components/atoms/Icon";
 import type { ABLoop, PhraseAttempt, PracticePhrase } from "@/shared/types/models";
@@ -28,14 +24,16 @@ import { PhraseNotFoundError } from "@/shared/services/storage";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
 import { resolveGraduatedAt } from "@/features/practice/lib/progression";
+import { describePlayerError } from "@/features/practice/lib/playerError";
 import { MetronomeWidget } from "./MetronomeWidget";
-import { VideoLoaderCard } from "./VideoLoaderCard";
 import { VideoPlayerCard } from "./VideoPlayerCard";
 import { PracticeTimerCard } from "./PracticeTimerCard";
 import { PlaybackRateChips } from "./PlaybackRateChips";
 import { ABLoopCard, type SavePhraseInput } from "./ABLoopCard";
 import { BookmarksCard } from "./BookmarksCard";
-import { TodayMenuCard } from "./TodayMenuCard";
+import { TodayPickCard } from "./TodayPickCard";
+import { TodayPhraseRows } from "./TodayPhraseRows";
+import { AllPhrasesSheet } from "./AllPhrasesSheet";
 import { PhraseResultSheet } from "./PhraseResultSheet";
 import { ActivePracticeBar } from "./ActivePracticeBar";
 import { cardShadowStyle, cardStyle } from "./cardStyle";
@@ -49,29 +47,7 @@ function isValidLoopRange(abLoop: ABLoop): boolean {
   );
 }
 
-/** YouTube IFrame APIのエラーコードから、ユーザー向けの案内文を返す */
-function describePlayerError(code: number): string {
-  switch (code) {
-    case 101:
-    case 150:
-      return "この動画は埋め込み再生が許可されていません";
-    case 100:
-      return "動画が見つかりません（削除・非公開の可能性）";
-    case 153:
-      return "動画の埋め込み設定でエラーが発生しました。アプリを更新してもう一度お試しください";
-    case 2:
-      return "動画IDが正しくありません。URLを確認してください";
-    case 5:
-      return "プレイヤーでエラーが発生しました。しばらくしてからやり直してください";
-    case -1:
-      return "読み込みに失敗しました。通信状況を確認してください";
-    default:
-      return "動画を読み込めませんでした。URLと通信状況を確認してください";
-  }
-}
-
 export function PracticeTab() {
-  const urlInput = usePracticeStore((s) => s.urlInput);
   const loadedVideoId = usePracticeStore((s) => s.loadedVideoId);
   const videoTitle = usePracticeStore((s) => s.videoTitle);
   const elapsedSeconds = usePracticeStore((s) => s.elapsedSeconds);
@@ -85,7 +61,6 @@ export function PracticeTab() {
   const setCurrentTime = usePracticeStore((s) => s.setCurrentTime);
   const setDuration = usePracticeStore((s) => s.setDuration);
 
-  const setUrlInput = usePracticeStore((s) => s.setUrlInput);
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const setABLoop = usePracticeStore((s) => s.setABLoop);
   const clearABLoop = usePracticeStore((s) => s.clearABLoop);
@@ -122,8 +97,8 @@ export function PracticeTab() {
 
   const webViewRef = useRef<WebView>(null);
   const scrollViewRef = useRef<ScrollView>(null);
-  const playerSectionYRef = useRef<number | null>(null);
   const [practiceBarHeight, setPracticeBarHeight] = useState(0);
+  const [showAllPhrases, setShowAllPhrases] = useState(false);
 
   const sendToPlayer = useCallback((cmd: Record<string, unknown>) => {
     webViewRef.current?.postMessage(JSON.stringify(cmd));
@@ -155,24 +130,6 @@ export function PracticeTab() {
       sendToPlayer({ action: "seek", time: abLoop.pointA });
     }
   }, [currentTime, abLoop, sendToPlayer]);
-
-  const handleLoadVideo = useCallback(() => {
-    if (!urlInput.trim()) {
-      Alert.alert("エラー", "YouTubeのURLを入力してください");
-      return;
-    }
-    const videoId = extractVideoId(urlInput.trim());
-    if (!videoId) {
-      Alert.alert("エラー", "有効なYouTube URLを入力してください");
-      return;
-    }
-    loadVideo(videoId);
-    addRecent({
-      videoId,
-      title: `YouTube動画 (${videoId})`,
-      lastWatchedAt: new Date().toISOString(),
-    });
-  }, [urlInput, loadVideo, addRecent]);
 
   const handleSaveSession = useCallback(async () => {
     const performSave = async () => {
@@ -244,10 +201,8 @@ export function PracticeTab() {
   const handleStartPhrase = useCallback(
     (phrase: PracticePhrase, todayTargetBpm: number) => {
       startPhrasePractice(phrase, todayTargetBpm);
-      const playerSectionY = playerSectionYRef.current;
-      if (playerSectionY !== null) {
-        scrollViewRef.current?.scrollTo({ y: playerSectionY, animated: true });
-      }
+      // 読み込み後は今日の1本/今日のフレーズが消え、動画プレイヤーが先頭に来るため常に上端へ戻す
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
     },
     [startPhrasePractice],
   );
@@ -330,22 +285,19 @@ export function PracticeTab() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* 今日の練習メニュー */}
-        <TodayMenuCard onStartPhrase={handleStartPhrase} onTryPreset={handleTryPreset} />
-
-        {/* URL Input Card */}
-        <VideoLoaderCard
-          value={urlInput}
-          onChangeText={setUrlInput}
-          onLoad={handleLoadVideo}
-        />
+        {/* 動画読み込み前: 今日の1本 + 今日のフレーズ一覧 */}
+        {!loadedVideoId && (
+          <View style={{ gap: 12, marginBottom: 16 }}>
+            <TodayPickCard onStartPhrase={handleStartPhrase} onTryPreset={handleTryPreset} />
+            <TodayPhraseRows
+              onStartPhrase={handleStartPhrase}
+              onOpenAllPhrases={() => setShowAllPhrases(true)}
+            />
+          </View>
+        )}
 
         {/* Video Player (if loaded) */}
-        <View
-          onLayout={(e) => {
-            playerSectionYRef.current = e.nativeEvent.layout.y;
-          }}
-        >
+        <View>
           {loadedVideoId && playerError !== null && (
             <View
               className="bg-surface-container-lowest items-center"
@@ -460,6 +412,14 @@ export function PracticeTab() {
         onClose={() => setShowResultSheet(false)}
         onSubmit={handleSubmitResult}
       />
+      <AllPhrasesSheet
+        visible={showAllPhrases}
+        onClose={() => setShowAllPhrases(false)}
+        onStartPhrase={(phrase, todayTargetBpm) => {
+          setShowAllPhrases(false);
+          handleStartPhrase(phrase, todayTargetBpm);
+        }}
+      />
     </View>
   );
 }
@@ -469,7 +429,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    // 画面の横paddingはPracticeScreenのScreenFrameが担うため、ここでは付けない
     paddingBottom: 32,
   },
 });

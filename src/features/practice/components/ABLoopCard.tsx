@@ -2,7 +2,7 @@
  * ABループカード
  *
  * A点/B点の設定に加え、区間が確定していれば「フレーズとして保存」できる。
- * 保存されたフレーズは今日の練習メニュー（TodayMenuCard）に反復練習対象として現れる。
+ * 保存されたフレーズは今日の練習メニュー（TodayPickCard / TodayPhraseRows）に反復練習対象として現れる。
  */
 
 import { useCallback, useState } from "react";
