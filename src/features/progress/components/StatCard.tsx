@@ -5,7 +5,7 @@
  */
 
 import { View, Text, StyleSheet } from "react-native";
-import { colors } from "@/shared/theme";
+import { colors, shadows } from "@/shared/theme";
 
 type Props = {
   label: string;
@@ -58,11 +58,7 @@ export function StatCard({ label, value, emphasized = false, caption }: Props) {
 }
 
 const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  ...shadows.layered,
 };
 
 const styles = StyleSheet.create({

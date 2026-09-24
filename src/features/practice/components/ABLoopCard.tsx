@@ -209,17 +209,17 @@ export function ABLoopCard({
           borderRadius: 12,
           gap: 6,
           opacity: canSavePhrase ? 1 : 0.4,
-          backgroundColor: `${colors.tertiaryContainer}33`,
+          backgroundColor: colors.primaryFixed,
           borderWidth: 1,
-          borderColor: colors.tertiary,
+          borderColor: colors.primary,
         }}
         accessibilityRole="button"
         accessibilityLabel="フレーズとして保存"
       >
-        <Icon name="star" size={18} color={colors.tertiary} />
+        <Icon name="star" size={18} color={colors.primary} />
         <Text
           className="text-label-sm"
-          style={{ color: colors.tertiary, fontWeight: "700" }}
+          style={{ color: colors.primary, fontWeight: "700" }}
         >
           フレーズとして保存
         </Text>

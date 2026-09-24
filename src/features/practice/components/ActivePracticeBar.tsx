@@ -26,7 +26,7 @@ export function ActivePracticeBar({ practice, onCountRep, onFinish }: Props) {
   return (
     <View className="bg-surface-container-lowest" style={[cardShadowStyle, styles.bar]}>
       <View className="flex-row items-center" style={{ gap: 8 }}>
-        <Icon name="star" size={18} color={colors.tertiary} />
+        <Icon name="star" size={18} color={colors.primary} />
         <Text
           className="text-body-md"
           style={{ flex: 1, color: colors.onSurface, fontWeight: "600" }}

@@ -27,32 +27,6 @@ export const shadows = {
     elevation: 8,
   },
 
-  // ===== 旧トークン互換 =====
-
-  /** @deprecated 新コードでは `layered` を使う */
-  sm: {
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  /** @deprecated 新コードでは `layered` を使う */
-  md: {
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  /** @deprecated 新コードでは `elevated` を使う */
-  lg: {
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 8,
-  },
 } as const;
 
 export type ShadowKey = keyof typeof shadows;

@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 64,
     letterSpacing: -2.56,
-    color: "#ae3026",
+    color: colors.primary,
     fontVariant: ["tabular-nums"],
   },
 });

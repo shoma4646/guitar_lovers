@@ -28,7 +28,7 @@ export function buildYouTubeHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0B0F19; }
+    body { background: #1f2a22; }
     #player { width: 100%; height: 100%; }
   </style>
 </head>

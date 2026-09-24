@@ -7,7 +7,8 @@
 
 import { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { colors } from "@/shared/theme";
+import { colors, shadows } from "@/shared/theme";
+import { semantic } from "@/shared/theme/semantic";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
@@ -84,7 +85,7 @@ export function PhraseProgressList() {
               {gainBpm !== undefined && gainBpm > 0 ? (
                 <Text
                   className="text-label-sm"
-                  style={{ color: colors.tertiary, fontWeight: "700", fontVariant: ["tabular-nums"] }}
+                  style={{ color: semantic.progressFill, fontWeight: "700", fontVariant: ["tabular-nums"] }}
                 >
                   +{gainBpm} BPM
                 </Text>
@@ -95,7 +96,7 @@ export function PhraseProgressList() {
                     width: `${Math.round(progressRatio * 100)}%`,
                     height: "100%",
                     borderRadius: 9999,
-                    backgroundColor: colors.tertiary,
+                    backgroundColor: semantic.progressFill,
                   }}
                 />
               </View>
@@ -108,11 +109,7 @@ export function PhraseProgressList() {
 }
 
 const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  ...shadows.layered,
 };
 
 const styles = StyleSheet.create({

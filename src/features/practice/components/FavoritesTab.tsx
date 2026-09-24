@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { randomUUID } from "expo-crypto";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors } from "@/shared/theme";
+import { colors, shadows } from "@/shared/theme";
 import type { FavoriteVideo, RecentVideo } from "@/shared/types/models";
 import { usePracticeStore } from "@/stores/practice";
 import { useFavoriteVideos } from "@/features/practice/api/useFavoriteVideos";
@@ -211,11 +211,7 @@ export function FavoritesTab() {
 }
 
 const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  ...shadows.layered,
 };
 
 const styles = StyleSheet.create({

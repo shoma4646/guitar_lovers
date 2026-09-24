@@ -25,7 +25,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors } from "@/shared/theme";
+import { colors, shadows } from "@/shared/theme";
+import { semantic } from "@/shared/theme/semantic";
 import {
   tuningPresets,
   TuningPresetKey,
@@ -54,7 +55,7 @@ function centsToMeterRatio(cents: number): number {
 
 /** セント値に応じたメーターカラーを返す */
 function getMeterColor(cents: number): string {
-  if (Math.abs(cents) <= TUNING_THRESHOLD_CENTS) return colors.success;
+  if (Math.abs(cents) <= TUNING_THRESHOLD_CENTS) return semantic.tunerInTune;
   if (cents < 0) return colors.info;
   return colors.danger;
 }
@@ -261,7 +262,7 @@ export function TunerScreen() {
                   style={[
                     styles.noteText,
                     {
-                      color: isTuned ? colors.success : colors.primary,
+                      color: isTuned ? semantic.tunerInTune : colors.primary,
                       opacity: isActive && hz === null ? 0.35 : noteOpacity,
                     },
                   ]}
@@ -336,13 +337,13 @@ export function TunerScreen() {
                         backgroundColor: isFocused
                           ? colors.primaryContainer
                           : isTunedString
-                            ? `${colors.success}1A`
+                            ? `${semantic.tunerInTune}1A`
                             : "transparent",
                         borderWidth: 1,
                         borderColor: isFocused
                           ? colors.primaryContainer
                           : isTunedString
-                            ? colors.success
+                            ? semantic.tunerInTune
                             : colors.outlineVariant,
                       }}
                       accessibilityLabel={`${stringNum}弦 ${note} ${isTunedString ? "チューニング完了" : "未チューニング"}`}
@@ -353,7 +354,7 @@ export function TunerScreen() {
                           color: isFocused
                             ? colors.onPrimaryContainer
                             : isTunedString
-                              ? colors.success
+                              ? semantic.tunerInTune
                               : colors.onSurface,
                         }}
                       >
@@ -462,11 +463,7 @@ export function TunerScreen() {
 }
 
 const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  ...shadows.layered,
 };
 
 const styles = StyleSheet.create({
@@ -539,7 +536,7 @@ const styles = StyleSheet.create({
     width: 192,
     height: 192,
     borderRadius: 96,
-    backgroundColor: "rgba(255,107,91,0.05)",
+    backgroundColor: `${colors.primary}0D`,
   },
   glowBottomLeft: {
     position: "absolute",
@@ -548,6 +545,6 @@ const styles = StyleSheet.create({
     width: 192,
     height: 192,
     borderRadius: 96,
-    backgroundColor: "rgba(0,175,143,0.05)",
+    backgroundColor: `${colors.secondaryContainer}0D`,
   },
 });

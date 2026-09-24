@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors } from "@/shared/theme";
+import { colors, shadows } from "@/shared/theme";
 import type { PracticeSession, PracticeStats } from "@/shared/types/models";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { usePracticeSessions } from "@/features/progress/api/usePracticeSessions";
@@ -205,11 +205,7 @@ export function ProgressScreen() {
 }
 
 const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  ...shadows.layered,
 };
 
 const fabShadow = {
@@ -243,6 +239,6 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ae3026",
+    backgroundColor: colors.primary,
   },
 });

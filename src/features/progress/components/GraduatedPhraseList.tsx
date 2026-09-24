@@ -7,7 +7,8 @@
 
 import { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { colors } from "@/shared/theme";
+import { colors, shadows } from "@/shared/theme";
+import { semantic } from "@/shared/theme/semantic";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
@@ -81,7 +82,7 @@ export function GraduatedPhraseList() {
             </View>
             <Text
               className="text-label-sm"
-              style={{ color: colors.tertiary, fontWeight: "700", fontVariant: ["tabular-nums"] }}
+              style={{ color: semantic.graduated, fontWeight: "700", fontVariant: ["tabular-nums"] }}
             >
               {formatMonthDay(graduatedAt)} 卒業
             </Text>
@@ -93,11 +94,7 @@ export function GraduatedPhraseList() {
 }
 
 const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  ...shadows.layered,
 };
 
 const styles = StyleSheet.create({

@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#fff8f7"
+      "backgroundColor": "#f5f8f4"
     },
     "ios": {
       "supportsTablet": false,
@@ -24,7 +24,7 @@
       "package": "jp.shoma.guitarlovers",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#fff8f7"
+        "backgroundColor": "#f5f8f4"
       }
     },
     "experiments": {
@@ -44,7 +44,7 @@
       [
         "expo-notifications",
         {
-          "color": "#ae3026"
+          "color": "#2e6b3f"
         }
       ]
     ]

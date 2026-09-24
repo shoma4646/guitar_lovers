@@ -15,7 +15,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors } from "@/shared/theme";
+import { colors, shadows } from "@/shared/theme";
 import type { VideoPreset } from "@/shared/types/models";
 import { usePracticeStore } from "@/stores/practice";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
@@ -131,11 +131,7 @@ export function PresetsTab() {
 }
 
 const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  ...shadows.layered,
 };
 
 const styles = StyleSheet.create({

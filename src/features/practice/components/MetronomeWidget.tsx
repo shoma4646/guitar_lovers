@@ -20,7 +20,7 @@ import {
 import * as Haptics from "expo-haptics";
 import { AudioContext, AudioManager } from "react-native-audio-api";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors } from "@/shared/theme";
+import { colors, shadows } from "@/shared/theme";
 import { usePracticeStore, PRESET_BPMS } from "@/stores/practice";
 import {
   bpmToIntervalSec,
@@ -263,11 +263,7 @@ export function MetronomeWidget() {
 }
 
 const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  ...shadows.layered,
 };
 
 const styles = StyleSheet.create({

@@ -8,35 +8,35 @@
 /** Material Design 3 風の色トークン（ライトテーマのみ） */
 const colors = {
   // ===== Surface（背景階調） =====
-  surface: "#fff8f7",
-  surfaceDim: "#edd5d1",
-  surfaceBright: "#fff8f7",
+  surface: "#f5f8f4",
+  surfaceDim: "#d7e0d6",
+  surfaceBright: "#f5f8f4",
   surfaceContainerLowest: "#ffffff",
-  surfaceContainerLow: "#fff0ee",
-  surfaceContainer: "#ffe9e6",
-  surfaceContainerHigh: "#fce3df",
-  surfaceContainerHighest: "#f6ddda",
-  inverseSurface: "#3c2d2b",
-  inverseOnSurface: "#ffedea",
-  surfaceTint: "#ae3026",
-  surfaceVariant: "#f6ddda",
+  surfaceContainerLow: "#eef3ed",
+  surfaceContainer: "#e6eee6",
+  surfaceContainerHigh: "#dbe5da",
+  surfaceContainerHighest: "#d3ded2",
+  inverseSurface: "#1f2a22",
+  inverseOnSurface: "#eef5ee",
+  surfaceTint: "#2e6b3f",
+  surfaceVariant: "#dbe5da",
 
   // ===== On Surface（テキスト・前景） =====
-  onSurface: "#251817",
-  onSurfaceVariant: "#59413e",
-  background: "#fff8f7",
-  onBackground: "#251817",
+  onSurface: "#172019",
+  onSurfaceVariant: "#4f5c52",
+  background: "#f5f8f4",
+  onBackground: "#172019",
 
   // ===== Primary =====
-  primary: "#ae3026",
+  primary: "#2e6b3f",
   onPrimary: "#ffffff",
-  primaryContainer: "#ff6b5b",
-  onPrimaryContainer: "#6d0003",
-  inversePrimary: "#ffb4aa",
-  primaryFixed: "#ffdad5",
-  primaryFixedDim: "#ffb4aa",
-  onPrimaryFixed: "#410001",
-  onPrimaryFixedVariant: "#8c1712",
+  primaryContainer: "#7cc08a",
+  onPrimaryContainer: "#06240f",
+  inversePrimary: "#a5d6ae",
+  primaryFixed: "#d3ecd6",
+  primaryFixedDim: "#a5d6ae",
+  onPrimaryFixed: "#06240f",
+  onPrimaryFixedVariant: "#1c4a29",
 
   // ===== Secondary（Amber / 進捗・ストリーク） =====
   secondary: "#855300",
@@ -48,15 +48,6 @@ const colors = {
   onSecondaryFixed: "#2a1700",
   onSecondaryFixedVariant: "#653e00",
 
-  // ===== Tertiary =====
-  tertiary: "#006b57",
-  onTertiary: "#ffffff",
-  tertiaryContainer: "#00af8f",
-  onTertiaryContainer: "#003a2e",
-  tertiaryFixed: "#74f9d5",
-  tertiaryFixedDim: "#54dcba",
-  onTertiaryFixed: "#002019",
-  onTertiaryFixedVariant: "#005141",
 
   // ===== Error =====
   error: "#ba1a1a",
@@ -65,11 +56,12 @@ const colors = {
   onErrorContainer: "#93000a",
 
   // ===== Outline（罫線） =====
-  outline: "#8c716d",
-  outlineVariant: "#e0bfba",
+  outline: "#75857a",
+  outlineVariant: "#c6d3c5",
+  /** 一覧の区切り線 */
+  divider: "#e2eae1",
 
   // ===== ステータス =====
-  success: "#10B981",
   danger: "#ba1a1a",
   info: "#2979FF",
 };
