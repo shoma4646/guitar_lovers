@@ -319,8 +319,8 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           date,
           bpm,
           result,
-          // 画面に出している回数をそのまま残す。0回だけ欠落すると表示と記録が食い違う
-          reps: activePractice.completedReps,
+          // repsは正の整数のみ保存できる（0を入れると読み込み時に記録ごと隔離される）
+          ...(activePractice.completedReps > 0 ? { reps: activePractice.completedReps } : {}),
         };
         try {
           await recordResultAsync(attempt);
