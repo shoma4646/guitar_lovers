@@ -42,12 +42,12 @@ export class ErrorBoundary extends Component<Props, State> {
           alignItems: "center",
         }}
       >
-        <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: "700" }}>
+        <Text style={{ color: colors.onSurface, fontSize: 20, fontWeight: "700" }}>
           問題が発生しました
         </Text>
         <Text
           style={{
-            color: colors.textMuted,
+            color: colors.onSurfaceVariant,
             fontSize: 13,
             marginTop: 12,
             textAlign: "center",
@@ -62,10 +62,10 @@ export class ErrorBoundary extends Component<Props, State> {
             width: "100%",
             borderRadius: 16,
             padding: 16,
-            backgroundColor: colors.surfaceCard,
+            backgroundColor: colors.surfaceContainerLowest,
           }}
         >
-          <Text style={{ color: colors.textMuted, fontSize: 12 }}>
+          <Text style={{ color: colors.onSurfaceVariant, fontSize: 12 }}>
             {error.message || String(error)}
           </Text>
         </View>
@@ -77,12 +77,12 @@ export class ErrorBoundary extends Component<Props, State> {
             borderRadius: 999,
             paddingHorizontal: 32,
             paddingVertical: 16,
-            backgroundColor: colors.brand,
+            backgroundColor: colors.primary,
           }}
           onPress={this.reset}
           activeOpacity={0.8}
         >
-          <Text style={{ color: colors.textOnBrand, fontSize: 16, fontWeight: "600" }}>
+          <Text style={{ color: colors.onPrimary, fontSize: 16, fontWeight: "600" }}>
             もう一度試す
           </Text>
         </TouchableOpacity>

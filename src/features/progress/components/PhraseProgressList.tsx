@@ -1,129 +1,100 @@
 /**
- * フレーズ別BPM推移リスト（Progress画面の上段・主役）
+ * フレーズ別BPM推移リスト（練習中）
  *
- * 練習中のフレーズ（アーカイブ・卒業済みを除く）ごとに「開始BPM → 現在BPM → 目標BPM」を進捗バーで表示する。
- * フレーズが1件も無ければ、同じカード枠内に案内文を表示する。
+ * 「開始BPM → 現在BPM / 目標BPM」と進捗バーを1行56pt以内で表示する。
+ * データ取得は呼び出し側（画面・シート）が `usePhraseProgressSummaries` で行い、本体は表示に専念する。
  */
 
-import { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { colors } from "@/shared/theme";
-import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
-import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
-import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
+import { ProgressBar } from "@/shared/components/atoms/ProgressBar";
+import type { PhraseProgressSummary } from "@/features/progress/lib/phraseProgress";
 
-export function PhraseProgressList() {
-  const { data: phrases } = usePracticePhrases();
-  const { data: attempts } = usePhraseAttempts();
+type Props = {
+  items: PhraseProgressSummary[];
+  /** 表示する最大件数。未指定なら全件表示する（全件シート用） */
+  maxItems?: number;
+};
 
-  const { summaries, graduatedCount } = useMemo(() => {
-    if (!phrases) return { summaries: [], graduatedCount: 0 };
-    const active = phrases
-      .filter((phrase) => !phrase.archivedAt)
-      .map((phrase) =>
-        summarizePhraseProgress(
-          phrase,
-          (attempts ?? []).filter((a) => a.phraseId === phrase.id),
-        ),
-      );
-    const inProgress = active
-      .filter((summary) => !summary.graduatedAt)
-      .sort(
-        (a, b) =>
-          new Date(b.phrase.updatedAt).getTime() -
-          new Date(a.phrase.updatedAt).getTime(),
-      );
-    return { summaries: inProgress, graduatedCount: active.length - inProgress.length };
-  }, [phrases, attempts]);
+export function PhraseProgressList({ items, maxItems }: Props) {
+  const visible = maxItems !== undefined ? items.slice(0, maxItems) : items;
+
+  if (visible.length === 0) {
+    return (
+      <Text style={styles.empty}>
+        Practiceタブでフレーズを保存すると、ここにBPMの推移が表示されます
+      </Text>
+    );
+  }
 
   return (
-    <View
-      className="bg-surface-container-lowest"
-      style={[styles.card, shadowStyle, { marginBottom: 24 }]}
-    >
-      <Text
-        className="text-label-sm"
-        style={{
-          color: colors.outline,
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
-          fontWeight: "600",
-          marginBottom: 16,
-        }}
-      >
-        フレーズの上達
-      </Text>
-      {summaries.length === 0 ? (
-        <Text className="text-on-surface-variant text-body-md">
-          {graduatedCount > 0
-            ? "練習中のフレーズはありません。保存したフレーズはすべて卒業しました"
-            : "Practiceタブでフレーズを保存すると、ここにBPMの推移が表示されます"}
-        </Text>
-      ) : (
-        <View style={{ gap: 16 }}>
-          {summaries.map(({ phrase, startBpm, currentBpm, targetBpm, progressRatio, gainBpm }) => (
-            <View key={phrase.id} style={{ gap: 6 }}>
-              <View className="flex-row items-center justify-between">
-                <Text
-                  className="text-body-md"
-                  style={{ color: colors.onSurface, fontWeight: "600", flex: 1 }}
-                  numberOfLines={1}
-                >
-                  {phrase.name}
-                </Text>
-                <Text
-                  className="text-label-sm"
-                  style={{
-                    color: colors.onSurfaceVariant,
-                    fontVariant: ["tabular-nums"],
-                  }}
-                >
-                  {startBpm} → {currentBpm} / 目標{targetBpm}
-                </Text>
-              </View>
-              {gainBpm !== undefined && gainBpm > 0 ? (
-                <Text
-                  className="text-label-sm"
-                  style={{ color: colors.tertiary, fontWeight: "700", fontVariant: ["tabular-nums"] }}
-                >
-                  +{gainBpm} BPM
-                </Text>
-              ) : null}
-              <View style={styles.track}>
-                <View
-                  style={{
-                    width: `${Math.round(progressRatio * 100)}%`,
-                    height: "100%",
-                    borderRadius: 9999,
-                    backgroundColor: colors.tertiary,
-                  }}
-                />
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
+    <View>
+      {visible.map((summary, index) => (
+        <PhraseProgressRow key={summary.phrase.id} summary={summary} delay={index * 70} />
+      ))}
     </View>
   );
 }
 
-const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
-};
+function PhraseProgressRow({
+  summary,
+  delay,
+}: {
+  summary: PhraseProgressSummary;
+  delay: number;
+}) {
+  const { phrase, startBpm, currentBpm, targetBpm, progressRatio } = summary;
+
+  return (
+    <View
+      style={styles.row}
+      accessibilityLabel={`${phrase.name}、開始${startBpm}から目標${targetBpm}のうち現在${currentBpm}`}
+    >
+      <View style={styles.topRow}>
+        <Text style={styles.name} numberOfLines={1}>
+          {phrase.name}
+        </Text>
+        <Text style={styles.range} maxFontSizeMultiplier={1.3}>
+          {startBpm} →{" "}
+          <Text style={styles.current}>{currentBpm}</Text> / 目標{targetBpm}
+        </Text>
+      </View>
+      <ProgressBar ratio={progressRatio} delay={delay} />
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  card: {
-    padding: 20,
-    borderRadius: 16,
+  empty: {
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
   },
-  track: {
-    height: 8,
-    borderRadius: 9999,
-    backgroundColor: "#00000014",
-    overflow: "hidden",
+  row: {
+    height: 56,
+    justifyContent: "center",
+    gap: 8,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  name: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.onSurface,
+  },
+  range: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.onSurfaceVariant,
+    fontVariant: ["tabular-nums"],
+  },
+  current: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: colors.primary,
   },
 });

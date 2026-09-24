@@ -1,80 +1,20 @@
 /** @type {import('tailwindcss').Config} */
 /**
- * NativeWind v4 + Stitch DESIGN.md（modern_guitarist）準拠のテーマ拡張。
+ * NativeWind v4 のテーマ拡張。
  *
- * 値の正本は `src/shared/theme/` 配下にあるが、Tailwind 設定は CSS 命名規則の都合で
- * kebab-case のキーを採用する。値が乖離しないよう、変更時は theme と config の両方を更新する。
+ * 色の正本は `src/shared/theme/tokens.js`。ここでは kebab-case へ変換して展開するだけで、
+ * HEX を直接書かない。spacing と radius は Tailwind 側だけの命名体系なのでここに置く。
+ * tokens.js を変更したら Metro のキャッシュを落とす（`npx expo start -c`）。
  */
+const { colors, toKebabColors } = require("./src/shared/theme/tokens");
+
 module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
       colors: {
-        // ===== Surface =====
-        surface: "#fff8f7",
-        "surface-dim": "#edd5d1",
-        "surface-bright": "#fff8f7",
-        "surface-container-lowest": "#ffffff",
-        "surface-container-low": "#fff0ee",
-        "surface-container": "#ffe9e6",
-        "surface-container-high": "#fce3df",
-        "surface-container-highest": "#f6ddda",
-        "surface-variant": "#f6ddda",
-        "surface-tint": "#ae3026",
-        "inverse-surface": "#3c2d2b",
-        "inverse-on-surface": "#ffedea",
-        background: "#fff8f7",
-
-        // ===== On Surface =====
-        "on-surface": "#251817",
-        "on-surface-variant": "#59413e",
-        "on-background": "#251817",
-
-        // ===== Primary（Coral） =====
-        primary: "#ae3026",
-        "on-primary": "#ffffff",
-        "primary-container": "#ff6b5b",
-        "on-primary-container": "#6d0003",
-        "inverse-primary": "#ffb4aa",
-        "primary-fixed": "#ffdad5",
-        "primary-fixed-dim": "#ffb4aa",
-        "on-primary-fixed": "#410001",
-        "on-primary-fixed-variant": "#8c1712",
-
-        // ===== Secondary（Amber） =====
-        secondary: "#855300",
-        "on-secondary": "#ffffff",
-        "secondary-container": "#fea619",
-        "on-secondary-container": "#684000",
-        "secondary-fixed": "#ffddb8",
-        "secondary-fixed-dim": "#ffb95f",
-        "on-secondary-fixed": "#2a1700",
-        "on-secondary-fixed-variant": "#653e00",
-
-        // ===== Tertiary（Green） =====
-        tertiary: "#006b57",
-        "on-tertiary": "#ffffff",
-        "tertiary-container": "#00af8f",
-        "on-tertiary-container": "#003a2e",
-        "tertiary-fixed": "#74f9d5",
-        "tertiary-fixed-dim": "#54dcba",
-        "on-tertiary-fixed": "#002019",
-        "on-tertiary-fixed-variant": "#005141",
-
-        // ===== Error =====
-        error: "#ba1a1a",
-        "on-error": "#ffffff",
-        "error-container": "#ffdad6",
-        "on-error-container": "#93000a",
-
-        // ===== Outline =====
-        outline: "#8c716d",
-        "outline-variant": "#e0bfba",
-
-        // ===== Status utility =====
-        success: "#10B981",
-        info: "#2979FF",
+        ...toKebabColors(colors),
       },
 
       spacing: {

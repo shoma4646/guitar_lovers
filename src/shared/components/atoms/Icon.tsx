@@ -27,6 +27,7 @@ const ICON_MAP: Record<
   add: { set: "material", name: "add" },
   album: { set: "material", name: "album" },
   bolt: { set: "material", name: "bolt" },
+  check_circle: { set: "material", name: "check-circle" },
   equalizer: { set: "material", name: "equalizer" },
   error: { set: "material", name: "error" },
   history: { set: "material", name: "history" },
@@ -53,9 +54,14 @@ const ICON_MAP: Record<
   skip_next: { set: "material", name: "skip-next" },
   skip_previous: { set: "material", name: "skip-previous" },
   close: { set: "material", name: "close" },
+  check: { set: "material", name: "check" },
+  trophy: { set: "community", name: "trophy-variant" },
   search: { set: "material", name: "search" },
   arrow_back: { set: "material", name: "arrow-back" },
   more_vert: { set: "material", name: "more-vert" },
+  menu: { set: "material", name: "menu" },
+  content_cut: { set: "material", name: "content-cut" },
+  metronome: { set: "community", name: "metronome" },
 };
 
 export type IconName = keyof typeof ICON_MAP;

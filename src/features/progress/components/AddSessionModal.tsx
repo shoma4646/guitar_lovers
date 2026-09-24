@@ -70,7 +70,7 @@ export function AddSessionModal({ visible, onClose, onSave }: Props) {
               accessibilityRole="button"
               accessibilityLabel="閉じる"
             >
-              <Ionicons name="close" size={24} color={colors.textGray} />
+              <Ionicons name="close" size={24} color={colors.onSurfaceVariant} />
             </TouchableOpacity>
           </View>
 
@@ -80,7 +80,7 @@ export function AddSessionModal({ visible, onClose, onSave }: Props) {
             value={durationMinutes}
             onChangeText={setDurationMinutes}
             placeholder="30"
-            placeholderTextColor={colors.textGray}
+            placeholderTextColor={colors.onSurfaceVariant}
             keyboardType="numeric"
             accessibilityLabel="練習時間入力"
           />
@@ -91,7 +91,7 @@ export function AddSessionModal({ visible, onClose, onSave }: Props) {
             value={notes}
             onChangeText={setNotes}
             placeholder="今日の練習について..."
-            placeholderTextColor={colors.textGray}
+            placeholderTextColor={colors.onSurfaceVariant}
             multiline
             numberOfLines={3}
             accessibilityLabel="メモ入力"
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     paddingBottom: spacing["4xl"],
     gap: spacing.md,
-    backgroundColor: colors.surfaceCard,
+    backgroundColor: colors.surfaceContainerLowest,
   },
   header: {
     flexDirection: "row",
@@ -131,12 +131,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   title: {
-    color: colors.textPrimary,
+    color: colors.onSurface,
     fontSize: fontSize.headingMd,
     fontWeight: fontWeight.bold,
   },
   inputLabel: {
-    color: colors.textMuted,
+    color: colors.onSurfaceVariant,
     fontSize: fontSize.bodyXs,
     fontWeight: fontWeight.semibold,
     letterSpacing: 0.5,
@@ -147,8 +147,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: spacing.md,
     fontSize: fontSize.headingSm,
-    backgroundColor: colors.surfaceMuted,
-    color: colors.textPrimary,
+    backgroundColor: colors.surfaceContainerLow,
+    color: colors.onSurface,
   },
   textarea: {
     height: 80,
@@ -161,10 +161,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: spacing.sm,
-    backgroundColor: colors.brand,
+    backgroundColor: colors.primary,
   },
   saveButtonText: {
-    color: colors.textOnBrand,
+    color: colors.onPrimary,
     fontSize: fontSize.headingSm,
     fontWeight: fontWeight.bold,
   },

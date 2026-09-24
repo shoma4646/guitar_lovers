@@ -10,7 +10,7 @@
 import { useCallback } from "react";
 import { View, Text, Pressable, Alert, StyleSheet } from "react-native";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors } from "@/shared/theme";
+import { colors, shadows } from "@/shared/theme";
 import type { PracticeSession } from "@/shared/types/models";
 import {
   formatDateShort,
@@ -108,11 +108,7 @@ export function SessionRow({ session, onDelete }: Props) {
 }
 
 const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  ...shadows.layered,
 };
 
 const styles = StyleSheet.create({

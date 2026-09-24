@@ -1,43 +1,44 @@
 /**
  * チューナー画面
  *
- * Stitch modern_1 デザインに準拠した UI。
- * - 上部 AppBar（プロフィール + タイトル + 設定）
- * - 中央 大型カード: 周波数 / ノート（display-numeric 120px）/ 半円ゲージ
- * - 6 弦セレクター（小さな円形）
- * - Standard / Auto の Quick Controls
- * - 画面下部に開始/停止 CTA
- *
- * マイク入力からのピッチ検出は usePitchDetector が担い、この画面は検出周波数を
- * 最寄りの弦・セント差・針の角度へ変換して描画する。
+ * タブを開いている間だけマイク入力からピッチを検出する（開始/停止ボタンは持たない）。
+ * usePitchDetectorが検出のライフサイクルを担い、この画面は検出周波数を最寄りの弦・
+ * セント差・針の角度へ変換して描画する。
  */
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  Animated,
-  Linking,
-  StyleSheet,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Linking, Pressable, Text, View, StyleSheet } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors } from "@/shared/theme";
+import { IconButton } from "@/shared/components/atoms/IconButton";
+import { SegmentedControl } from "@/shared/components/atoms/SegmentedControl";
+import { Card } from "@/shared/components/molecules/Card";
+import { ScreenFrame } from "@/shared/components/molecules/ScreenFrame";
+import { colors, radius } from "@/shared/theme";
+import { semantic } from "@/shared/theme/semantic";
 import {
   tuningPresets,
   TuningPresetKey,
   TUNING_THRESHOLD_CENTS,
 } from "@/shared/constants/tuning";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
-import { usePitchDetector } from "@/features/tuner/hooks/usePitchDetector";
-import { usePracticeStore } from "@/stores/practice";
+import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
+import {
+  usePitchDetector,
+  type PitchDetectorStatus,
+} from "@/features/tuner/hooks/usePitchDetector";
+import { NeedleMeter } from "@/features/tuner/components/NeedleMeter";
 import {
   frequencyToNote,
   nearestStringInPreset,
 } from "@/features/tuner/lib/pitch";
+import { describeTuning, tuningState } from "@/features/tuner/lib/meter";
 
 /** 各弦の表示番号（6弦〜1弦） */
 const STRING_NUMBERS = [6, 5, 4, 3, 2, 1];
@@ -47,18 +48,6 @@ const TUNED_HOLD_MS = 500;
 
 const UNTUNED_STRINGS = [false, false, false, false, false, false];
 
-/** セント値をメーター表示用の割合に変換する（-50〜+50 → 0〜1） */
-function centsToMeterRatio(cents: number): number {
-  return Math.max(0, Math.min(1, (cents + 50) / 100));
-}
-
-/** セント値に応じたメーターカラーを返す */
-function getMeterColor(cents: number): string {
-  if (Math.abs(cents) <= TUNING_THRESHOLD_CENTS) return colors.success;
-  if (cents < 0) return colors.info;
-  return colors.danger;
-}
-
 /** セント値を `+12 cents` 形式に整形。針の可動範囲（±50）を超える場合はその旨を示す */
 function formatCents(cents: number): string {
   if (cents > 50) return "+50 cents以上";
@@ -67,41 +56,90 @@ function formatCents(cents: number): string {
   return `${sign}${Math.round(cents)} cents`;
 }
 
-export function TunerScreen() {
-  const [selectedPreset, setSelectedPreset] =
-    useState<TuningPresetKey>("standard");
-  const [focusedStringIndex, setFocusedStringIndex] = useState<number | null>(
-    null,
+type MicChipTone = "active" | "paused" | "warning";
+
+const MIC_CHIP_DOT_COLOR: Record<MicChipTone, string> = {
+  active: semantic.tunerInTune,
+  paused: semantic.tunerIdle,
+  warning: semantic.tunerOff,
+};
+
+/** ヘッダーのマイク状態チップ。タップで一時停止/再開をトグルする */
+function MicStatusChip({
+  label,
+  tone,
+  onPress,
+}: {
+  label: string;
+  tone: MicChipTone;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !onPress }}
+      style={({ pressed }) => [
+        styles.micChip,
+        { opacity: !onPress ? 0.7 : pressed ? 0.8 : 1 },
+      ]}
+    >
+      <View style={[styles.micChipDot, { backgroundColor: MIC_CHIP_DOT_COLOR[tone] }]} />
+      <Text style={styles.micChipLabel}>{label}</Text>
+    </Pressable>
   );
+}
+
+/** 現在のマイク状態からヘッダーチップの表示内容を決める */
+function getMicChipConfig(
+  status: PitchDetectorStatus,
+  pausedByUser: boolean,
+  pause: () => void,
+  resume: () => void,
+): { label: string; tone: MicChipTone; onPress?: () => void } {
+  if (pausedByUser) return { label: "一時停止中", tone: "paused", onPress: resume };
+  if (status === "listening") return { label: "マイク入力中", tone: "active", onPress: pause };
+  if (status === "denied") return { label: "マイク未許可", tone: "warning" };
+  if (status === "error") return { label: "マイクエラー", tone: "warning", onPress: resume };
+  return { label: "準備中…", tone: "paused" };
+}
+
+type BadgeTone = "in" | "warn" | "idle";
+
+const BADGE_STYLE: Record<BadgeTone, { bg: string; fg: string }> = {
+  in: { bg: colors.primaryFixed, fg: colors.onPrimaryFixedVariant },
+  warn: { bg: colors.errorContainer, fg: colors.onErrorContainer },
+  idle: { bg: colors.surfaceContainer, fg: colors.onSurfaceVariant },
+};
+
+export function TunerScreen() {
+  const router = useRouter();
+  const { status, hz, inputLevelDb, pausedByUser, pause, resume } = usePitchDetector();
+
+  const [selectedPreset, setSelectedPreset] = useState<TuningPresetKey>("standard");
+  const [focusedStringIndex, setFocusedStringIndex] = useState<number | null>(null);
   /** 検出音がプリセット内のどの弦にも該当しないときの実際の音名（例: "G4"） */
   const [freeNoteLabel, setFreeNoteLabel] = useState<string | null>(null);
   const [cents, setCents] = useState(0);
   const [tunedStrings, setTunedStrings] = useState<boolean[]>(UNTUNED_STRINGS);
 
-  const router = useRouter();
-  const { status, hz, inputLevelDb, start, stop } = usePitchDetector();
-  const isActive = status === "listening";
-
+  const reducedMotion = useReducedMotion();
+  const noteOpacity = useSharedValue(1);
   const inTuneSinceRef = useRef<number | null>(null);
-  const noteOpacity = useRef(new Animated.Value(1)).current;
   const lastNoteRef = useRef<string | null>(null);
 
   const preset = tuningPresets[selectedPreset];
 
   const animateNoteChange = useCallback(() => {
-    Animated.sequence([
-      Animated.timing(noteOpacity, {
-        toValue: 0,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(noteOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [noteOpacity]);
+    if (reducedMotion) return;
+    noteOpacity.value = withSequence(
+      withTiming(0, { duration: 100 }),
+      withTiming(1, { duration: 200 }),
+    );
+  }, [noteOpacity, reducedMotion]);
 
   // 検出周波数を最寄りの弦とセント差へ変換し、許容範囲内が続いた弦をチューニング済みにする
   useEffect(() => {
@@ -148,406 +186,295 @@ export function TunerScreen() {
     }
   }, [hz, preset, animateNoteChange]);
 
-  const handleToggleActive = useCallback(() => {
-    if (isActive) {
-      void stop();
-      setCents(0);
-      return;
-    }
+  const handleSelectPreset = useCallback((key: TuningPresetKey) => {
+    setSelectedPreset(key);
     setTunedStrings(UNTUNED_STRINGS);
-    inTuneSinceRef.current = null;
-    // メトロノームのクリック音（800/1000Hz）をマイクが拾い、弦の音として検出してしまうため止める
-    usePracticeStore.getState().setMetronomeEnabled(false);
-    void start();
-  }, [isActive, start, stop]);
+    setFocusedStringIndex(null);
+    setFreeNoteLabel(null);
+    setCents(0);
+    lastNoteRef.current = null;
+  }, []);
 
-  const handleSelectPreset = useCallback(
-    (key: TuningPresetKey) => {
-      if (isActive) {
-        void stop();
-      }
-      setSelectedPreset(key);
-      setTunedStrings(UNTUNED_STRINGS);
-      setFocusedStringIndex(null);
-      setFreeNoteLabel(null);
-      setCents(0);
-      lastNoteRef.current = null;
-    },
-    [isActive, stop],
-  );
+  const currentState = tuningState(cents);
+  const isTuned = focusedStringIndex !== null && Math.abs(cents) <= TUNING_THRESHOLD_CENTS;
+  const displayNote = focusedStringIndex !== null ? preset.notes[focusedStringIndex] : (freeNoteLabel ?? "--");
 
-  const meterRatio = centsToMeterRatio(isActive ? cents : 0);
-  const meterColor = getMeterColor(cents);
-  const isTuned =
-    isActive && focusedStringIndex !== null && Math.abs(cents) <= TUNING_THRESHOLD_CENTS;
-  const displayNote =
+  const stringCentsText =
     focusedStringIndex !== null
-      ? preset.notes[focusedStringIndex]
-      : (freeNoteLabel ?? "--");
-  const displayHz = hz;
+      ? `${STRING_NUMBERS[focusedStringIndex]}弦 ・ ${formatCents(cents)}`
+      : freeNoteLabel
+        ? "近い弦が見つかりません"
+        : "-- cents";
 
-  // -50..+50 cents → -45deg..+45deg の針回転
-  const needleAngleDeg = (meterRatio - 0.5) * 90;
-
-  const ctaLabel =
-    status === "requesting" ? "開始中..." : isActive ? "停止" : "開始";
-  const helperText =
-    status === "denied"
-      ? "マイクの許可が必要です。設定アプリから許可してください。"
+  const badgeText = pausedByUser
+    ? "一時停止中です"
+    : status === "denied"
+      ? "マイクの利用が許可されていません"
       : status === "error"
-        ? "マイクを開始できませんでした。他のアプリがマイクを使用していないか確認してください。"
-        : isActive
-          ? hz === null
-            ? "弦を1本ずつ鳴らしてください"
-            : "音を伸ばしたまま針が中央に来るよう調整してください"
-          : "開始してから弦を鳴らすと、最も近い弦を自動で判定します";
+        ? "マイクを開始できませんでした"
+        : status === "requesting"
+          ? "準備中です"
+          : focusedStringIndex !== null
+            ? describeTuning(currentState)
+            : "弦を1本ずつ鳴らしてください";
+
+  const badgeTone: BadgeTone = pausedByUser
+    ? "idle"
+    : status === "denied" || status === "error"
+      ? "warn"
+      : status === "requesting"
+        ? "idle"
+        : focusedStringIndex !== null
+          ? currentState === "in"
+            ? "in"
+            : "warn"
+          : "idle";
+
+  const badgeStyle = BADGE_STYLE[badgeTone];
+  const micChipConfig = getMicChipConfig(status, pausedByUser, pause, resume);
+
+  const noteAnimatedStyle = useAnimatedStyle(() => ({ opacity: noteOpacity.value }));
+
+  const presetItems = (Object.keys(tuningPresets) as TuningPresetKey[]).map((key) => ({
+    value: key,
+    label: tuningPresets[key].label,
+  }));
 
   return (
     <ErrorBoundary>
-      <SafeAreaView
-        edges={["top"]}
-        className="flex-1 bg-surface"
-      >
-        {/* Top App Bar */}
-        <View className="flex-row items-center justify-between px-margin-mobile h-16">
-          <View className="w-8 h-8 rounded-full bg-surface-container-highest items-center justify-center">
-            <Icon name="school" size={18} color={colors.onSurfaceVariant} />
-          </View>
-          <Text className="font-bold text-headline-lg text-on-surface">
-            Guitar Lovers
-          </Text>
-          <Pressable
-            onPress={() => router.push("/settings")}
-            className="active:opacity-70"
-            hitSlop={8}
-            accessibilityRole="button"
+      <ScreenFrame>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>チューナー</Text>
+          <MicStatusChip {...micChipConfig} />
+          <IconButton
+            name="settings"
             accessibilityLabel="設定を開く"
-          >
-            <Icon name="settings" size={24} color={colors.primary} />
-          </Pressable>
+            color={colors.primary}
+            onPress={() => router.push("/settings")}
+          />
         </View>
 
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: 32 }}
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="px-margin-mobile items-center">
-            {/* Microcopy */}
-            <Text className="text-on-surface-variant text-label-sm tracking-widest mb-lg mt-sm">
-              正確に、美しく。
-            </Text>
+        <SegmentedControl
+          items={presetItems}
+          value={selectedPreset}
+          onChange={handleSelectPreset}
+          role="radio"
+          accessibilityLabel="チューニングプリセット"
+        />
 
-            {/* Main Tuning Card */}
-            <View
-              className="w-full aspect-square bg-surface-container-lowest items-center justify-between p-xl relative overflow-hidden"
-              style={[styles.mainCard, shadowStyle]}
-            >
-              {/* Frequency Display */}
-              <Text className="text-on-surface-variant text-[14px] font-medium" style={styles.hzText}>
-                {displayHz !== null ? `${displayHz.toFixed(1)} Hz` : "-- Hz"}
-              </Text>
-              <Text
-                className="text-on-surface-variant text-label-sm"
-                style={{ fontVariant: ["tabular-nums"] }}
-              >
+        <Card elevation="low" padding={20}>
+          <View style={{ gap: 12 }}>
+            <View style={styles.hzRow}>
+              <Text style={styles.hzText}>{hz !== null ? `${hz.toFixed(1)} Hz` : "-- Hz"}</Text>
+              <Text style={styles.levelText}>
                 {inputLevelDb !== null && Number.isFinite(inputLevelDb)
-                  ? `マイク入力 ${inputLevelDb.toFixed(0)} dB`
-                  : "マイク入力 -- dB"}
+                  ? `入力レベル ${inputLevelDb.toFixed(0)} dB`
+                  : "入力レベル -- dB"}
               </Text>
+            </View>
 
-              {/* Central Note */}
-              <View className="items-center">
-                <Animated.Text
-                  style={[
-                    styles.noteText,
-                    {
-                      color: isTuned ? colors.success : colors.primary,
-                      opacity: isActive && hz === null ? 0.35 : noteOpacity,
-                    },
-                  ]}
-                  accessibilityLiveRegion="polite"
-                >
-                  {displayNote}
-                </Animated.Text>
-                <View
-                  className="w-2 h-2 rounded-full mt-base"
-                  style={{ backgroundColor: meterColor }}
-                />
-              </View>
+            <NeedleMeter cents={cents} hasSignal={focusedStringIndex !== null} state={currentState} />
 
-              {/* Semi-circular Gauge */}
-              <View style={styles.gaugeWrap}>
-                <View style={styles.gaugeRingTrack} />
-                <View style={styles.gaugeRingActive} />
-                {/* Needle */}
-                <View
-                  style={[
-                    styles.needleContainer,
-                    { transform: [{ rotate: `${needleAngleDeg}deg` }] },
-                  ]}
-                >
-                  <View style={[styles.needle, { backgroundColor: meterColor }]} />
-                  <View
-                    style={[
-                      styles.needleHead,
-                      { backgroundColor: meterColor, borderColor: colors.surfaceContainerLowest },
-                    ]}
-                  />
-                </View>
-              </View>
-
-              <Text
-                className="text-label-sm font-bold mt-sm"
-                style={{ color: meterColor, fontVariant: ["tabular-nums"] }}
-                accessibilityLiveRegion="polite"
+            <View style={{ alignItems: "center" }}>
+              <Animated.Text
+                style={[
+                  styles.noteText,
+                  noteAnimatedStyle,
+                  { color: isTuned ? semantic.tunerInTune : colors.primary },
+                ]}
               >
-                {isActive && focusedStringIndex !== null
-                  ? formatCents(cents)
-                  : "-- cents"}
+                {displayNote}
+              </Animated.Text>
+              <Text style={styles.stringCentsText}>{stringCentsText}</Text>
+            </View>
+
+            <View style={[styles.badge, { backgroundColor: badgeStyle.bg }]}>
+              <Text style={[styles.badgeText, { color: badgeStyle.fg }]} accessibilityLiveRegion="polite">
+                {badgeText}
               </Text>
-
-              {/* Decoration glows */}
-              <View style={styles.glowTopRight} />
-              <View style={styles.glowBottomLeft} />
             </View>
-
-            {/* String Selectors */}
-            <View className="w-full mt-xl flex-row" style={{ gap: 12 }}>
-              {preset.notes.map((note, idx) => {
-                const isFocused =
-                  isActive && focusedStringIndex !== null && idx === focusedStringIndex;
-                const isTunedString = tunedStrings[idx];
-                const stringNum = STRING_NUMBERS[idx];
-                const displayLabel = idx === 0 ? note.toLowerCase() : note;
-
-                return (
-                  <View key={idx} className="flex-1 items-center" style={{ gap: 8 }}>
-                    <Text
-                      className="text-[12px] font-bold"
-                      style={{
-                        color: isFocused ? colors.primary : colors.outline,
-                      }}
-                    >
-                      {stringNum}
-                    </Text>
-                    <View
-                      className="w-10 h-10 rounded-full items-center justify-center"
-                      style={{
-                        backgroundColor: isFocused
-                          ? colors.primaryContainer
-                          : isTunedString
-                            ? `${colors.success}1A`
-                            : "transparent",
-                        borderWidth: 1,
-                        borderColor: isFocused
-                          ? colors.primaryContainer
-                          : isTunedString
-                            ? colors.success
-                            : colors.outlineVariant,
-                      }}
-                      accessibilityLabel={`${stringNum}弦 ${note} ${isTunedString ? "チューニング完了" : "未チューニング"}`}
-                    >
-                      <Text
-                        className="text-[14px] font-bold"
-                        style={{
-                          color: isFocused
-                            ? colors.onPrimaryContainer
-                            : isTunedString
-                              ? colors.success
-                              : colors.onSurface,
-                        }}
-                      >
-                        {displayLabel}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Quick Controls (Preset chips) */}
-            <View className="mt-xl flex-row flex-wrap justify-center" style={{ gap: 12 }}>
-              {(Object.keys(tuningPresets) as TuningPresetKey[]).map((key) => {
-                const active = key === selectedPreset;
-                return (
-                  <Pressable
-                    key={key}
-                    onPress={() => handleSelectPreset(key)}
-                    className="flex-row items-center bg-surface-container active:opacity-80"
-                    style={{
-                      paddingHorizontal: 24,
-                      paddingVertical: 12,
-                      borderRadius: 9999,
-                      gap: 8,
-                      backgroundColor: active
-                        ? colors.primary
-                        : colors.surfaceContainer,
-                    }}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: active }}
-                  >
-                    <Icon
-                      name={active ? "mic" : "equalizer"}
-                      size={18}
-                      color={active ? colors.onPrimary : colors.onSurfaceVariant}
-                    />
-                    <Text
-                      className="text-label-sm"
-                      style={{
-                        color: active ? colors.onPrimary : colors.onSurfaceVariant,
-                        fontWeight: "600",
-                      }}
-                    >
-                      {tuningPresets[key].label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {/* Start / Stop CTA */}
-            <Pressable
-              onPress={handleToggleActive}
-              disabled={status === "requesting"}
-              className="w-full mt-xl items-center justify-center active:opacity-90"
-              style={{
-                height: 52,
-                borderRadius: 16,
-                backgroundColor: isActive ? colors.error : colors.primary,
-                opacity: status === "requesting" ? 0.7 : 1,
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={isActive ? "チューナーを停止" : "チューナーを開始"}
-            >
-              <Text
-                className="text-body-lg"
-                style={{ color: colors.onPrimary, fontWeight: "700", letterSpacing: 0.5 }}
-              >
-                {ctaLabel}
-              </Text>
-            </Pressable>
-
-            <Text
-              className="text-on-surface-variant text-label-sm text-center mt-sm"
-              style={{ lineHeight: 18 }}
-            >
-              {helperText}
-            </Text>
 
             {status === "denied" && (
               <Pressable
                 onPress={() => void Linking.openSettings()}
-                className="mt-sm active:opacity-80"
-                style={{
-                  paddingHorizontal: 20,
-                  paddingVertical: 10,
-                  borderRadius: 9999,
-                  backgroundColor: colors.surfaceContainer,
-                }}
+                style={styles.openSettingsLink}
                 accessibilityRole="button"
+                accessibilityLabel="端末の設定を開く"
               >
-                <Text
-                  className="text-label-sm"
-                  style={{ color: colors.primary, fontWeight: "600" }}
-                >
-                  設定を開く
-                </Text>
+                <Text style={styles.openSettingsLabel}>設定を開く</Text>
               </Pressable>
             )}
           </View>
-        </ScrollView>
-      </SafeAreaView>
+        </Card>
+
+        <View style={styles.stringGrid} accessibilityRole="radiogroup" accessibilityLabel="弦の状態">
+          {preset.notes.map((note, idx) => {
+            const isFocused = idx === focusedStringIndex;
+            const isTunedString = tunedStrings[idx];
+            const stringNum = STRING_NUMBERS[idx];
+
+            return (
+              <View
+                key={idx}
+                style={[
+                  styles.stringCell,
+                  isTunedString
+                    ? { backgroundColor: colors.primaryFixed, borderWidth: 0 }
+                    : isFocused
+                      ? { borderWidth: 2, borderColor: colors.primary }
+                      : { borderWidth: 1, borderColor: colors.outlineVariant },
+                ]}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: isFocused }}
+                accessibilityLabel={`${stringNum}弦 ${note} ${isTunedString ? "チューニング完了" : "未チューニング"}`}
+              >
+                <Text
+                  style={[
+                    styles.stringNumberText,
+                    {
+                      color: isTunedString
+                        ? colors.onPrimaryFixedVariant
+                        : isFocused
+                          ? colors.primary
+                          : colors.outline,
+                    },
+                  ]}
+                >
+                  {stringNum}弦
+                </Text>
+                <View style={styles.stringNoteRow}>
+                  <Text
+                    style={[
+                      styles.stringNoteText,
+                      { color: isTunedString ? colors.onPrimaryFixedVariant : colors.onSurface },
+                    ]}
+                  >
+                    {note}
+                  </Text>
+                  {isTunedString && (
+                    <Icon name="check" size={14} color={colors.onPrimaryFixedVariant} />
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        <Text style={styles.referencePitchText}>基準ピッチ A = 440 Hz</Text>
+      </ScreenFrame>
     </ErrorBoundary>
   );
 }
 
-const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
-};
-
 const styles = StyleSheet.create({
-  mainCard: {
-    borderRadius: 32,
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.onSurface,
+  },
+  micChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 32,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceContainer,
+  },
+  micChipDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  micChipLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.onSurfaceVariant,
+  },
+  hzRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   hzText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.onSurfaceVariant,
+    fontVariant: ["tabular-nums"],
+  },
+  levelText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.onSurfaceVariant,
     fontVariant: ["tabular-nums"],
   },
   noteText: {
-    fontSize: 120,
+    fontSize: 88,
     fontWeight: "800",
-    lineHeight: 120,
-    letterSpacing: -7.2, // -0.06em × 120
+    lineHeight: 96,
+    letterSpacing: -5.28, // -0.06em × 88
     fontVariant: ["tabular-nums"],
   },
-  // 半円ゲージ: 直径 256 のリングを下半分にクリップ
-  gaugeWrap: {
-    width: "100%",
-    height: 96,
-    marginTop: 16,
+  stringCentsText: {
+    marginTop: 4,
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.onSurfaceVariant,
+    fontVariant: ["tabular-nums"],
+  },
+  badge: {
+    alignSelf: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  openSettingsLink: {
+    alignSelf: "center",
+  },
+  openSettingsLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  stringGrid: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  stringCell: {
+    flex: 1,
+    height: 68,
+    borderRadius: radius.lg,
     alignItems: "center",
-    justifyContent: "flex-end",
-    overflow: "hidden",
+    justifyContent: "center",
+    gap: 4,
+    backgroundColor: colors.surfaceContainerLowest,
   },
-  gaugeRingTrack: {
-    position: "absolute",
-    width: 256,
-    height: 256,
-    bottom: -128,
-    borderWidth: 12,
-    borderColor: colors.surfaceContainerHigh,
-    borderRadius: 128,
+  stringNumberText: {
+    fontSize: 11,
+    fontWeight: "700",
   },
-  gaugeRingActive: {
-    position: "absolute",
-    width: 60,
-    height: 256,
-    bottom: -128,
-    left: "50%",
-    marginLeft: -30,
-    borderTopWidth: 12,
-    borderColor: colors.primaryContainer,
-  },
-  needleContainer: {
-    position: "absolute",
-    bottom: 0,
-    width: 4,
-    height: 80,
+  stringNoteRow: {
+    flexDirection: "row",
     alignItems: "center",
-    transformOrigin: "bottom",
+    gap: 4,
   },
-  needle: {
-    width: 3,
-    height: 80,
-    borderRadius: 2,
+  stringNoteText: {
+    fontSize: 15,
+    fontWeight: "800",
   },
-  needleHead: {
-    position: "absolute",
-    top: -2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-  },
-  glowTopRight: {
-    position: "absolute",
-    top: -64,
-    right: -64,
-    width: 192,
-    height: 192,
-    borderRadius: 96,
-    backgroundColor: "rgba(255,107,91,0.05)",
-  },
-  glowBottomLeft: {
-    position: "absolute",
-    bottom: -64,
-    left: -64,
-    width: 192,
-    height: 192,
-    borderRadius: 96,
-    backgroundColor: "rgba(0,175,143,0.05)",
+  referencePitchText: {
+    fontSize: 12,
+    color: colors.onSurfaceVariant,
+    textAlign: "center",
   },
 });

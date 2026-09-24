@@ -1,108 +1,121 @@
 /**
- * 卒業したフレーズの一覧（Progress画面、フレーズの上達の直下）
+ * 卒業したフレーズの一覧
  *
- * 目標BPMに到達したフレーズ（アーカイブ済みを除く）を卒業日の新しい順に表示する。
- * 卒業フレーズが1件も無ければ何も表示しない。
+ * 名前の前にトロフィーバッジを付け、色以外の手がかりでも卒業と分かるようにする。
+ * データ取得は呼び出し側（画面・シート）が `usePhraseProgressSummaries` で行う。
  */
 
-import { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { colors } from "@/shared/theme";
-import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
-import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
-import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
+import { semantic } from "@/shared/theme/semantic";
+import { Icon } from "@/shared/components/atoms/Icon";
+import type { GraduatedPhraseSummary } from "@/features/progress/hooks/usePhraseProgressSummaries";
+
+type Props = {
+  items: GraduatedPhraseSummary[];
+  /** 表示する最大件数。未指定なら全件表示する（全件シート用） */
+  maxItems?: number;
+};
 
 function formatMonthDay(iso: string): string {
   const d = new Date(iso);
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-export function GraduatedPhraseList() {
-  const { data: phrases } = usePracticePhrases();
-  const { data: attempts } = usePhraseAttempts();
+export function GraduatedPhraseList({ items, maxItems }: Props) {
+  const visible = maxItems !== undefined ? items.slice(0, maxItems) : items;
 
-  const graduates = useMemo(() => {
-    if (!phrases) return [];
-    return phrases
-      .filter((phrase) => !phrase.archivedAt)
-      .map((phrase) =>
-        summarizePhraseProgress(
-          phrase,
-          (attempts ?? []).filter((a) => a.phraseId === phrase.id),
-        ),
-      )
-      .flatMap((summary) =>
-        summary.graduatedAt ? [{ ...summary, graduatedAt: summary.graduatedAt }] : [],
-      )
-      .sort(
-        (a, b) => new Date(b.graduatedAt).getTime() - new Date(a.graduatedAt).getTime(),
-      );
-  }, [phrases, attempts]);
+  if (visible.length === 0) {
+    return <Text style={styles.empty}>卒業したフレーズはまだありません</Text>;
+  }
 
-  if (graduates.length === 0) return null;
+  return (
+    <View>
+      {visible.map((summary) => (
+        <GraduatedPhraseRow key={summary.phrase.id} summary={summary} />
+      ))}
+    </View>
+  );
+}
+
+function GraduatedPhraseRow({ summary }: { summary: GraduatedPhraseSummary }) {
+  const { phrase, startBpm, currentBpm, targetBpm, graduatedAt } = summary;
 
   return (
     <View
-      className="bg-surface-container-lowest"
-      style={[styles.card, shadowStyle, { marginBottom: 24 }]}
+      style={styles.row}
+      accessibilityLabel={`${phrase.name}、${formatMonthDay(graduatedAt)}に卒業、${startBpm}から${currentBpm}、目標${targetBpm}BPM`}
     >
-      <Text
-        className="text-label-sm"
-        style={{
-          color: colors.outline,
-          letterSpacing: 1.2,
-          fontWeight: "600",
-          marginBottom: 16,
-        }}
-      >
-        卒業したフレーズ
-      </Text>
-      <View style={{ gap: 12 }}>
-        {graduates.map(({ phrase, startBpm, currentBpm, targetBpm, graduatedAt }) => (
-          <View
-            key={phrase.id}
-            className="flex-row items-center justify-between"
-            accessibilityLabel={`${phrase.name}、${formatMonthDay(graduatedAt)}に卒業、${startBpm}から${currentBpm}、目標${targetBpm}BPM`}
-          >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text
-                className="text-body-md"
-                style={{ color: colors.onSurface, fontWeight: "600" }}
-                numberOfLines={1}
-              >
-                {phrase.name}
-              </Text>
-              <Text
-                className="text-label-sm"
-                style={{ color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}
-              >
-                {startBpm} → {currentBpm}（目標{targetBpm}）
-              </Text>
-            </View>
-            <Text
-              className="text-label-sm"
-              style={{ color: colors.tertiary, fontWeight: "700", fontVariant: ["tabular-nums"] }}
-            >
-              {formatMonthDay(graduatedAt)} 卒業
-            </Text>
-          </View>
-        ))}
+      <View style={styles.topRow}>
+        <View style={styles.badge}>
+          <Icon name="trophy" size={12} color={semantic.graduated} />
+          <Text style={styles.badgeText}>卒業</Text>
+        </View>
+        <Text style={styles.name} numberOfLines={1}>
+          {phrase.name}
+        </Text>
+      </View>
+      <View style={styles.bottomRow}>
+        <Text style={styles.range} maxFontSizeMultiplier={1.3}>
+          {startBpm} → {currentBpm}（目標{targetBpm}）
+        </Text>
+        <Text style={styles.date} maxFontSizeMultiplier={1.3}>
+          {formatMonthDay(graduatedAt)} 卒業
+        </Text>
       </View>
     </View>
   );
 }
 
-const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
-};
-
 const styles = StyleSheet.create({
-  card: {
-    padding: 20,
-    borderRadius: 16,
+  empty: {
+    fontSize: 14,
+    color: colors.onSurfaceVariant,
+  },
+  row: {
+    height: 56,
+    justifyContent: "center",
+    gap: 4,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    height: 18,
+    paddingHorizontal: 6,
+    borderRadius: 9999,
+    backgroundColor: semantic.graduatedContainer,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: semantic.graduated,
+  },
+  name: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.onSurface,
+  },
+  bottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  range: {
+    fontSize: 13,
+    color: colors.onSurfaceVariant,
+    fontVariant: ["tabular-nums"],
+  },
+  date: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: semantic.graduated,
+    fontVariant: ["tabular-nums"],
   },
 });

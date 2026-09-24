@@ -11,10 +11,13 @@
 
 import { Tabs } from "expo-router";
 import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, IconName } from "@/shared/components/atoms/Icon";
 import { colors, textStyles } from "@/shared/theme";
+import { TAB_BAR_CONTENT_HEIGHT } from "@/shared/constants/layout";
 
 const ICON_SIZE = 24;
+
 
 /**
  * pill 形状のアイコン背景
@@ -50,6 +53,8 @@ function TabIcon({
 }
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -58,9 +63,9 @@ export default function TabLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.outlineVariant,
           borderTopWidth: 1,
-          height: 80,
+          height: TAB_BAR_CONTENT_HEIGHT + insets.bottom,
           paddingTop: 8,
-          paddingBottom: 24,
+          paddingBottom: insets.bottom,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.outline,

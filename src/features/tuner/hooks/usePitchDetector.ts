@@ -3,14 +3,20 @@
  *
  * react-native-audio-apiのAudioRecorderでPCMを受け取り、pitchy（McLeod Pitch Method）で
  * 基本周波数を推定、平滑化した値をstateとして公開する。
+ *
+ * チューナータブを開いている間だけ検出する設計とし、開始/停止ボタンは持たない。
+ * タブのフォーカスとアプリのフォアグラウンド/バックグラウンドに連動して自動的に
+ * start/stopし、ユーザーが明示的に一時停止した場合（pausedByUser）だけ自動再開を止める。
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { AudioManager, AudioRecorder } from "react-native-audio-api";
 import { PitchDetector } from "pitchy";
 import { createPitchSmoother } from "@/features/tuner/lib/smoothing";
 import { computeRms, rmsToDbfs } from "@/features/tuner/lib/inputLevel";
+import { usePracticeStore } from "@/stores/practice";
 
 export type PitchDetectorStatus =
   | "idle"
@@ -27,8 +33,12 @@ export interface PitchDetectorState {
   clarity: number;
   /** 直近フレームのマイク入力レベル（dBFS）。停止中はnull */
   inputLevelDb: number | null;
-  start: () => Promise<void>;
-  stop: () => Promise<void>;
+  /** ユーザーが明示的に一時停止しているか（未開始とは区別する） */
+  pausedByUser: boolean;
+  /** マイク入力を一時停止する */
+  pause: () => void;
+  /** マイク入力を再開する（権限が無ければ確認ダイアログを出す） */
+  resume: () => void;
 }
 
 const PREFERRED_SAMPLE_RATE = 44100;
@@ -42,6 +52,12 @@ const UI_UPDATE_INTERVAL_MS = 50;
  */
 export const MIN_VOLUME_RMS = 0.0005;
 
+/** マイク録音の許可を確認・要求する。既に決定済みならダイアログは出ずその結果が返る */
+async function ensurePermission(): Promise<"granted" | "denied"> {
+  const permission = await AudioManager.requestRecordingPermissions();
+  return permission === "Granted" ? "granted" : "denied";
+}
+
 /** 録音セッションを解放し、Practice画面のメトロノームが前提とする再生設定へ戻す */
 function restorePlaybackSession(): void {
   AudioManager.setAudioSessionOptions({
@@ -50,12 +66,13 @@ function restorePlaybackSession(): void {
   });
 }
 
-/** マイクからのピッチ検出を開始・停止できるhook */
+/** マイクからのピッチ検出をタブのフォーカスに連動して開始・停止するhook */
 export function usePitchDetector(): PitchDetectorState {
   const [status, setStatus] = useState<PitchDetectorStatus>("idle");
   const [hz, setHz] = useState<number | null>(null);
   const [clarity, setClarity] = useState(0);
   const [inputLevelDb, setInputLevelDb] = useState<number | null>(null);
+  const [pausedByUser, setPausedByUser] = useState(false);
 
   const recorderRef = useRef<AudioRecorder | null>(null);
   // 権限確認のawait中に再度startが呼ばれてレコーダーが二重生成されないよう、同期的に占有する
@@ -68,6 +85,11 @@ export function usePitchDetector(): PitchDetectorState {
   } | null>(null);
   const smootherRef = useRef(createPitchSmoother());
   const lastUiUpdateRef = useRef(0);
+  // pause()/resume()と同時に更新する。effect側は再購読を避けるためstateでなくこちらを読む
+  const pausedByUserRef = useRef(false);
+  const isFocusedRef = useRef(false);
+  /** start()時点のメトロノーム設定値。nullならこのhookはまだ変更していない */
+  const metronomeWasEnabledRef = useRef<boolean | null>(null);
 
   /** 録音リソースを解放し、再度startできる状態に戻す */
   const releaseRecorder = useCallback(async () => {
@@ -83,6 +105,10 @@ export function usePitchDetector(): PitchDetectorState {
     smootherRef.current.reset();
     detectorRef.current = null;
     restorePlaybackSession();
+    if (metronomeWasEnabledRef.current !== null) {
+      usePracticeStore.getState().setMetronomeEnabled(metronomeWasEnabledRef.current);
+      metronomeWasEnabledRef.current = null;
+    }
     setHz(null);
     setClarity(0);
     setInputLevelDb(null);
@@ -94,20 +120,16 @@ export function usePitchDetector(): PitchDetectorState {
     setStatus("idle");
   }, [releaseRecorder]);
 
+  /** 権限が granted である前提で録音を開始する */
   const start = useCallback(async () => {
     if (recorderRef.current || startingRef.current) return;
     startingRef.current = true;
     const runId = runIdRef.current;
     const isCancelled = () => runIdRef.current !== runId;
     try {
-      setStatus("requesting");
-
-      const permission = await AudioManager.requestRecordingPermissions();
-      if (isCancelled()) return;
-      if (permission !== "Granted") {
-        setStatus("denied");
-        return;
-      }
+      // メトロノームのクリック音（800/1000Hz）をマイクが拾い、弦の音として検出してしまうため止める。stop側で元に戻す
+      metronomeWasEnabledRef.current = usePracticeStore.getState().metronomeEnabled;
+      usePracticeStore.getState().setMetronomeEnabled(false);
 
       AudioManager.setAudioSessionOptions({
         iosCategory: "playAndRecord",
@@ -168,13 +190,57 @@ export function usePitchDetector(): PitchDetectorState {
     }
   }, [releaseRecorder]);
 
+  /** 権限を確認してから開始する。フォーカス復帰・フォアグラウンド復帰・再開ボタンの共通入口 */
+  const requestAndStart = useCallback(async () => {
+    if (pausedByUserRef.current) return;
+    if (recorderRef.current || startingRef.current) return;
+    const runId = runIdRef.current;
+    const isCancelled = () => runIdRef.current !== runId;
+    setStatus("requesting");
+    const permission = await ensurePermission();
+    if (isCancelled() || pausedByUserRef.current) return;
+    if (permission === "denied") {
+      setStatus("denied");
+      return;
+    }
+    await start();
+  }, [start]);
+
+  const pause = useCallback(() => {
+    pausedByUserRef.current = true;
+    setPausedByUser(true);
+    void stop();
+  }, [stop]);
+
+  const resume = useCallback(() => {
+    pausedByUserRef.current = false;
+    setPausedByUser(false);
+    void requestAndStart();
+  }, [requestAndStart]);
+
   useFocusEffect(
     useCallback(() => {
+      isFocusedRef.current = true;
+      if (!pausedByUserRef.current) {
+        void requestAndStart();
+      }
       return () => {
+        isFocusedRef.current = false;
         void stop();
       };
-    }, [stop]),
+    }, [requestAndStart, stop]),
   );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "background") {
+        void stop();
+      } else if (nextState === "active" && isFocusedRef.current && !pausedByUserRef.current) {
+        void requestAndStart();
+      }
+    });
+    return () => subscription.remove();
+  }, [requestAndStart, stop]);
 
   useEffect(() => {
     return () => {
@@ -182,5 +248,5 @@ export function usePitchDetector(): PitchDetectorState {
     };
   }, [stop]);
 
-  return { status, hz, clarity, inputLevelDb, start, stop };
+  return { status, hz, clarity, inputLevelDb, pausedByUser, pause, resume };
 }

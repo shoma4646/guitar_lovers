@@ -1,122 +1,108 @@
 /**
- * 練習画面（Practice Dashboard）
+ * 練習画面
  *
- * Stitch modern_5 / modern_6 のダッシュボード構成:
- * - 上部 AppBar（プロフィール + Guitar Lovers + 設定）
- * - 見出し: "Practice Dashboard" + サブテキスト
- * - Pill 形状のサブタブ（練習 / プリセット / お気に入り）
- * - サブタブごとに本体コンポーネントを描画
- *
- * 実行ロジック（YouTube 再生・ABループ・メトロノーム）は子コンポーネントに残し、
- * このスクリーンは表示構造のみを担当する。
+ * 1画面に収める再設計版: 日付＋見出しの1行ヘッダー（＋動画追加・設定）と
+ * サブタブ（今日 / メニュー集 / お気に入り）だけをこの画面で組み、
+ * サブタブごとの本体は各Tabコンポーネントへ委ねる。
+ * 動画読み込み後（練習中）はPracticeTabが自前のヘッダーを持つため、
+ * この画面の日付ヘッダーとサブタブは隠して1画面の高さ予算を譲る
+ * （動画読み込みは必ずpracticeサブタブ経由なので、隠している間activeTabがずれることはない）。
  */
 
-import React from "react";
-import { View, Text, Pressable, ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useState } from "react";
+import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
-import { Icon } from "@/shared/components/atoms/Icon";
+import { IconButton } from "@/shared/components/atoms/IconButton";
+import { SegmentedControl } from "@/shared/components/atoms/SegmentedControl";
+import { ScreenFrame } from "@/shared/components/molecules/ScreenFrame";
 import { colors } from "@/shared/theme";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { usePracticeStore, type PracticeSubTab } from "@/stores/practice";
 import { PracticeTab } from "@/features/practice/components/PracticeTab";
 import { PresetsTab } from "@/features/practice/components/PresetsTab";
 import { FavoritesTab } from "@/features/practice/components/FavoritesTab";
+import { AddVideoSheet } from "@/features/practice/components/AddVideoSheet";
 
 const TABS: { key: PracticeSubTab; label: string }[] = [
-  { key: "practice", label: "練習" },
-  { key: "presets", label: "プリセット" },
+  { key: "practice", label: "今日" },
+  { key: "presets", label: "メニュー集" },
   { key: "favorites", label: "お気に入り" },
 ];
 
+const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+
+/** ヘッダーの日付表示（例: 9月20日（日）） */
+function formatHeaderDate(date: Date): string {
+  return `${date.getMonth() + 1}月${date.getDate()}日（${WEEKDAY_LABELS[date.getDay()]}）`;
+}
+
 export function PracticeScreen() {
-  // Presets/Favoritesからの再生後に「練習」サブタブへ戻すため、ストアで保持する
+  // Presets/Favoritesからの再生後に「今日」サブタブへ戻すため、ストアで保持する
   const activeTab = usePracticeStore((s) => s.practiceSubTab);
   const setActiveTab = usePracticeStore((s) => s.setPracticeSubTab);
+  const loadedVideoId = usePracticeStore((s) => s.loadedVideoId);
+  const setToolsSheetOpen = usePracticeStore((s) => s.setToolsSheetOpen);
   const router = useRouter();
+  const [addVideoVisible, setAddVideoVisible] = useState(false);
+
+  // 道具シート（メトロノーム・タイマー）はpracticeサブタブのPracticeTabが持つため、
+  // 他のサブタブから開いても表示できるようpracticeへ切り替えてから開く
+  const openToolsSheet = () => {
+    setActiveTab("practice");
+    setToolsSheetOpen(true);
+  };
 
   return (
     <ErrorBoundary>
-      <SafeAreaView edges={["top"]} className="flex-1 bg-surface">
-        {/* Top App Bar */}
-        <View className="flex-row items-center justify-between px-margin-mobile h-16">
-          <View className="w-10 h-10 rounded-full bg-surface-container-high items-center justify-center">
-            <Icon name="school" size={20} color={colors.onSurfaceVariant} />
-          </View>
-          <Text className="font-bold text-headline-lg text-on-surface">
-            Guitar Lovers
-          </Text>
-          <Pressable
-            onPress={() => router.push("/settings")}
-            className="active:opacity-70"
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="設定を開く"
-          >
-            <Icon name="settings" size={24} color={colors.primary} />
-          </Pressable>
-        </View>
-
-        {/* Welcome Section */}
-        <View className="px-margin-mobile mb-lg">
-          <Text className="text-on-surface-variant text-body-md mb-base">
-            今日も少しずつ、確かな一歩を。
-          </Text>
-          <Text
-            className="text-headline-xl"
-            style={{ color: colors.primary, fontWeight: "700", letterSpacing: -0.5 }}
-          >
-            Practice Dashboard
-          </Text>
-        </View>
-
-        {/* Sub-tab Pills */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
-          className="grow-0 mb-md"
-          style={{ flexGrow: 0 }}
-        >
-          {TABS.map((tab) => {
-            const active = tab.key === activeTab;
-            return (
-              <Pressable
-                key={tab.key}
-                onPress={() => setActiveTab(tab.key)}
-                className="active:opacity-80"
-                style={{
-                  paddingHorizontal: 24,
-                  paddingVertical: 8,
-                  borderRadius: 9999,
-                  backgroundColor: active
-                    ? colors.primary
-                    : colors.surfaceContainerHighest,
-                }}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-              >
-                <Text
-                  className="text-label-sm"
-                  style={{
-                    color: active ? colors.onPrimary : colors.onSurfaceVariant,
-                    fontWeight: "600",
-                  }}
-                >
-                  {tab.label}
+      <ScreenFrame>
+        {!loadedVideoId && (
+          <>
+            <View style={{ height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.onSurfaceVariant }}>
+                  {formatHeaderDate(new Date())}
                 </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+                <Text style={{ fontSize: 22, fontWeight: "800", color: colors.onSurface }}>
+                  今日の練習
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row" }}>
+                <IconButton
+                  name="metronome"
+                  accessibilityLabel="メトロノーム・タイマーを開く"
+                  onPress={openToolsSheet}
+                />
+                <IconButton
+                  name="add"
+                  accessibilityLabel="動画を追加"
+                  onPress={() => setAddVideoVisible(true)}
+                />
+                <IconButton
+                  name="settings"
+                  accessibilityLabel="設定を開く"
+                  onPress={() => router.push("/settings")}
+                />
+              </View>
+            </View>
 
-        {/* Tab Content */}
-        <View className="flex-1">
-          {activeTab === "practice" && <PracticeTab />}
+            <SegmentedControl
+              items={TABS.map(({ key, label }) => ({ value: key, label }))}
+              value={activeTab}
+              onChange={setActiveTab}
+              role="tab"
+              accessibilityLabel="練習タブ切り替え"
+            />
+          </>
+        )}
+
+        <View style={{ flex: 1 }}>
+          {activeTab === "practice" && <PracticeTab onOpenAddVideo={() => setAddVideoVisible(true)} />}
           {activeTab === "presets" && <PresetsTab />}
           {activeTab === "favorites" && <FavoritesTab />}
         </View>
-      </SafeAreaView>
+      </ScreenFrame>
+
+      <AddVideoSheet visible={addVideoVisible} onClose={() => setAddVideoVisible(false)} />
     </ErrorBoundary>
   );
 }

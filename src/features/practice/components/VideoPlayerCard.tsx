@@ -3,15 +3,14 @@
  *
  * WebViewのrefはPracticeTab側で所有し（sendToPlayerで使うため）、
  * このコンポーネントはforwardRefで受け渡すだけに留める。
+ * ScreenFrameの左右16pxパディングを打ち消し、画面幅いっぱいのフルブリードで表示する。
  */
 
 import { forwardRef } from "react";
-import { View, StyleSheet, Dimensions } from "react-native";
+import { View, StyleSheet, useWindowDimensions } from "react-native";
 import WebView from "react-native-webview";
 import { buildYouTubeHtml, YOUTUBE_EMBED_ORIGIN } from "@/features/practice/lib/youtubeHtml";
-import { cardShadowStyle } from "./cardStyle";
-
-const SCREEN_WIDTH = Dimensions.get("window").width;
+import { SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
 
 type Props = {
   videoId: string;
@@ -30,10 +29,15 @@ export const VideoPlayerCard = forwardRef<WebView, Props>(
     { videoId, startSeconds = 0, initialRate = 1, onTimeUpdate, onDurationReady, onPlayerError },
     ref,
   ) {
+    const { width: screenWidth } = useWindowDimensions();
     return (
       <View
         className="bg-surface-container-highest overflow-hidden"
-        style={[styles.videoCard, cardShadowStyle]}
+        style={{
+          width: screenWidth,
+          height: Math.round(screenWidth * (9 / 16)),
+          marginHorizontal: -SCREEN_HORIZONTAL_PADDING,
+        }}
       >
         <WebView
           ref={ref}
@@ -69,14 +73,7 @@ export const VideoPlayerCard = forwardRef<WebView, Props>(
 );
 
 const styles = StyleSheet.create({
-  videoCard: {
-    height: (SCREEN_WIDTH - 40) * (9 / 16),
-    minHeight: 200,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
   webView: {
     flex: 1,
-    borderRadius: 16,
   },
 });

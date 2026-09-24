@@ -16,12 +16,13 @@ import {
 } from "react-native";
 import { randomUUID } from "expo-crypto";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors } from "@/shared/theme";
+import { colors, shadows } from "@/shared/theme";
 import type { FavoriteVideo, RecentVideo } from "@/shared/types/models";
 import { usePracticeStore } from "@/stores/practice";
 import { useFavoriteVideos } from "@/features/practice/api/useFavoriteVideos";
 import { useRecentVideos } from "@/features/practice/api/useRecentVideos";
 import { useToggleFavoriteVideo } from "@/features/practice/api/useToggleFavoriteVideo";
+import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 
 function youtubeThumbnail(videoId: string): string {
   return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
@@ -43,6 +44,7 @@ export function FavoritesTab() {
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const setPracticeSubTab = usePracticeStore((s) => s.setPracticeSubTab);
   const { mutateAsync: toggleFavorite } = useToggleFavoriteVideo();
+  const confirmSwitch = useConfirmPhraseSwitch();
 
   const handleToggleFavorite = useCallback(
     async (video: RecentVideo) => {
@@ -66,18 +68,22 @@ export function FavoritesTab() {
 
   const handlePlayRecent = useCallback(
     (video: RecentVideo) => {
-      loadVideo(video.videoId, video.title);
-      setPracticeSubTab("practice");
+      confirmSwitch(() => {
+        loadVideo(video.videoId, video.title);
+        setPracticeSubTab("practice");
+      });
     },
-    [loadVideo, setPracticeSubTab],
+    [confirmSwitch, loadVideo, setPracticeSubTab],
   );
 
   const handlePlayFavorite = useCallback(
     (video: FavoriteVideo) => {
-      loadVideo(video.videoId, video.title);
-      setPracticeSubTab("practice");
+      confirmSwitch(() => {
+        loadVideo(video.videoId, video.title);
+        setPracticeSubTab("practice");
+      });
     },
-    [loadVideo, setPracticeSubTab],
+    [confirmSwitch, loadVideo, setPracticeSubTab],
   );
 
   return (
@@ -211,11 +217,7 @@ export function FavoritesTab() {
 }
 
 const shadowStyle = {
-  shadowColor: "#000",
-  shadowOpacity: 0.04,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
+  ...shadows.layered,
 };
 
 const styles = StyleSheet.create({

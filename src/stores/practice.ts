@@ -13,9 +13,6 @@ export type PracticeSubTab = "practice" | "presets" | "favorites";
 
 export { PLAYBACK_RATES, type PlaybackRate } from "@/shared/constants/playback";
 
-/** プリセットBPMの選択肢 */
-export const PRESET_BPMS = [60, 80, 100, 120, 140, 160] as const;
-
 /** フレーズ練習の既定の目標回数 */
 export const DEFAULT_TARGET_REPS = 3;
 
@@ -27,6 +24,8 @@ export type ActivePhrasePractice = {
   targetReps: number;
   /** 弾き終えた回数 */
   completedReps: number;
+  /** このフレーズの練習を開始した時刻（Date.now()）。記録シートの練習時間をこのフレーズ単位で出すために使う */
+  startedAt: number;
 };
 
 /** 練習ストアの状態 */
@@ -95,6 +94,11 @@ interface PracticeState {
   metronomeBpm: number;
   metronomeEnabled: boolean;
 
+  // --- 道具シート（メトロノーム・タイマー） ---
+  /** メトロノーム・タイマーのシートの開閉。PracticeScreen（動画読み込み前）とPracticeTab（読み込み後）の
+   * どちらのヘッダーからも同じシートを開けるよう、開閉状態自体をストアに持つ */
+  toolsSheetOpen: boolean;
+
   // --- アクション ---
   setUrlInput: (url: string) => void;
   /**
@@ -137,10 +141,13 @@ interface PracticeState {
   removeBookmark: (id: string) => void;
   setMetronomeBpm: (bpm: number) => void;
   setMetronomeEnabled: (enabled: boolean) => void;
+  setToolsSheetOpen: (open: boolean) => void;
   setPracticeSubTab: (tab: PracticeSubTab) => void;
   setActivePhrasePractice: (value: ActivePhrasePractice | null) => void;
   /** 練習中フレーズの弾き終えた回数を1増やし、増やした後の回数を返す（練習中でなければ何もせず0を返す） */
   incrementCompletedReps: () => number;
+  /** 練習中フレーズの弾き終えた回数を1減らす（0未満にはしない。練習中でなければ何もしない） */
+  decrementCompletedReps: () => void;
   /** 結果記録を開始し、未発番なら新しいattempt IDを発番して返す（再送時は同じIDを返す） */
   beginResultEntry: (newId: string) => string;
   setPlayerError: (code: number | null) => void;
@@ -189,6 +196,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   bookmarks: [],
   metronomeBpm: 120,
   metronomeEnabled: false,
+  toolsSheetOpen: false,
 
   // アクション実装
   setUrlInput: (url) => set({ urlInput: url }),
@@ -231,6 +239,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
         todayTargetBpm,
         targetReps: DEFAULT_TARGET_REPS,
         completedReps: 0,
+        startedAt: Date.now(),
       },
       metronomeBpm: clampBpm(todayTargetBpm),
     });
@@ -297,6 +306,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
 
   setMetronomeBpm: (bpm) => set({ metronomeBpm: clampBpm(bpm) }),
   setMetronomeEnabled: (enabled) => set({ metronomeEnabled: enabled }),
+  setToolsSheetOpen: (open) => set({ toolsSheetOpen: open }),
   setPracticeSubTab: (tab) => set({ practiceSubTab: tab }),
   setActivePhrasePractice: (value) =>
     set({
@@ -315,6 +325,12 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     const completedReps = active.completedReps + 1;
     set({ activePhrasePractice: { ...active, completedReps } });
     return completedReps;
+  },
+  decrementCompletedReps: () => {
+    const active = get().activePhrasePractice;
+    if (!active) return;
+    const completedReps = Math.max(0, active.completedReps - 1);
+    set({ activePhrasePractice: { ...active, completedReps } });
   },
   setPlayerError: (code) => set({ playerError: code }),
 
