@@ -40,3 +40,6 @@ jest.mock("@expo/vector-icons", () => {
   const { View } = require("react-native");
   return { MaterialIcons: View, MaterialCommunityIcons: View };
 });
+
+// ローカル日での判定（isSameLocalDay等）が実行環境のTZで揺れないよう固定する
+process.env.TZ = "Asia/Tokyo";
