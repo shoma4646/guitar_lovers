@@ -33,10 +33,16 @@ export function resolveTodayProgress(
   now: Date,
 ): TodayProgress {
   const attemptsBeforeToday = attempts.filter((a) => !isSameLocalDay(new Date(a.date), now));
-  // phrase.currentBpmは当日のok記録で既に書き換わっていることがあるため、そのまま起点にすると
-  // 当日の結果が「当日開始前の到達BPM」に混入する。保存時のBPM（initialBpm）を起点に、
-  // 当日より前のok記録だけから到達BPMを再構築する
-  const currentBpmBeforeToday = resolveCurrentBpm(phrase.initialBpm ?? phrase.currentBpm, attemptsBeforeToday);
+  // phrase.currentBpmは当日のok記録で既に書き換わるため、起点にすると当日の結果が混入する。
+  // 当日より前のok記録があればそれだけから再構築し、無いときだけ保存時のBPMへ退避する
+  // （initialBpmを持たない既存データでも当日分が混ざらないようにする）
+  const okBpmsBeforeToday = attemptsBeforeToday
+    .filter((a) => a.result === "ok")
+    .map((a) => a.bpm);
+  const currentBpmBeforeToday =
+    okBpmsBeforeToday.length > 0
+      ? Math.max(...okBpmsBeforeToday)
+      : resolveCurrentBpm(phrase.initialBpm ?? phrase.currentBpm, attemptsBeforeToday);
   const targetBeforeToday = computeTodayTargetBpm(
     currentBpmBeforeToday,
     getLatestAttempt(attemptsBeforeToday),

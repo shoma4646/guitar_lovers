@@ -121,6 +121,20 @@ describe("resolveTodayProgress", () => {
   });
 
   // now=18:00Z(JST 9/25 03:00) と対象記録=10:00Z(JST 9/24 19:00) はUTCでは同日だがJSTでは別日
+  it("initialBpmを持たない既存データでも、今日の結果は目標に混入しない", () => {
+    // 前日までの到達は80。今日83でokした結果、storageがcurrentBpmを83へ更新した状態
+    const phrase: Phrase = { currentBpm: 83, targetBpm: 120 };
+    const now = new Date("2026-09-24T12:00:00.000Z");
+    const yesterday = attempt({ id: "y", date: "2026-09-23T10:00:00.000Z", result: "ok", bpm: 80 });
+    const today = attempt({ id: "t", date: "2026-09-24T10:00:00.000Z", result: "ok", bpm: 83 });
+
+    const progress = resolveTodayProgress(phrase, [yesterday, today], now);
+
+    // 目標は80+5=85のままで、83では達成にしない
+    expect(progress.targetBeforeToday).toBe(85);
+    expect(progress.reached).toBe(false);
+  });
+
   it("UTCでは同日でもJSTでは別日になる記録は「当日」に含めない", () => {
     const phrase: Phrase = { currentBpm: 90, targetBpm: 120 };
     const now = new Date("2026-09-24T18:00:00.000Z");

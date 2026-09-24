@@ -319,7 +319,8 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           date,
           bpm,
           result,
-          ...(activePractice.completedReps > 0 ? { reps: activePractice.completedReps } : {}),
+          // 画面に出している回数をそのまま残す。0回だけ欠落すると表示と記録が食い違う
+          reps: activePractice.completedReps,
         };
         try {
           await recordResultAsync(attempt);
