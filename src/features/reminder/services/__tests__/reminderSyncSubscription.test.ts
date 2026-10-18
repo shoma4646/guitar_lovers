@@ -14,7 +14,8 @@ describe("subscribeReminderSync", () => {
   let sync: jest.Mock;
 
   beforeEach(() => {
-    queryClient = new QueryClient();
+    // 既定のgcTime(5分)だとmutationのgcタイマーが残り、jestが終了しなくなる
+    queryClient = new QueryClient({ defaultOptions: { mutations: { gcTime: Infinity } } });
     sync = jest.fn();
   });
 
