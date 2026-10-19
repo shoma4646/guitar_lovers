@@ -96,7 +96,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const router = useRouter();
   const { mutate: addRecent } = useAddRecentVideo();
   const { mutateAsync: saveSession } = useSavePracticeSession();
-  const { mutate: savePhrase } = useSavePracticePhrase();
+  const { mutateAsync: savePhraseAsync } = useSavePracticePhrase();
   const { mutateAsync: recordResultAsync } = useRecordPhraseResult();
   const { mutate: graduatePhrase } = useGraduatePracticePhrase();
   const { data: allPhraseAttempts = [] } = usePhraseAttempts();
@@ -221,42 +221,36 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   }, [addBookmark, bookmarks.length]);
 
   const handleSavePhrase = useCallback(
-    (input: SavePhraseInput) => {
+    async (input: SavePhraseInput) => {
       if (!loadedVideoId) {
         Alert.alert("エラー", "動画を読み込んでから保存してください");
-        return;
+        throw new Error("動画が読み込まれていない");
       }
       if (abLoop.pointA === null || abLoop.pointB === null || !isValidLoopRange(abLoop)) {
         Alert.alert("エラー", "B点はA点より後に設定してください");
-        return;
+        throw new Error("区間が不正");
       }
       const now = new Date().toISOString();
-      savePhrase(
-        {
-          id: randomUUID(),
-          videoId: loadedVideoId,
-          videoTitle: videoTitle || `YouTube動画 (${loadedVideoId})`,
-          name: input.name,
-          startSec: abLoop.pointA,
-          endSec: abLoop.pointB,
-          currentBpm: input.currentBpm,
-          initialBpm: input.currentBpm,
-          targetBpm: input.targetBpm,
-          playbackRate,
-          createdAt: now,
-          updatedAt: now,
-        },
-        {
-          onSuccess: () => {
-            setShowSavePhrase(false);
-            Alert.alert("保存しました", `「${input.name}」を今日の練習メニューに追加しました`, [
-              { text: "OK", onPress: () => void promptReminderPermission() },
-            ]);
-          },
-        },
-      );
+      await savePhraseAsync({
+        id: randomUUID(),
+        videoId: loadedVideoId,
+        videoTitle: videoTitle || `YouTube動画 (${loadedVideoId})`,
+        name: input.name,
+        startSec: abLoop.pointA,
+        endSec: abLoop.pointB,
+        currentBpm: input.currentBpm,
+        initialBpm: input.currentBpm,
+        targetBpm: input.targetBpm,
+        playbackRate,
+        createdAt: now,
+        updatedAt: now,
+      });
+      setShowSavePhrase(false);
+      Alert.alert("保存しました", `「${input.name}」を今日の練習メニューに追加しました`, [
+        { text: "OK", onPress: () => void promptReminderPermission() },
+      ]);
     },
-    [loadedVideoId, videoTitle, abLoop, playbackRate, savePhrase, promptReminderPermission],
+    [loadedVideoId, videoTitle, abLoop, playbackRate, savePhraseAsync, promptReminderPermission],
   );
 
   // 確認ダイアログを経由せずフレーズ練習を開始する。「記録して次の1本へ」など、直前に

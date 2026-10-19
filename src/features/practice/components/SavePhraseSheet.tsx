@@ -5,65 +5,58 @@
  * 保存されたフレーズは今日の練習メニュー（TodayPickCard / TodayPhraseRows）に反復練習対象として現れる。
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Text, TextInput, View } from "react-native";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
 import { Button } from "@/shared/components/atoms/Button";
 import { colors, radius } from "@/shared/theme";
-import { BPM_MAX, BPM_MIN, clampBpm, isValidBpm } from "@/shared/constants/bpm";
+import { clampBpm } from "@/shared/constants/bpm";
+import { parsePhraseDraft, type SavePhraseInput } from "@/features/practice/lib/parsePhraseDraft";
 
-export type SavePhraseInput = {
-  name: string;
-  currentBpm: number;
-  targetBpm: number;
-};
+export type { SavePhraseInput };
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   /** シートを開いた時点のBPM初期値（メトロノームの現在BPM） */
   defaultBpm: number;
-  onSave: (input: SavePhraseInput) => void;
+  /** 保存処理。失敗時はrejectする（失敗の通知は呼び出し側が行う） */
+  onSave: (input: SavePhraseInput) => Promise<void>;
 };
 
 export function SavePhraseSheet({ visible, onClose, defaultBpm, onSave }: Props) {
   const [isSaving, setIsSaving] = useState(false);
+  // 再描画でボタンが無効化される前の連打も弾くため、stateとは別に同期的なフラグを持つ
+  const isSavingRef = useRef(false);
   const [name, setName] = useState("");
   const [currentBpm, setCurrentBpm] = useState(String(defaultBpm));
   const [targetBpm, setTargetBpm] = useState(String(clampBpm(defaultBpm + 20)));
 
   useEffect(() => {
     if (visible) {
-      setIsSaving(false);
       setName("");
       setCurrentBpm(String(defaultBpm));
       setTargetBpm(String(clampBpm(defaultBpm + 20)));
     }
   }, [visible, defaultBpm]);
 
-  const handleSave = () => {
-    // 保存は非同期に走り、完了までシートが開いたままなので連打で同じ区間が二重登録される
-    if (isSaving) return;
+  const handleSave = async () => {
+    if (isSavingRef.current) return;
+    const parsed = parsePhraseDraft({ name, currentBpm, targetBpm });
+    if (!parsed.ok) {
+      Alert.alert("エラー", parsed.error);
+      return;
+    }
+    isSavingRef.current = true;
     setIsSaving(true);
-    if (!name.trim()) {
-      Alert.alert("エラー", "フレーズの名前を入力してください");
-      return;
+    try {
+      await onSave(parsed.value);
+    } catch {
+      // 失敗の通知は呼び出し側が済ませているので、ここでは再度押せる状態に戻すだけ
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
-    const parsedCurrent = parseInt(currentBpm, 10);
-    const parsedTarget = parseInt(targetBpm, 10);
-    if (!isValidBpm(parsedCurrent)) {
-      Alert.alert("エラー", `現在のBPMは${BPM_MIN}〜${BPM_MAX}の範囲で入力してください`);
-      return;
-    }
-    if (!isValidBpm(parsedTarget)) {
-      Alert.alert("エラー", `目標BPMは${BPM_MIN}〜${BPM_MAX}の範囲で入力してください`);
-      return;
-    }
-    if (parsedTarget <= parsedCurrent) {
-      Alert.alert("エラー", "目標BPMは現在のBPMより大きい値にしてください");
-      return;
-    }
-    onSave({ name: name.trim(), currentBpm: parsedCurrent, targetBpm: parsedTarget });
   };
 
   return (
@@ -125,7 +118,7 @@ export function SavePhraseSheet({ visible, onClose, defaultBpm, onSave }: Props)
           </View>
         </View>
 
-        <Button label="保存する" onPress={handleSave} disabled={isSaving} fullWidth />
+        <Button label="保存する" onPress={() => void handleSave()} disabled={isSaving} fullWidth />
       </View>
     </BottomSheet>
   );
