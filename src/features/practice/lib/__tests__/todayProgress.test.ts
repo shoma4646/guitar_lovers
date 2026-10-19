@@ -1,15 +1,23 @@
 import { resolveTodayProgress } from "../todayCompletion";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
-// TZは jest.setup.js で Asia/Tokyo に固定している
-
 type Phrase = Pick<PracticePhrase, "currentBpm" | "targetBpm" | "initialBpm">;
+
+/** 2026年9月の指定日時を、実行環境のローカル時刻として表すDate */
+function septemberLocal(day: number, hour: number, minute = 0): Date {
+  return new Date(2026, 8, day, hour, minute);
+}
+
+/** septemberLocalのISO文字列（PhraseAttempt.dateの保存形式） */
+function septemberLocalIso(day: number, hour: number, minute = 0): string {
+  return septemberLocal(day, hour, minute).toISOString();
+}
 
 function attempt(overrides: Partial<PhraseAttempt> = {}): PhraseAttempt {
   return {
     id: "attempt",
     phraseId: "phrase-1",
-    date: "2026-09-24T10:00:00.000Z",
+    date: septemberLocalIso(24, 10),
     bpm: 90,
     result: "ok",
     ...overrides,
@@ -19,8 +27,8 @@ function attempt(overrides: Partial<PhraseAttempt> = {}): PhraseAttempt {
 describe("resolveTodayProgress", () => {
   it("記録が無いフレーズは、保存済みのcurrentBpmを目標として達成判定する", () => {
     const phrase: Phrase = { currentBpm: 90, targetBpm: 120 };
-    const now = new Date("2026-09-24T12:00:00.000Z");
-    const today = attempt({ date: "2026-09-24T10:00:00.000Z", result: "ok", bpm: 90 });
+    const now = septemberLocal(24, 12);
+    const today = attempt({ date: septemberLocalIso(24, 10), result: "ok", bpm: 90 });
 
     const progress = resolveTodayProgress(phrase, [today], now);
 
@@ -31,8 +39,8 @@ describe("resolveTodayProgress", () => {
 
   it("今日okでも目標BPM未満なら未達成", () => {
     const phrase: Phrase = { currentBpm: 90, targetBpm: 120 };
-    const now = new Date("2026-09-24T12:00:00.000Z");
-    const today = attempt({ date: "2026-09-24T10:00:00.000Z", result: "ok", bpm: 85 });
+    const now = septemberLocal(24, 12);
+    const today = attempt({ date: septemberLocalIso(24, 10), result: "ok", bpm: 85 });
 
     expect(resolveTodayProgress(phrase, [today], now).reached).toBe(false);
   });
@@ -41,8 +49,8 @@ describe("resolveTodayProgress", () => {
     "今日の記録が%sだけなら未達成（bpmが高くても達成にしない）",
     (result) => {
       const phrase: Phrase = { currentBpm: 90, targetBpm: 120 };
-      const now = new Date("2026-09-24T12:00:00.000Z");
-      const today = attempt({ date: "2026-09-24T10:00:00.000Z", result, bpm: 150 });
+      const now = septemberLocal(24, 12);
+      const today = attempt({ date: septemberLocalIso(24, 10), result, bpm: 150 });
 
       const progress = resolveTodayProgress(phrase, [today], now);
       expect(progress.todayBestOkBpm).toBeUndefined();
@@ -52,14 +60,14 @@ describe("resolveTodayProgress", () => {
 
   it("前日までの記録から目標を前進させ、今日その目標に達すれば達成", () => {
     const phrase: Phrase = { currentBpm: 80, targetBpm: 120 };
-    const now = new Date("2026-09-24T12:00:00.000Z");
+    const now = septemberLocal(24, 12);
     const yesterday = attempt({
       id: "yesterday",
-      date: "2026-09-23T10:00:00.000Z",
+      date: septemberLocalIso(23, 10),
       result: "ok",
       bpm: 85,
     });
-    const today = attempt({ id: "today", date: "2026-09-24T10:00:00.000Z", result: "ok", bpm: 90 });
+    const today = attempt({ id: "today", date: septemberLocalIso(24, 10), result: "ok", bpm: 90 });
 
     const progress = resolveTodayProgress(phrase, [yesterday, today], now);
 
@@ -70,16 +78,16 @@ describe("resolveTodayProgress", () => {
 
   it("今日ok達成後にさらに練習しても、目標も達成表示も後退しない", () => {
     const phrase: Phrase = { currentBpm: 80, targetBpm: 120 };
-    const now = new Date("2026-09-24T12:00:00.000Z");
+    const now = septemberLocal(24, 12);
     const yesterday = attempt({
       id: "yesterday",
-      date: "2026-09-23T10:00:00.000Z",
+      date: septemberLocalIso(23, 10),
       result: "ok",
       bpm: 85,
     });
     const firstToday = attempt({
       id: "first-today",
-      date: "2026-09-24T10:00:00.000Z",
+      date: septemberLocalIso(24, 10),
       result: "ok",
       bpm: 90,
     });
@@ -91,7 +99,7 @@ describe("resolveTodayProgress", () => {
     // 同日中にさらに成功しても、今日の記録は除外されるため目標(90)は変わらない
     const laterOkAttempt = attempt({
       id: "later-ok",
-      date: "2026-09-24T10:30:00.000Z",
+      date: septemberLocalIso(24, 10, 30),
       result: "ok",
       bpm: 95,
     });
@@ -107,7 +115,7 @@ describe("resolveTodayProgress", () => {
     // 同日中に失敗のリトライを重ねても、達成表示は後退しない
     const laterNgAttempt = attempt({
       id: "later-ng",
-      date: "2026-09-24T11:00:00.000Z",
+      date: septemberLocalIso(24, 11),
       result: "ng",
       bpm: 70,
     });
@@ -120,13 +128,12 @@ describe("resolveTodayProgress", () => {
     expect(afterRetryFailure.reached).toBe(true);
   });
 
-  // now=18:00Z(JST 9/25 03:00) と対象記録=10:00Z(JST 9/24 19:00) はUTCでは同日だがJSTでは別日
   it("initialBpmを持たない既存データでも、今日の結果は目標に混入しない", () => {
     // 前日までの到達は80。今日83でokした結果、storageがcurrentBpmを83へ更新した状態
     const phrase: Phrase = { currentBpm: 83, targetBpm: 120 };
-    const now = new Date("2026-09-24T12:00:00.000Z");
-    const yesterday = attempt({ id: "y", date: "2026-09-23T10:00:00.000Z", result: "ok", bpm: 80 });
-    const today = attempt({ id: "t", date: "2026-09-24T10:00:00.000Z", result: "ok", bpm: 83 });
+    const now = septemberLocal(24, 12);
+    const yesterday = attempt({ id: "y", date: septemberLocalIso(23, 10), result: "ok", bpm: 80 });
+    const today = attempt({ id: "t", date: septemberLocalIso(24, 10), result: "ok", bpm: 83 });
 
     const progress = resolveTodayProgress(phrase, [yesterday, today], now);
 
@@ -137,7 +144,7 @@ describe("resolveTodayProgress", () => {
 
   it("記録が1件も無いフレーズは保存時のBPMがそのまま今日の目標になる", () => {
     const phrase: Phrase = { currentBpm: 90, targetBpm: 120 };
-    const now = new Date("2026-09-24T12:00:00.000Z");
+    const now = septemberLocal(24, 12);
 
     expect(resolveTodayProgress(phrase, [], now)).toEqual({
       targetBeforeToday: 90,
@@ -148,31 +155,29 @@ describe("resolveTodayProgress", () => {
 
   it("卒業済みのフレーズでは目標BPMを超えて前進しない", () => {
     const phrase: Phrase = { currentBpm: 120, targetBpm: 120 };
-    const now = new Date("2026-09-24T12:00:00.000Z");
-    const yesterday = attempt({ id: "y", date: "2026-09-23T10:00:00.000Z", result: "ok", bpm: 120 });
+    const now = septemberLocal(24, 12);
+    const yesterday = attempt({ id: "y", date: septemberLocalIso(23, 10), result: "ok", bpm: 120 });
 
     const progress = resolveTodayProgress(phrase, [yesterday], now);
 
     expect(progress.targetBeforeToday).toBe(120);
   });
 
-  it("UTCでは同日でもJSTでは別日になる記録は「当日」に含めない", () => {
+  it("1時間しか離れていなくても、端末のローカル日付が前日の記録は「当日」に含めない", () => {
     const phrase: Phrase = { currentBpm: 90, targetBpm: 120 };
-    const now = new Date("2026-09-24T18:00:00.000Z");
-    const notToday = attempt({ date: "2026-09-24T10:00:00.000Z", result: "ok", bpm: 90 });
+    const now = septemberLocal(25, 0, 30);
+    const notToday = attempt({ date: septemberLocalIso(24, 23, 30), result: "ok", bpm: 90 });
 
     const progress = resolveTodayProgress(phrase, [notToday], now);
 
-    // JSTでは前日の記録として扱われるため、今日の達成にはならない
     expect(progress.todayBestOkBpm).toBeUndefined();
     expect(progress.reached).toBe(false);
   });
 
-  // now=01:00Z(JST 9/24 10:00) と対象記録=前日20:00Z(JST 9/24 05:00) はUTCでは別日だがJSTでは同日
-  it("UTCでは別日でもJSTでは同日になる記録は「当日」に含める", () => {
+  it("20時間以上離れていても、端末のローカル日付が同じ記録は「当日」に含める", () => {
     const phrase: Phrase = { currentBpm: 90, targetBpm: 120 };
-    const now = new Date("2026-09-24T01:00:00.000Z");
-    const today = attempt({ date: "2026-09-23T20:00:00.000Z", result: "ok", bpm: 90 });
+    const now = septemberLocal(24, 23, 30);
+    const today = attempt({ date: septemberLocalIso(24, 0, 30), result: "ok", bpm: 90 });
 
     const progress = resolveTodayProgress(phrase, [today], now);
 
@@ -184,14 +189,14 @@ describe("resolveTodayProgress", () => {
     // 前日までの到達80（initialBpm70から前日okで到達）・今日の目標85のとき、
     // 今日83でokしてphrase.currentBpmが83に更新されていても、目標は85のまま・未達成
     const phrase: Phrase = { currentBpm: 83, targetBpm: 120, initialBpm: 70 };
-    const now = new Date("2026-09-24T12:00:00.000Z");
+    const now = septemberLocal(24, 12);
     const yesterday = attempt({
       id: "yesterday",
-      date: "2026-09-23T10:00:00.000Z",
+      date: septemberLocalIso(23, 10),
       result: "ok",
       bpm: 80,
     });
-    const today = attempt({ id: "today", date: "2026-09-24T10:00:00.000Z", result: "ok", bpm: 83 });
+    const today = attempt({ id: "today", date: septemberLocalIso(24, 10), result: "ok", bpm: 83 });
 
     const progress = resolveTodayProgress(phrase, [yesterday, today], now);
 
