@@ -21,11 +21,11 @@ type Props = {
 };
 
 export function PracticeSessionBar({ practice, metronomeBpm, onIncrement, onDecrement, onFinish }: Props) {
-  const { todayTargetBpm, targetReps, completedReps } = practice;
+  const { goalBpm, targetReps, completedReps } = practice;
   const label =
-    metronomeBpm === todayTargetBpm
+    metronomeBpm === goalBpm
       ? `BPM ${metronomeBpm}で`
-      : `BPM ${metronomeBpm}（目標${todayTargetBpm}）`;
+      : `BPM ${metronomeBpm}（目標${goalBpm}）`;
 
   return (
     <View style={styles.bar}>

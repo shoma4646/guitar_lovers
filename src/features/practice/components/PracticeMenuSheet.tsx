@@ -17,7 +17,6 @@ import { colors, radius } from "@/shared/theme";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progression";
-import { resolveTodayProgress } from "@/features/practice/lib/todayCompletion";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
 import { formatDuration } from "@/features/practice/lib/formatters";
 import { MetronomeControls } from "./MetronomeControls";
@@ -27,7 +26,7 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   activePhraseId: string | null;
-  onSelectPhrase: (phrase: PracticePhrase, todayTargetBpm: number) => void;
+  onSelectPhrase: (phrase: PracticePhrase, startBpm: number) => void;
   metronomeBpm: number;
   metronomeEnabled: boolean;
   metronomeActiveBeat: number;
@@ -74,8 +73,7 @@ export function PracticeMenuSheet({
   const handleLongPress = usePhraseLongPressActions();
 
   const allAttempts = attempts ?? [];
-  const menuItems = buildTodayMenu(phrases ?? [], allAttempts);
-  const now = new Date();
+  const menuItems = buildTodayMenu(phrases ?? [], allAttempts, new Date());
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="メニューと道具">
@@ -130,7 +128,7 @@ export function PracticeMenuSheet({
             ) : (
               menuItems.map((entry, index) => {
                 const phraseAttempts = allAttempts.filter((a) => a.phraseId === entry.phrase.id);
-                const { targetBeforeToday } = resolveTodayProgress(entry.phrase, phraseAttempts, now);
+                const { targetBeforeToday } = entry.today;
                 const active = entry.phrase.id === activePhraseId;
                 return (
                   <Pressable

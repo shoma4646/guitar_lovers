@@ -18,7 +18,6 @@ import {
   resolveCurrentBpm,
   type TodayMenuEntry,
 } from "@/features/practice/lib/progression";
-import { resolveTodayProgress } from "@/features/practice/lib/todayCompletion";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
@@ -26,7 +25,7 @@ import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 const VISIBLE_COUNT = 3;
 
 type Props = {
-  onStartPhrase: (phrase: PracticePhrase, todayTargetBpm: number) => void;
+  onStartPhrase: (phrase: PracticePhrase, startBpm: number) => void;
   onOpenAllPhrases: () => void;
 };
 
@@ -47,7 +46,7 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
   }
 
   const allAttempts = attempts ?? [];
-  const menuItems = buildTodayMenu(phrases ?? [], allAttempts);
+  const menuItems = buildTodayMenu(phrases ?? [], allAttempts, new Date());
   const todayPick = pickTodayPick(menuItems);
 
   const allPhrasesButton = (
@@ -76,7 +75,6 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
   );
   if (rest.length === 0) return null;
 
-  const now = new Date();
   const attemptsOf = (entry: TodayMenuEntry): PhraseAttempt[] =>
     allAttempts.filter((attempt: PhraseAttempt) => attempt.phraseId === entry.phrase.id);
   const rows = rest.map((entry) => {
@@ -84,7 +82,7 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
     return {
       entry,
       currentBpm: resolveCurrentBpm(entry.phrase.currentBpm, attempts),
-      status: resolveTodayProgress(entry.phrase, attempts, now),
+      status: entry.today,
     };
   });
   const completedCount = rows.filter((row) => row.status.reached).length;

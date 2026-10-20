@@ -17,7 +17,6 @@ import {
   pickTodayPick,
   type TodayMenuPriority,
 } from "@/features/practice/lib/progression";
-import { resolveTodayProgress } from "@/features/practice/lib/todayCompletion";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { formatDuration } from "@/features/practice/lib/formatters";
 import type { PracticePhrase } from "@/shared/types/models";
@@ -29,7 +28,7 @@ const TODAY_PICK_REASONS: Record<Exclude<TodayMenuPriority, "graduated">, string
 };
 
 type Props = {
-  onStartPhrase: (phrase: PracticePhrase, todayTargetBpm: number) => void;
+  onStartPhrase: (phrase: PracticePhrase, startBpm: number) => void;
   /** 空状態でサンプル動画から練習を試すためのコールバック */
   onTryPreset: () => void;
 };
@@ -47,7 +46,7 @@ export function TodayPickCard({ onStartPhrase, onTryPreset }: Props) {
     );
   }
 
-  const menuItems = buildTodayMenu(phrases ?? [], attempts ?? []);
+  const menuItems = buildTodayMenu(phrases ?? [], attempts ?? [], new Date());
   const todayPick = pickTodayPick(menuItems);
 
   if (!todayPick) {
@@ -72,15 +71,9 @@ export function TodayPickCard({ onStartPhrase, onTryPreset }: Props) {
 
   const { phrase, priority } = todayPick;
   const phraseAttempts = (attempts ?? []).filter((a) => a.phraseId === phrase.id);
-  // 目標は他の導線と同じく当日の記録を除いて求める。buildTodayMenuの値は当日の結果を
-  // 含むため、同じフレーズでも入口によって目標BPMが変わってしまう
-  const { targetBeforeToday: todayTargetBpm } = resolveTodayProgress(
-    phrase,
-    phraseAttempts,
-    new Date(),
-  );
+  const { targetBeforeToday } = todayPick.today;
   const progress = summarizePhraseProgress(phrase, phraseAttempts);
-  const bpmToGoal = Math.max(0, phrase.targetBpm - todayTargetBpm);
+  const bpmToGoal = Math.max(0, phrase.targetBpm - targetBeforeToday);
   // pickTodayPickはgraduatedを選ばないため、ここでのpriorityは必ずTODAY_PICK_REASONSに存在する
   const reason = `${TODAY_PICK_REASONS[priority as Exclude<TodayMenuPriority, "graduated">]}。目標まであと${bpmToGoal}BPM`;
 
@@ -138,7 +131,7 @@ export function TodayPickCard({ onStartPhrase, onTryPreset }: Props) {
               fontVariant: ["tabular-nums"],
             }}
           >
-            {todayTargetBpm} BPM
+            {targetBeforeToday} BPM
           </Text>
         </View>
         <View style={{ flex: 1, gap: 4 }}>
@@ -159,7 +152,7 @@ export function TodayPickCard({ onStartPhrase, onTryPreset }: Props) {
 
       <Button
         label="この1本から始める"
-        onPress={() => onStartPhrase(phrase, todayTargetBpm)}
+        onPress={() => onStartPhrase(phrase, targetBeforeToday)}
         variant="primary"
         size="lg"
         icon="play_arrow"

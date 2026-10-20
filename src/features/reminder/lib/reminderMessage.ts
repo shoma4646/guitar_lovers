@@ -1,11 +1,11 @@
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import {
   buildTodayMenu,
-  computeTodayTargetBpm,
   getLatestAttempt,
   isGraduated,
   pickTodayPick,
   resolveCurrentBpm,
+  resolveTodayProgress,
 } from "@/features/practice/lib/progression";
 import { isSameLocalDay } from "./reminderTime";
 
@@ -26,7 +26,7 @@ export function pickReminderPhrase(
   phrases: PracticePhrase[],
   attempts: PhraseAttempt[],
 ): PracticePhrase | null {
-  const pick = pickTodayPick(buildTodayMenu(phrases, attempts));
+  const pick = pickTodayPick(buildTodayMenu(phrases, attempts, new Date()));
   if (pick) return pick.phrase;
 
   const active = phrases.filter((phrase) => !phrase.archivedAt);
@@ -74,7 +74,7 @@ export function buildReminderMessage({
   const name = truncateName(phrase.name);
   const latest = getLatestAttempt(phraseAttempts);
   const currentBpm = resolveCurrentBpm(phrase.currentBpm, phraseAttempts);
-  const todayTargetBpm = computeTodayTargetBpm(currentBpm, latest, phrase.targetBpm);
+  const { targetBeforeToday } = resolveTodayProgress(phrase, phraseAttempts, fireAt);
 
   return { title: REMINDER_TITLE, body: buildBody() };
 
@@ -84,14 +84,14 @@ export function buildReminderMessage({
     }
     if (!latest) {
       if (isOlderThanDayBefore(new Date(phrase.createdAt), fireAt)) {
-        return `『${name}』はまだ練習していません。今日は${todayTargetBpm}から始めましょう`;
+        return `『${name}』はまだ練習していません。今日は${targetBeforeToday}から始めましょう`;
       }
-      return `『${name}』を保存しました。今日は${todayTargetBpm}から始めましょう`;
+      return `『${name}』を保存しました。今日は${targetBeforeToday}から始めましょう`;
     }
     if (latest.result !== "ok") {
-      return `『${name}』、前回は${latest.bpm}で練習しました。今日は${todayTargetBpm}から`;
+      return `『${name}』、前回は${latest.bpm}で練習しました。今日は${targetBeforeToday}から`;
     }
     const when = isDayBefore(new Date(latest.date), fireAt) ? "を昨日" : "は前回";
-    return `『${name}』${when}${latest.bpm}で弾けました。今日は${todayTargetBpm}に挑戦`;
+    return `『${name}』${when}${latest.bpm}で弾けました。今日は${targetBeforeToday}に挑戦`;
   }
 }

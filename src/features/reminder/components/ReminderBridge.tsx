@@ -15,12 +15,12 @@ import { usePracticeStore } from "@/stores/practice";
  * 通知が名指ししたフレーズの練習を開始する
  * 削除済み・アーカイブ済みならPracticeタブを開くだけにする
  */
-async function startPhrasePracticeFromReminder(phraseId: string): Promise<void> {
+export async function startPhrasePracticeFromReminder(phraseId: string): Promise<void> {
   try {
     const [phrases, attempts] = await Promise.all([getPracticePhrases(), getPhraseAttempts()]);
-    const entry = buildTodayMenu(phrases, attempts).find((e) => e.phrase.id === phraseId);
+    const entry = buildTodayMenu(phrases, attempts, new Date()).find((e) => e.phrase.id === phraseId);
     if (!entry) return;
-    usePracticeStore.getState().startPhrasePractice(entry.phrase, entry.todayTargetBpm);
+    usePracticeStore.getState().startPhrasePractice(entry.phrase, entry.today.targetBeforeToday);
   } catch (e) {
     console.error("[reminder] 通知タップでの練習開始に失敗", e);
   }

@@ -19,7 +19,8 @@ export const DEFAULT_TARGET_REPS = 3;
 /** 今日の練習メニューから開始した練習中フレーズの状態 */
 export type ActivePhrasePractice = {
   phrase: PracticePhrase;
-  todayTargetBpm: number;
+  /** 練習開始時の今日の目標BPM */
+  goalBpm: number;
   /** 今日の目標BPMで弾く目標回数 */
   targetReps: number;
   /** 弾き終えた回数 */
@@ -127,7 +128,7 @@ interface PracticeState {
    * 今日の練習メニューからフレーズ練習を開始する
    * 動画・区間・再生速度・メトロノームBPM・練習中フレーズを一貫して設定する唯一の入口
    */
-  startPhrasePractice: (phrase: PracticePhrase, todayTargetBpm: number) => void;
+  startPhrasePractice: (phrase: PracticePhrase, goalBpm: number) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
   setPlaybackRate: (rate: PlaybackRate) => void;
@@ -227,7 +228,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     }));
   },
 
-  startPhrasePractice: (phrase, todayTargetBpm) => {
+  startPhrasePractice: (phrase, goalBpm) => {
     get().loadVideo(phrase.videoId, phrase.videoTitle, {
       abLoop: { pointA: phrase.startSec, pointB: phrase.endSec, enabled: true },
       playbackRate: phrase.playbackRate,
@@ -236,12 +237,12 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     set({
       activePhrasePractice: {
         phrase,
-        todayTargetBpm,
+        goalBpm,
         targetReps: DEFAULT_TARGET_REPS,
         completedReps: 0,
         startedAt: Date.now(),
       },
-      metronomeBpm: clampBpm(todayTargetBpm),
+      metronomeBpm: clampBpm(goalBpm),
     });
   },
 

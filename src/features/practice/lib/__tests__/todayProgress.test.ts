@@ -1,4 +1,6 @@
-import { resolveTodayProgress } from "../todayCompletion";
+import * as fc from "fast-check";
+import { resolveCurrentBpm, resolveTodayProgress } from "../progression";
+import { BPM_MAX } from "@/shared/constants/bpm";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
 type Phrase = Pick<PracticePhrase, "currentBpm" | "targetBpm" | "initialBpm">;
@@ -203,5 +205,62 @@ describe("resolveTodayProgress", () => {
     expect(progress.targetBeforeToday).toBe(85);
     expect(progress.todayBestOkBpm).toBe(83);
     expect(progress.reached).toBe(false);
+  });
+});
+
+describe("resolveTodayProgress: 到達BPMより遅いテンポで弾けた記録", () => {
+  it("initialBpm 100・前日 ok@90 なら、今日の目標は到達BPMの100（下がらない）", () => {
+    const phrase: Phrase = { currentBpm: 100, targetBpm: 120, initialBpm: 100 };
+    const yesterday = attempt({ id: "y", date: septemberLocalIso(23, 20), result: "ok", bpm: 90 });
+
+    expect(resolveTodayProgress(phrase, [yesterday], septemberLocal(24, 12)).targetBeforeToday).toBe(100);
+  });
+
+  it("その日に ok@95 で弾いても目標100には未達成", () => {
+    const phrase: Phrase = { currentBpm: 100, targetBpm: 120, initialBpm: 100 };
+    const yesterday = attempt({ id: "y", date: septemberLocalIso(23, 20), result: "ok", bpm: 90 });
+    const today = attempt({ id: "t", date: septemberLocalIso(24, 10), result: "ok", bpm: 95 });
+
+    expect(resolveTodayProgress(phrase, [yesterday, today], septemberLocal(24, 12)).reached).toBe(false);
+  });
+});
+
+describe("resolveTodayProgress の性質", () => {
+  const bpm = fc.integer({ min: 40, max: BPM_MAX });
+  const recordArb = fc.record({
+    day: fc.integer({ min: 1, max: 24 }),
+    hour: fc.integer({ min: 0, max: 23 }),
+    bpm,
+    result: fc.constantFrom<PhraseAttempt["result"]>("ok", "partial", "ng"),
+  });
+  const caseArb = fc.record({
+    initialBpm: bpm,
+    targetBpm: bpm,
+    records: fc.array(recordArb, { maxLength: 12 }),
+    todayRecords: fc.array(recordArb.map((r) => ({ ...r, day: 24 })), { maxLength: 4 }),
+  });
+  const now = septemberLocal(24, 23, 59);
+  const toAttempts = (records: { day: number; hour: number; bpm: number; result: PhraseAttempt["result"] }[], prefix: string) =>
+    records.map((r, i) =>
+      attempt({ id: `${prefix}${i}`, date: septemberLocalIso(r.day, r.hour), bpm: r.bpm, result: r.result }),
+    );
+
+  it("今日の目標は当日前の到達BPM以上・到達BPM+5以下で、当日の記録を足しても変わらない", () => {
+    fc.assert(
+      fc.property(caseArb, ({ initialBpm, targetBpm, records, todayRecords }) => {
+        const before = toAttempts(records, "b").filter((a) => new Date(a.date).getDate() !== 24);
+        const today = toAttempts(todayRecords, "t");
+        const phrase: Phrase = { currentBpm: initialBpm, targetBpm, initialBpm };
+        const reachedBefore = resolveCurrentBpm(initialBpm, before);
+        const cap = Math.min(BPM_MAX, Math.max(targetBpm, reachedBefore));
+
+        const withoutToday = resolveTodayProgress(phrase, before, now).targetBeforeToday;
+        const withToday = resolveTodayProgress(phrase, [...before, ...today], now).targetBeforeToday;
+
+        expect(withoutToday).toBeGreaterThanOrEqual(Math.min(reachedBefore, cap));
+        expect(withoutToday).toBeLessThanOrEqual(reachedBefore + 5);
+        expect(withToday).toBe(withoutToday);
+      }),
+    );
   });
 });

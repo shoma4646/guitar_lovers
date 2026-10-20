@@ -12,14 +12,13 @@ import { semantic } from "@/shared/theme/semantic";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progression";
-import { resolveTodayProgress } from "@/features/practice/lib/todayCompletion";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
 import type { PracticePhrase } from "@/shared/types/models";
 
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onStartPhrase: (phrase: PracticePhrase, todayTargetBpm: number) => void;
+  onStartPhrase: (phrase: PracticePhrase, startBpm: number) => void;
 };
 
 export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
@@ -28,8 +27,7 @@ export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
   const handleLongPress = usePhraseLongPressActions();
 
   const allAttempts = attempts ?? [];
-  const menuItems = buildTodayMenu(phrases ?? [], allAttempts);
-  const now = new Date();
+  const menuItems = buildTodayMenu(phrases ?? [], allAttempts, new Date());
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title={`すべてのフレーズ（${menuItems.length}本）`}>
@@ -44,8 +42,7 @@ export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
           ) : (
             menuItems.map((entry, index) => {
               const phraseAttempts = allAttempts.filter((a) => a.phraseId === entry.phrase.id);
-              // 今日の記録を除いた目標を使い、当日中に表示がぶれないようにする(TodayPhraseRowsと同じ扱い)
-              const { targetBeforeToday } = resolveTodayProgress(entry.phrase, phraseAttempts, now);
+              const { targetBeforeToday } = entry.today;
               return (
                 <Pressable
                   key={entry.phrase.id}

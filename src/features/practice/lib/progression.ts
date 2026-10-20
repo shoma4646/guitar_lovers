@@ -1,5 +1,6 @@
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import { BPM_MAX } from "@/shared/constants/bpm";
+import { isSameLocalDay } from "@/features/reminder/lib/reminderTime";
 
 /** 1回の成功で引き上げる目標BPMの幅 */
 const BPM_STEP = 5;
@@ -7,11 +8,22 @@ const BPM_STEP = 5;
 /** 今日の練習メニューでの優先区分。retry=前回あやしい/弾けなかった, stale=記録あり, fresh=未記録, graduated=目標BPM到達済み */
 export type TodayMenuPriority = "retry" | "stale" | "fresh" | "graduated";
 
+/** フレーズの「今日の記録を除いた目標」と、その目標に対する当日の達成状況 */
+export type TodayProgress = {
+  /** 今日始める前に提示されていた目標BPM（当日の記録を除いて計算するため1日を通して変わらない） */
+  targetBeforeToday: number;
+  /** 当日のok記録のうち最大のBPM（無ければundefined） */
+  todayBestOkBpm: number | undefined;
+  /** todayBestOkBpmがtargetBeforeToday以上なら達成 */
+  reached: boolean;
+};
+
 /** 今日の練習メニューの1行分 */
 export type TodayMenuEntry = {
   phrase: PracticePhrase;
   latest: PhraseAttempt | undefined;
-  todayTargetBpm: number;
+  /** 今日の目標と達成状況。目標BPMはどの導線でもここを使う */
+  today: TodayProgress;
   priority: TodayMenuPriority;
 };
 
@@ -78,6 +90,52 @@ export function computeTodayTargetBpm(
 }
 
 /**
+ * フレーズの当日の目標達成状況を計算する（今日の目標BPMの唯一の算出元）
+ *
+ * 当日の記録を含めて目標を求めると、今日ok記録を残すたびに目標が前進して達成判定がずれるため、
+ * 目標は当日より前の記録だけから求める。起点の到達BPMは保存時のBPM（initialBpm）と当日より前のok記録の大きい方
+ * @param phrase - 対象フレーズ
+ * @param attempts - 対象フレーズの練習結果一覧（順不同で可）
+ * @param now - 「今日」を決める基準日時（通知文面なら通知が届く日時）
+ */
+export function resolveTodayProgress(
+  phrase: Pick<PracticePhrase, "currentBpm" | "targetBpm" | "initialBpm">,
+  attempts: PhraseAttempt[],
+  now: Date,
+): TodayProgress {
+  const attemptsBeforeToday = attempts.filter((a) => !isSameLocalDay(new Date(a.date), now));
+  const targetBeforeToday = computeTodayTargetBpm(
+    resolveCurrentBpmBeforeToday(phrase, attemptsBeforeToday),
+    getLatestAttempt(attemptsBeforeToday),
+    phrase.targetBpm,
+  );
+
+  const todayOkBpms = attempts
+    .filter((a) => a.result === "ok" && isSameLocalDay(new Date(a.date), now))
+    .map((a) => a.bpm);
+  const todayBestOkBpm = todayOkBpms.length > 0 ? Math.max(...todayOkBpms) : undefined;
+
+  return {
+    targetBeforeToday,
+    todayBestOkBpm,
+    reached: todayBestOkBpm !== undefined && todayBestOkBpm >= targetBeforeToday,
+  };
+}
+
+function resolveCurrentBpmBeforeToday(
+  phrase: Pick<PracticePhrase, "currentBpm" | "initialBpm">,
+  attemptsBeforeToday: PhraseAttempt[],
+): number {
+  if (phrase.initialBpm !== undefined) {
+    return resolveCurrentBpm(phrase.initialBpm, attemptsBeforeToday);
+  }
+  // initialBpmを持たない古いデータでは、当日のok記録で書き換わったcurrentBpmを起点にすると当日分が混ざるため、
+  // 当日より前のok記録があればそれだけから再構築する
+  const okBpmsBeforeToday = attemptsBeforeToday.filter((a) => a.result === "ok").map((a) => a.bpm);
+  return okBpmsBeforeToday.length > 0 ? Math.max(...okBpmsBeforeToday) : phrase.currentBpm;
+}
+
+/**
  * フレーズが目標BPMに到達済み（卒業）かを返す
  * @param resolvedCurrentBpm - resolveCurrentBpmで記録を加味した到達BPM
  * @param targetBpm - フレーズの目標BPM
@@ -115,10 +173,12 @@ function compareTodayMenuEntries(a: TodayMenuEntry, b: TodayMenuEntry): number {
  * 記録ありは区分内で最終記録の古い順。同順位はupdatedAtの古い順、最後にidの順
  * @param phrases - 全フレーズ
  * @param attempts - 全練習結果
+ * @param now - 「今日」を決める基準日時
  */
 export function buildTodayMenu(
   phrases: PracticePhrase[],
   attempts: PhraseAttempt[],
+  now: Date,
 ): TodayMenuEntry[] {
   const attemptsByPhrase = new Map<string, PhraseAttempt[]>();
   for (const attempt of attempts) {
@@ -139,7 +199,7 @@ export function buildTodayMenu(
       return {
         phrase,
         latest,
-        todayTargetBpm: computeTodayTargetBpm(resolvedCurrentBpm, latest, phrase.targetBpm),
+        today: resolveTodayProgress(phrase, phraseAttempts, now),
         priority: classifyTodayMenuPriority(latest, resolvedCurrentBpm, phrase.targetBpm),
       };
     })
