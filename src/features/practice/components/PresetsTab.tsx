@@ -62,7 +62,7 @@ export function PresetsTab() {
     >
       {Object.entries(grouped).map(([category, items]) => (
         <View key={category} className="mb-lg">
-          <Text className="text-label-sm text-outline mb-sm" style={styles.sectionLabel}>
+          <Text className="text-label-sm text-on-surface-variant mb-sm" style={styles.sectionLabel}>
             {(CATEGORY_LABELS[category] ?? category).toUpperCase()}
           </Text>
           <View style={{ gap: 16 }}>
@@ -103,7 +103,7 @@ export function PresetsTab() {
                 <View className="flex-row items-center mt-md" style={{ gap: 16 }}>
                   <Text
                     className="text-[12px]"
-                    style={{ color: colors.outline, fontWeight: "500" }}
+                    style={{ color: colors.onSurfaceVariant, fontWeight: "500" }}
                   >
                     Curated routine
                   </Text>

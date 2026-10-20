@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   dayLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: colors.outline,
+    color: colors.onSurfaceVariant,
   },
   dayLabelToday: {
     color: colors.primary,

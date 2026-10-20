@@ -34,7 +34,7 @@ function Section({ title, children }: SectionProps) {
       <Text
         className="text-label-sm mb-sm"
         style={{
-          color: colors.outline,
+          color: colors.onSurfaceVariant,
           letterSpacing: 1.2,
           textTransform: "uppercase",
           fontWeight: "600",

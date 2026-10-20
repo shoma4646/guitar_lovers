@@ -92,7 +92,7 @@ export function FavoritesTab() {
       showsVerticalScrollIndicator={false}
     >
       {/* 最近の動画 */}
-      <Text className="text-label-sm text-outline mb-sm" style={styles.sectionLabel}>
+      <Text className="text-label-sm text-on-surface-variant mb-sm" style={styles.sectionLabel}>
         RECENT
       </Text>
       <View style={{ gap: 16 }}>
@@ -160,7 +160,7 @@ export function FavoritesTab() {
       </View>
 
       {/* お気に入り */}
-      <Text className="text-label-sm text-outline mt-xl mb-sm" style={styles.sectionLabel}>
+      <Text className="text-label-sm text-on-surface-variant mt-xl mb-sm" style={styles.sectionLabel}>
         FAVORITES
       </Text>
       <View style={{ gap: 16 }}>
