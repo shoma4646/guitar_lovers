@@ -36,7 +36,7 @@ import { resolveTodayProgress } from "@/features/practice/lib/todayCompletion";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { describePlayerError } from "@/features/practice/lib/playerError";
 import { formatDuration } from "@/features/practice/lib/formatters";
-import { applyPoint, isValidLoopRange, shouldLoopBack } from "@/features/practice/lib/abLoop";
+import { applyPoint, isValidLoopRange, resolvePointTime, shouldLoopBack } from "@/features/practice/lib/abLoop";
 import { stepBpm } from "@/features/practice/lib/tempo";
 import { useMetronomeEngine } from "@/features/practice/hooks/useMetronomeEngine";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
@@ -413,9 +413,9 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
 
   const handleSetPoint = useCallback(
     (point: "A" | "B") => {
-      setABLoop(applyPoint(abLoop, point, Math.floor(currentTimeRef.current)));
+      setABLoop(applyPoint(abLoop, point, resolvePointTime(point, currentTimeRef.current, duration)));
     },
-    [abLoop, setABLoop],
+    [abLoop, duration, setABLoop],
   );
 
   const handleToggleLoop = useCallback(() => {

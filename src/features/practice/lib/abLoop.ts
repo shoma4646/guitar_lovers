@@ -24,6 +24,29 @@ export function shouldLoopBack(currentTime: number, abLoop: ABLoop): boolean {
   );
 }
 
+/** A点・B点を保存する時刻の刻み（秒） */
+const POINT_STEP_SEC = 0.1;
+/** 再生位置×10 の浮動小数誤差（0.3 * 10 = 3.0000000000000004 など）で1刻みずれないための許容幅 */
+const STEP_EPSILON = 1e-9;
+
+/**
+ * ボタンを押した瞬間の再生位置から、A点・B点として保存する時刻を決める
+ * 区間を狭めない向きに丸める（A点は0.1秒単位で切り捨て、B点は切り上げ）。B点は動画の長さを超えない（長さ未取得の0なら上限なし）
+ * @param point - 設定する点
+ * @param currentTime - 押した瞬間の再生位置（秒）
+ * @param duration - 動画の総時間（秒）。未取得なら0
+ */
+export function resolvePointTime(point: "A" | "B", currentTime: number, duration: number): number {
+  const steps = currentTime / POINT_STEP_SEC;
+  if (point === "A") {
+    const a = Math.floor(steps + STEP_EPSILON) * POINT_STEP_SEC;
+    return a > currentTime ? currentTime : a;
+  }
+  const ceiled = Math.ceil(steps - STEP_EPSILON) * POINT_STEP_SEC;
+  const b = ceiled < currentTime ? currentTime : ceiled;
+  return duration > 0 ? Math.min(b, Math.max(duration, currentTime)) : b;
+}
+
 /**
  * A点またはB点をtimeに設定した新しいABループを返す
  * 設定後にA点がB点以上（区間が逆転・ゼロ幅）になる場合は、Alertで拒否せず反対側をnullにして
