@@ -16,6 +16,11 @@ import { planReminder, type ReminderPlan } from "../lib/planReminder";
 /** 予約するリマインド通知のidentifier */
 export const REMINDER_NOTIFICATION_ID = "practice-reminder";
 const REMINDER_CHANNEL_ID = "practice-reminder";
+/**
+ * 予約した発火日時（epoch ms）を入れる content.data のキー
+ * OSが返す trigger は Android が value、iOS が予約時点からの相対秒になり絶対日時に戻せないため、予約時の値を自分で持つ
+ */
+const FIRE_AT_DATA_KEY = "fireAt";
 
 /** リマインド通知の許可状態 */
 export type ReminderPermission = {
@@ -97,7 +102,11 @@ async function syncOnce(): Promise<void> {
   await ensureAndroidChannel();
   await Notifications.scheduleNotificationAsync({
     identifier: REMINDER_NOTIFICATION_ID,
-    content: { title: plan.title, body: plan.body, data: plan.data },
+    content: {
+      title: plan.title,
+      body: plan.body,
+      data: { ...plan.data, [FIRE_AT_DATA_KEY]: plan.fireAt.getTime() },
+    },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: plan.fireAt,
@@ -146,38 +155,11 @@ export function syncReminder(): Promise<void> {
   return running;
 }
 
-/**
- * iOSがDATEトリガーの予約を返す際の実際の形（UNCalendarNotificationTrigger相当）
- * expo-notificationsの型定義には無いため、実測に基づいてここでのみ定義する
- */
-type CalendarLikeTrigger = {
-  type: "calendar";
-  dateComponents: {
-    year?: number;
-    month?: number;
-    day?: number;
-    hour?: number;
-    minute?: number;
-    second?: number;
-  };
-};
-
-function extractTriggerFireAt(trigger: Notifications.NotificationTrigger): Date | null {
-  if (!trigger || typeof trigger !== "object" || !("type" in trigger)) return null;
-  if (trigger.type === "date" && "date" in trigger) {
-    const value = trigger.date;
-    const date = value instanceof Date ? value : new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  // iOSはDATEトリガーもUNCalendarNotificationTriggerとして返すため、日時要素から組み立てる
-  if (trigger.type === "calendar" && "dateComponents" in trigger) {
-    const { year, month, day, hour, minute, second } = (trigger as CalendarLikeTrigger)
-      .dateComponents;
-    if (year == null || month == null || day == null) return null;
-    const date = new Date(year, month - 1, day, hour ?? 0, minute ?? 0, second ?? 0);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  return null;
+function extractFireAt(data: Record<string, unknown> | undefined): Date | null {
+  const value = data?.[FIRE_AT_DATA_KEY];
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 /**
@@ -187,5 +169,5 @@ function extractTriggerFireAt(trigger: Notifications.NotificationTrigger): Date 
 export async function getScheduledReminderFireAt(): Promise<Date | null> {
   const requests = await Notifications.getAllScheduledNotificationsAsync();
   const request = requests.find((r) => r.identifier === REMINDER_NOTIFICATION_ID);
-  return request ? extractTriggerFireAt(request.trigger) : null;
+  return request ? extractFireAt(request.content.data) : null;
 }
