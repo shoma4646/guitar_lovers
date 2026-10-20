@@ -4,8 +4,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { savePracticePhrase, updateReminderSettings } from "@/shared/services/storage";
 import type { PracticePhrase } from "@/shared/types/models";
+import { isReminderNotificationData } from "../../lib/planReminder";
 import {
   getLastSyncError,
+  getScheduledReminderFireAt,
   REMINDER_NOTIFICATION_ID,
   syncReminder,
 } from "../reminderScheduler";
@@ -26,6 +28,7 @@ jest.mock("expo-notifications", () => ({
 const getPermissionsAsync = Notifications.getPermissionsAsync as jest.Mock;
 const cancel = Notifications.cancelScheduledNotificationAsync as jest.Mock;
 const schedule = Notifications.scheduleNotificationAsync as jest.Mock;
+const getAllScheduled = Notifications.getAllScheduledNotificationsAsync as jest.Mock;
 
 function permission(granted: boolean) {
   return { granted, canAskAgain: true, status: granted ? "granted" : "denied" };
@@ -65,8 +68,13 @@ describe("syncReminder", () => {
     expect(schedule).toHaveBeenCalledTimes(1);
     const request = schedule.mock.calls[0][0];
     expect(request.identifier).toBe(REMINDER_NOTIFICATION_ID);
-    expect(request.content.data).toEqual({ type: "practice-reminder", phraseId: "p1" });
+    expect(request.content.data).toEqual({
+      type: "practice-reminder",
+      phraseId: "p1",
+      fireAt: request.trigger.date.getTime(),
+    });
     expect(request.trigger.date).toBeInstanceOf(Date);
+    expect(isReminderNotificationData(request.content.data)).toBe(true);
     expect(cancel.mock.invocationCallOrder[0]).toBeLessThan(
       schedule.mock.invocationCallOrder[0],
     );
@@ -154,5 +162,67 @@ describe("syncReminder", () => {
     await syncReminder();
 
     expect(getLastSyncError()).toBeNull();
+  });
+});
+
+describe("getScheduledReminderFireAt", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    jest.clearAllMocks();
+    getPermissionsAsync.mockResolvedValue(permission(true));
+    await updateReminderSettings({ enabled: true });
+    await savePracticePhrase(makePhrase("p1"));
+  });
+
+  /** syncReminderで予約した内容を、OSが返す形のtriggerに差し替えて読み出し結果に流す */
+  async function scheduleAndReturnAs(trigger: (fireAt: Date) => unknown) {
+    await syncReminder();
+    const { identifier, content, trigger: input } = schedule.mock.calls[0][0];
+    getAllScheduled.mockResolvedValue([{ identifier, content, trigger: trigger(input.date) }]);
+    return input.date as Date;
+  }
+
+  it("Android の形状（type: date, value）でも予約した日時を返す", async () => {
+    const fireAt = await scheduleAndReturnAs((d) => ({
+      type: "date",
+      value: d.getTime(),
+      repeats: false,
+      channelId: "practice-reminder",
+    }));
+
+    expect(await getScheduledReminderFireAt()).toEqual(fireAt);
+  });
+
+  it("iOS の形状（type: timeInterval, 相対秒）でも予約した日時を返す", async () => {
+    const fireAt = await scheduleAndReturnAs((d) => ({
+      type: "timeInterval",
+      seconds: Math.round((d.getTime() - Date.now()) / 1000),
+      repeats: false,
+    }));
+
+    expect(await getScheduledReminderFireAt()).toEqual(fireAt);
+  });
+
+  it("予約が無い、または identifier が違うときは null", async () => {
+    getAllScheduled.mockResolvedValue([]);
+    expect(await getScheduledReminderFireAt()).toBeNull();
+
+    getAllScheduled.mockResolvedValue([
+      { identifier: "other", content: { data: { fireAt: Date.now() } }, trigger: null },
+    ]);
+    expect(await getScheduledReminderFireAt()).toBeNull();
+  });
+
+  it.each([
+    ["fireAt が無い旧予約", { type: "practice-reminder", phraseId: "p1" }],
+    ["NaN", { type: "practice-reminder", phraseId: "p1", fireAt: Number.NaN }],
+    ["文字列", { type: "practice-reminder", phraseId: "p1", fireAt: "2026-10-20" }],
+    ["data 自体が無い", undefined],
+  ])("%s のときは例外を出さず null", async (_label, data) => {
+    getAllScheduled.mockResolvedValue([
+      { identifier: REMINDER_NOTIFICATION_ID, content: { data }, trigger: { type: "date", value: 0 } },
+    ]);
+
+    await expect(getScheduledReminderFireAt()).resolves.toBeNull();
   });
 });
