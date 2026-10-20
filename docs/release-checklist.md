@@ -74,6 +74,7 @@ Steps to create a practice phrase:
 - [ ] Data safety（データセーフティ）フォームで「収集なし」を選択する
 - [ ] IARC（国際年齢レーティング連合）のコンテンツレーティング調査に回答する
 - [ ] `targetSdkVersion`がExpo SDK 54既定値（36）を満たしているか確認する
+- [ ] 本番AABの権限一覧がマイク・通知・インターネット・バイブのみであることを確認する（`app.json`の`android.blockedPermissions`で外した重ね表示・ストレージ権限が出ていないこと）
 
 ## (g) 提出前の最終確認
 
