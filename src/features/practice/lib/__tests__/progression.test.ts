@@ -9,6 +9,9 @@ import {
 } from "../progression";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
+/** どの記録よりも後の日時（記録はすべて「今日より前」になる） */
+const NOW = new Date("2026-09-30T12:00:00.000Z");
+
 type GraduationInput = Pick<
   PracticePhrase,
   "currentBpm" | "targetBpm" | "graduatedAt" | "createdAt"
@@ -149,6 +152,7 @@ describe("buildTodayMenu", () => {
     const menu = buildTodayMenu(
       [makePhrase({ id: "p1" }), makePhrase({ id: "p2", archivedAt: "2026-08-05T00:00:00.000Z" })],
       [],
+      NOW,
     );
     expect(menu.map((e) => e.phrase.id)).toEqual(["p1"]);
   });
@@ -164,7 +168,7 @@ describe("buildTodayMenu", () => {
       makeAttempt({ id: "1", phraseId: "stale", result: "ok" }),
       makeAttempt({ id: "2", phraseId: "retry", result: "ng" }),
     ];
-    const menu = buildTodayMenu(phrases, attempts);
+    const menu = buildTodayMenu(phrases, attempts, NOW);
     expect(menu.map((e) => e.phrase.id)).toEqual(["retry", "stale", "fresh", "graduated"]);
     expect(menu.map((e) => e.priority)).toEqual(["retry", "stale", "fresh", "graduated"]);
   });
@@ -176,6 +180,7 @@ describe("buildTodayMenu", () => {
         makeAttempt({ id: "1", phraseId: "stale", result: "ok", date: "2026-08-01T00:00:00.000Z" }),
         makeAttempt({ id: "2", phraseId: "retry", result: "partial" }),
       ],
+      NOW,
     );
     expect(menu[0].phrase.id).toBe("retry");
   });
@@ -186,7 +191,7 @@ describe("buildTodayMenu", () => {
       makeAttempt({ id: "1", phraseId: "recent", date: "2026-08-10T00:00:00.000Z" }),
       makeAttempt({ id: "2", phraseId: "old", date: "2026-08-03T00:00:00.000Z" }),
     ];
-    expect(buildTodayMenu(phrases, attempts).map((e) => e.phrase.id)).toEqual(["old", "recent"]);
+    expect(buildTodayMenu(phrases, attempts, NOW).map((e) => e.phrase.id)).toEqual(["old", "recent"]);
   });
 
   it("前回あやしい/弾けなかった同士もupdatedAtではなく最終記録の古い順に並ぶ", () => {
@@ -198,7 +203,7 @@ describe("buildTodayMenu", () => {
       makeAttempt({ id: "1", phraseId: "olderRecord", result: "ng", date: "2026-08-06T00:00:00.000Z" }),
       makeAttempt({ id: "2", phraseId: "olderUpdate", result: "ng", date: "2026-08-10T00:00:00.000Z" }),
     ];
-    expect(buildTodayMenu(phrases, attempts).map((e) => e.phrase.id)).toEqual([
+    expect(buildTodayMenu(phrases, attempts, NOW).map((e) => e.phrase.id)).toEqual([
       "olderRecord",
       "olderUpdate",
     ]);
@@ -210,7 +215,7 @@ describe("buildTodayMenu", () => {
       makePhrase({ id: "b", updatedAt: "2026-08-02T00:00:00.000Z" }),
       makePhrase({ id: "a", updatedAt: "2026-08-05T00:00:00.000Z" }),
     ];
-    expect(buildTodayMenu(phrases, []).map((e) => e.phrase.id)).toEqual(["b", "a", "c"]);
+    expect(buildTodayMenu(phrases, [], NOW).map((e) => e.phrase.id)).toEqual(["b", "a", "c"]);
   });
 
   it("目標BPM到達済みなら最後の結果がngでも末尾に回る", () => {
@@ -219,7 +224,7 @@ describe("buildTodayMenu", () => {
       makePhrase({ id: "fresh" }),
     ];
     const attempts = [makeAttempt({ phraseId: "graduated", result: "ng", bpm: 120 })];
-    const menu = buildTodayMenu(phrases, attempts);
+    const menu = buildTodayMenu(phrases, attempts, NOW);
     expect(menu.map((e) => e.phrase.id)).toEqual(["fresh", "graduated"]);
     expect(menu[1].priority).toBe("graduated");
   });
@@ -228,6 +233,7 @@ describe("buildTodayMenu", () => {
     const menu = buildTodayMenu(
       [makePhrase({ currentBpm: 100, targetBpm: 120 })],
       [makeAttempt({ result: "ok", bpm: 120 })],
+      NOW,
     );
     expect(menu[0].priority).toBe("graduated");
   });
@@ -237,7 +243,7 @@ describe("buildTodayMenu", () => {
       makeAttempt({ id: "new", result: "ng", date: "2026-08-10T00:00:00.000Z" }),
       makeAttempt({ id: "old", result: "ok", date: "2026-08-08T00:00:00.000Z" }),
     ];
-    const menu = buildTodayMenu([makePhrase()], attempts);
+    const menu = buildTodayMenu([makePhrase()], attempts, NOW);
     expect(menu[0].priority).toBe("retry");
     expect(menu[0].latest?.id).toBe("new");
   });
@@ -246,8 +252,9 @@ describe("buildTodayMenu", () => {
     const menu = buildTodayMenu(
       [makePhrase({ currentBpm: 70, targetBpm: 120 })],
       [makeAttempt({ result: "ok", bpm: 80 })],
+      NOW,
     );
-    expect(menu[0].todayTargetBpm).toBe(85);
+    expect(menu[0].today.targetBeforeToday).toBe(85);
   });
 });
 
@@ -256,12 +263,13 @@ describe("pickTodayPick", () => {
     const menu = buildTodayMenu(
       [makePhrase({ id: "fresh" }), makePhrase({ id: "retry" })],
       [makeAttempt({ phraseId: "retry", result: "ng" })],
+      NOW,
     );
     expect(pickTodayPick(menu)?.phrase.id).toBe("retry");
   });
 
   it("全件が目標BPM到達済みならundefinedを返す", () => {
-    const menu = buildTodayMenu([makePhrase({ currentBpm: 120, targetBpm: 120 })], []);
+    const menu = buildTodayMenu([makePhrase({ currentBpm: 120, targetBpm: 120 })], [], NOW);
     expect(pickTodayPick(menu)).toBeUndefined();
   });
 

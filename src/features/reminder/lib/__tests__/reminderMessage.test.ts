@@ -1,5 +1,12 @@
 import { buildReminderMessage, pickReminderPhrase } from "../reminderMessage";
-import { buildTodayMenu, pickTodayPick } from "@/features/practice/lib/progression";
+import * as fc from "fast-check";
+import {
+  buildTodayMenu,
+  isGraduated,
+  pickTodayPick,
+  resolveCurrentBpm,
+  resolveTodayProgress,
+} from "@/features/practice/lib/progression";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
 function sep(day: number, hour: number, minute = 0): string {
@@ -59,7 +66,7 @@ describe("pickReminderPhrase", () => {
     ];
 
     expect(pickReminderPhrase(phrases, attempts)?.id).toBe(
-      pickTodayPick(buildTodayMenu(phrases, attempts))?.phrase.id,
+      pickTodayPick(buildTodayMenu(phrases, attempts, new Date()))?.phrase.id,
     );
     expect(pickReminderPhrase(phrases, attempts)?.id).toBe("a");
   });
@@ -182,11 +189,39 @@ describe("buildReminderMessage", () => {
       makeAttempt({ id: "1", date: sep(14, 20), bpm: 85, result: "ok" }),
       makeAttempt({ id: "2", date: sep(16, 20), bpm: 85, result: "ok" }),
     ];
-    const menuTarget = buildTodayMenu([phrase], attempts)[0].todayTargetBpm;
+    const menuTarget = buildTodayMenu([phrase], attempts, fireAt)[0].today.targetBeforeToday;
 
     const { body } = buildReminderMessage({ phrase, phraseAttempts: attempts, fireAt });
 
     expect(menuTarget).toBe(90);
     expect(body).toContain("今日は90に挑戦");
+  });
+});
+
+describe("buildReminderMessage の性質", () => {
+  it("卒業前のフレーズでは、文面の「今日は N」が通知が届く日の targetBeforeToday と一致する", () => {
+    const bpm = fc.integer({ min: 40, max: 240 });
+    const recordArb = fc.record({
+      day: fc.integer({ min: 2, max: 17 }),
+      hour: fc.integer({ min: 0, max: 23 }),
+      bpm,
+      result: fc.constantFrom<PhraseAttempt["result"]>("ok", "partial", "ng"),
+    });
+    fc.assert(
+      fc.property(bpm, bpm, fc.array(recordArb, { maxLength: 10 }), (initialBpm, targetBpm, records) => {
+        const phrase = makePhrase({ initialBpm, currentBpm: initialBpm, targetBpm });
+        const attempts = records.map((r, i) =>
+          makeAttempt({ id: `a${i}`, date: sep(r.day, r.hour), bpm: r.bpm, result: r.result }),
+        );
+        fc.pre(!isGraduated(resolveCurrentBpm(phrase.currentBpm, attempts), targetBpm));
+        const fireAt = new Date(2026, 8, 17, 20);
+
+        const { body } = buildReminderMessage({ phrase, phraseAttempts: attempts, fireAt });
+
+        expect(Number(/今日は(\d+)/.exec(body)?.[1])).toBe(
+          resolveTodayProgress(phrase, attempts, fireAt).targetBeforeToday,
+        );
+      }),
+    );
   });
 });

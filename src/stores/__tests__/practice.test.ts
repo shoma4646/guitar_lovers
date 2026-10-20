@@ -66,7 +66,7 @@ describe("startPhrasePractice", () => {
 
     const { activePhrasePractice, metronomeBpm } = usePracticeStore.getState();
     expect(activePhrasePractice).toMatchObject({
-      todayTargetBpm: 85,
+      goalBpm: 85,
       targetReps: DEFAULT_TARGET_REPS,
       completedReps: 0,
     });

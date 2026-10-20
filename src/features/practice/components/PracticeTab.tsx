@@ -32,7 +32,6 @@ import { PhraseNotFoundError } from "@/shared/services/storage";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
 import { buildTodayMenu, resolveCurrentBpm, resolveGraduatedAt } from "@/features/practice/lib/progression";
-import { resolveTodayProgress } from "@/features/practice/lib/todayCompletion";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { describePlayerError } from "@/features/practice/lib/playerError";
 import { formatDuration } from "@/features/practice/lib/formatters";
@@ -256,8 +255,8 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   // 確認ダイアログを経由せずフレーズ練習を開始する。「記録して次の1本へ」など、直前に
   // recordResultAsyncで保存済みで未保存の記録が無いことが分かっている遷移から使う
   const startPhraseDirectly = useCallback(
-    (phrase: PracticePhrase, todayTargetBpm: number) => {
-      startPhrasePractice(phrase, todayTargetBpm);
+    (phrase: PracticePhrase, startBpm: number) => {
+      startPhrasePractice(phrase, startBpm);
       // 読み込み前の一覧はScrollViewだが、読み込み後は同じ画面のまま切り替わるため
       // 一覧を開いていた場合に備えて先頭へ戻しておく（読み込み後は無関係でno-op）
       scrollViewRef.current?.scrollTo({ y: 0, animated: true });
@@ -266,13 +265,13 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   );
 
   const handleStartPhrase = useCallback(
-    (phrase: PracticePhrase, todayTargetBpm: number) => {
+    (phrase: PracticePhrase, startBpm: number) => {
       // 今練習中のフレーズを選び直しただけなら確認不要
       if (activePractice?.phrase.id === phrase.id) {
-        startPhraseDirectly(phrase, todayTargetBpm);
+        startPhraseDirectly(phrase, startBpm);
         return;
       }
-      confirmSwitch(() => startPhraseDirectly(phrase, todayTargetBpm));
+      confirmSwitch(() => startPhraseDirectly(phrase, startBpm));
     },
     [activePractice, confirmSwitch, startPhraseDirectly],
   );
@@ -286,20 +285,16 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   }, [activePractice, beginResultEntry]);
 
   const todayMenu = useMemo(
-    () => buildTodayMenu(allPhrases, allPhraseAttempts),
+    () => buildTodayMenu(allPhrases, allPhraseAttempts, new Date()),
     [allPhrases, allPhraseAttempts],
   );
 
   // 卒業済みに加え、当日すでに目標へ到達したフレーズも除いた「今日まだ残っている」メニュー。
   // ヘッダーの「残りN本」表示と「次の1本へ」の候補選びの両方をこの1つの集合に揃える
-  const openMenuEntries = useMemo(() => {
-    const now = new Date();
-    return todayMenu.filter((entry) => {
-      if (entry.priority === "graduated") return false;
-      const phraseAttempts = allPhraseAttempts.filter((a) => a.phraseId === entry.phrase.id);
-      return !resolveTodayProgress(entry.phrase, phraseAttempts, now).reached;
-    });
-  }, [todayMenu, allPhraseAttempts]);
+  const openMenuEntries = useMemo(
+    () => todayMenu.filter((entry) => entry.priority !== "graduated" && !entry.today.reached),
+    [todayMenu],
+  );
 
   const handleSubmitResult = useCallback(
     async ({ result }: { result: "ok" | "partial" | "ng" }, action: "next" | "finish") => {
@@ -351,14 +346,8 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         if (action === "next") {
           const nextEntry = openMenuEntries.find((entry) => entry.phrase.id !== phrase.id);
           if (nextEntry) {
-            const nextPhraseAttempts = allPhraseAttempts.filter(
-              (a) => a.phraseId === nextEntry.phrase.id,
-            );
-            // TodayPhraseRows等と同じ「今日の記録を除いた目標」に揃える（buildTodayMenuの
-            // todayTargetBpmは当日の記録を含むため、そのまま使うと導線ごとに値がずれる）
-            const { targetBeforeToday } = resolveTodayProgress(nextEntry.phrase, nextPhraseAttempts, new Date());
             // 直前に保存が成功しており未保存の記録は無いため、確認ダイアログを経由せず開始する
-            startPhraseDirectly(nextEntry.phrase, targetBeforeToday);
+            startPhraseDirectly(nextEntry.phrase, nextEntry.today.targetBeforeToday);
           }
         }
       } finally {
@@ -505,9 +494,9 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         <AllPhrasesSheet
           visible={showAllPhrases}
           onClose={() => setShowAllPhrases(false)}
-          onStartPhrase={(phrase, todayTargetBpm) => {
+          onStartPhrase={(phrase, startBpm) => {
             setShowAllPhrases(false);
-            handleStartPhrase(phrase, todayTargetBpm);
+            handleStartPhrase(phrase, startBpm);
           }}
         />
 
