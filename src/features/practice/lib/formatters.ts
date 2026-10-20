@@ -1,7 +1,8 @@
-/** 秒数を mm:ss 形式にフォーマットする */
+/** 秒数を mm:ss 形式にフォーマットする（小数秒は切り捨てる） */
 export function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+  const total = Math.floor(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
