@@ -71,7 +71,7 @@ export function SessionRow({ session, onDelete }: Props) {
         {session.notes ? (
           <Text
             className="text-label-sm"
-            style={{ color: colors.outlineVariant, fontWeight: "600", marginTop: 2 }}
+            style={{ color: colors.onSurfaceVariant, fontWeight: "600", marginTop: 2 }}
             numberOfLines={1}
           >
             {session.notes}
@@ -79,7 +79,7 @@ export function SessionRow({ session, onDelete }: Props) {
         ) : (
           <Text
             className="text-label-sm"
-            style={{ color: colors.outlineVariant, fontWeight: "600", marginTop: 2 }}
+            style={{ color: colors.onSurfaceVariant, fontWeight: "600", marginTop: 2 }}
           >
             Practice Session
           </Text>
@@ -98,7 +98,7 @@ export function SessionRow({ session, onDelete }: Props) {
         </Text>
         <Text
           className="text-label-sm"
-          style={{ color: colors.outlineVariant, fontWeight: "600", marginTop: 2 }}
+          style={{ color: colors.onSurfaceVariant, fontWeight: "600", marginTop: 2 }}
         >
           {formatRelative(session.date)}
         </Text>

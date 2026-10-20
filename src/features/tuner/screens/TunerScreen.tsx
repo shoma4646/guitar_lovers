@@ -336,7 +336,7 @@ export function TunerScreen() {
                         ? colors.onPrimaryFixedVariant
                         : isFocused
                           ? colors.primary
-                          : colors.outline,
+                          : colors.onSurfaceVariant,
                     },
                   ]}
                 >
