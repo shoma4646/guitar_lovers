@@ -22,6 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { colors } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
+import { formatSpokenDuration } from "@/features/practice/lib/formatters";
 import { markerRatios, ratioToTime, timeToRatio } from "@/features/practice/lib/seekBar";
 import type { ABLoop } from "@/shared/types/models";
 
@@ -160,9 +161,15 @@ export function PracticeSeekBar({
     <View
       onLayout={handleLayout}
       style={{ height: TOUCH_HEIGHT, justifyContent: "center" }}
+      accessible
       accessibilityRole="adjustable"
       accessibilityLabel="再生位置"
-      accessibilityValue={{ min: 0, max: Math.round(duration), now: a11yNow }}
+      accessibilityValue={{
+        min: 0,
+        max: Math.round(duration),
+        now: a11yNow,
+        text: `${formatSpokenDuration(a11yNow)} / ${formatSpokenDuration(duration)}`,
+      }}
       accessibilityActions={[
         { name: "increment", label: `${A11Y_SEEK_STEP_SEC}秒進める` },
         { name: "decrement", label: `${A11Y_SEEK_STEP_SEC}秒戻す` },

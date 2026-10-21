@@ -170,7 +170,7 @@ export function ProgressScreen() {
               </View>
             </View>
             {stats.streakDays > 0 ? (
-              <View style={styles.streakBadge} accessibilityLabel={`連続${stats.streakDays}日`}>
+              <View style={styles.streakBadge} accessible accessibilityLabel={`連続${stats.streakDays}日`}>
                 <Icon name="bolt" size={14} color={semantic.streak} />
                 <Text style={styles.streakText} maxFontSizeMultiplier={1.3}>
                   {stats.streakDays}日連続

@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import { formatDuration } from "../formatters";
+import { formatDuration, formatSpokenDuration } from "../formatters";
 
 describe("formatDuration", () => {
   it("整数秒を mm:ss で表示する", () => {
@@ -18,5 +18,14 @@ describe("formatDuration", () => {
         expect(formatDuration(s)).toMatch(/^\d{2,}:\d{2}$/);
       }),
     );
+  });
+});
+
+describe("formatSpokenDuration", () => {
+  it("分と秒を読み上げ用の文字列にする", () => {
+    expect(formatSpokenDuration(72.9)).toBe("1分12秒");
+    expect(formatSpokenDuration(45)).toBe("45秒");
+    expect(formatSpokenDuration(180)).toBe("3分");
+    expect(formatSpokenDuration(0)).toBe("0秒");
   });
 });

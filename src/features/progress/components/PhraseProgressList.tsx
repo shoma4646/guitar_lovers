@@ -48,6 +48,7 @@ function PhraseProgressRow({
   return (
     <View
       style={styles.row}
+      accessible
       accessibilityLabel={`${phrase.name}、開始${startBpm}から目標${targetBpm}のうち現在${currentBpm}`}
     >
       <View style={styles.topRow}>

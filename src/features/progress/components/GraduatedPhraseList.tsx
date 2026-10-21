@@ -44,6 +44,7 @@ function GraduatedPhraseRow({ summary }: { summary: GraduatedPhraseSummary }) {
   return (
     <View
       style={styles.row}
+      accessible
       accessibilityLabel={`${phrase.name}、${formatMonthDay(graduatedAt)}に卒業、${startBpm}から${currentBpm}、目標${targetBpm}BPM`}
     >
       <View style={styles.topRow}>
