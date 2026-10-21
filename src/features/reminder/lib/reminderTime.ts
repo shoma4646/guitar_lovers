@@ -12,6 +12,9 @@ const ROUND_MINUTES = 15;
 const EARLIEST_MINUTES = 7 * 60;
 const LATEST_MINUTES = 22 * 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MINUTES_PER_DAY = 24 * 60;
+/** この時刻より前の記録は前日の夜の練習とみなす（時） */
+const NIGHT_ROLLOVER_HOUR = 4;
 
 // hourがマイナスや24以上になりうる中間値でも hour*60+minute が元のminutesへ正しく戻るよう、
 // JSの%ではなくfloorベースの剰余で分を求める（clampReminderTimeでの再計算を壊さないため）
@@ -29,6 +32,15 @@ function median(values: number[]): number {
   return sorted.length % 2 === 1
     ? sorted[mid]
     : Math.floor((sorted[mid - 1] + sorted[mid]) / 2);
+}
+
+/** 記録日時を、深夜の記録を前日へ寄せた「練習日の曜日」と「練習日0時からの分」に直す */
+function toPracticeClock(date: Date): { weekday: number; minutes: number } {
+  const minutes = date.getHours() * 60 + date.getMinutes();
+  if (date.getHours() < NIGHT_ROLLOVER_HOUR) {
+    return { weekday: (date.getDay() + 6) % 7, minutes: minutes + MINUTES_PER_DAY };
+  }
+  return { weekday: date.getDay(), minutes };
 }
 
 /**
@@ -49,6 +61,7 @@ export function isSameLocalDay(a: Date, b: Date): boolean {
  *
  * 直近28日の記録のうち、指定日と同じ曜日が2件以上あればその曜日だけ、無ければ全曜日の
  * ローカル時刻の中央値を取り、30分前・15分単位切り捨て・07:00〜22:00に収める。
+ * 0〜4時の記録は前日の24〜28時として扱い、曜日も前日に入れる。
  * 記録が2件未満なら20:00を返す
  * @param params.practiceDates - 練習記録の日時（ISO 8601）
  * @param params.targetDay - 送信する日（時刻は無視する）
@@ -69,8 +82,9 @@ export function resolveReminderTime({
     .filter((date) => {
       const time = date.getTime();
       return !Number.isNaN(time) && time >= since && time <= now.getTime();
-    });
-  const sameWeekday = recent.filter((date) => date.getDay() === targetDay.getDay());
+    })
+    .map(toPracticeClock);
+  const sameWeekday = recent.filter((clock) => clock.weekday === targetDay.getDay());
   const samples =
     sameWeekday.length >= MIN_SAMPLES
       ? sameWeekday
@@ -81,8 +95,7 @@ export function resolveReminderTime({
     return toReminderTime(DEFAULT_MINUTES);
   }
 
-  const minutesOfDay = samples.map((date) => date.getHours() * 60 + date.getMinutes());
-  const lead = median(minutesOfDay) - LEAD_MINUTES;
+  const lead = median(samples.map((clock) => clock.minutes)) - LEAD_MINUTES;
   const rounded = Math.floor(lead / ROUND_MINUTES) * ROUND_MINUTES;
   return clampReminderTime(toReminderTime(rounded));
 }
