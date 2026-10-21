@@ -38,7 +38,7 @@ describe("createPitchSmoother", () => {
     smoother.push(110, 1);
     smoother.push(0, 0);
     expect(smoother.push(0, 0)).toBeNull();
-    expect(smoother.push(220, 1)).toBe(220);
+    expect(smoother.push(165, 1)).toBe(165);
   });
 
   it("maxMisses回無効が続いてnullに戻った後、有効値が来たら即座に窓が再開して値を返す", () => {
@@ -47,8 +47,18 @@ describe("createPitchSmoother", () => {
     smoother.push(0, 0);
     expect(smoother.push(0, 0)).toBeNull();
     expect(smoother.push(0, 0)).toBeNull();
-    expect(smoother.push(220, 1)).toBe(220);
-    expect(smoother.push(225, 1)).toBe(222.5);
+    expect(smoother.push(165, 1)).toBe(165);
+    expect(smoother.push(170, 1)).toBe(167.5);
+  });
+
+  it("maxMisses回で窓を空にした後も、記憶時間内は最後の中央値からの1オクターブ上を捨てる", () => {
+    const smoother = createPitchSmoother({ maxMisses: 3, octaveMemoryMs: 1000 });
+    smoother.push(110, 1, 0);
+    smoother.push(220, 1, 100);
+    smoother.push(220, 1, 200);
+    expect(smoother.push(220, 1, 300)).toBeNull();
+    expect(smoother.push(220, 1, 1000)).toBeNull();
+    expect(smoother.push(220, 1, 1001)).toBe(220);
   });
 
   it("直前の中央値からちょうど1オクターブ上へ飛んだ値は無効として直前値を保持する", () => {
