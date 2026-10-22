@@ -44,6 +44,8 @@ type Props = {
   onRemoveBookmark: (id: string) => void;
   onOpenAddVideo: () => void;
   onCloseVideo: () => void;
+  /** シートが閉じ終わった後に呼ぶ */
+  onDismissed?: () => void;
 };
 
 export function PracticeMenuSheet({
@@ -67,6 +69,7 @@ export function PracticeMenuSheet({
   onRemoveBookmark,
   onOpenAddVideo,
   onCloseVideo,
+  onDismissed,
 }: Props) {
   const { data: phrases } = usePracticePhrases();
   const { data: attempts } = usePhraseAttempts();
@@ -76,7 +79,12 @@ export function PracticeMenuSheet({
   const menuItems = buildTodayMenu(phrases ?? [], allAttempts, new Date());
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="メニューと道具">
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title="メニューと道具"
+      onDismissed={onDismissed}
+    >
       <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 520 }}>
         <View style={{ paddingBottom: 8, gap: 12 }}>
           <View style={{ gap: 4 }}>
