@@ -1,6 +1,6 @@
 /**
  * YouTube IFrame APIのエラーコードから、ユーザー向けの案内文を返す
- * PracticeTabの動画エラー表示とAddVideoSheetの両方から参照する
+ * 練習画面の動画エラー表示とAddVideoSheetの両方から参照する
  * @param code - YouTube IFrame Player APIが返すエラーコード
  */
 export function describePlayerError(code: number): string {
@@ -20,5 +20,21 @@ export function describePlayerError(code: number): string {
       return "読み込みに失敗しました。通信状況を確認してください";
     default:
       return "動画を読み込めませんでした。URLと通信状況を確認してください";
+  }
+}
+
+/**
+ * YouTube IFrame APIのエラーコードから、エラー表示の見出しを返す
+ * @param code - YouTube IFrame Player APIが返すエラーコード
+ */
+export function describePlayerErrorTitle(code: number): string {
+  switch (code) {
+    case 101:
+    case 150:
+      return "この動画はアプリ内で再生できません";
+    case -1:
+      return "動画を読み込めませんでした";
+    default:
+      return "この動画は再生できません";
   }
 }
