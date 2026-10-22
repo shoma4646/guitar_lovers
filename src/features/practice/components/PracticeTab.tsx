@@ -40,6 +40,11 @@ import { stepBpm } from "@/features/practice/lib/tempo";
 import { useMetronomeEngine } from "@/features/practice/hooks/useMetronomeEngine";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { usePausePlayerOnBlur } from "@/features/practice/hooks/usePausePlayerOnBlur";
+import { useKeepAwakeWhileFocused } from "@/shared/hooks/useKeepAwakeWhileFocused";
+import {
+  PRACTICE_KEEP_AWAKE_TAG,
+  shouldKeepAwakeDuringPractice,
+} from "@/features/practice/lib/keepAwake";
 import { VideoPlayerCard } from "./VideoPlayerCard";
 import { PlaybackRateChips } from "./PlaybackRateChips";
 import { PracticeControlPanel } from "./PracticeControlPanel";
@@ -125,6 +130,10 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   }, []);
   const isPlayerMounted = useCallback(() => webViewRef.current !== null, []);
   usePausePlayerOnBlur(sendToPlayer, isPlayerMounted);
+  useKeepAwakeWhileFocused(
+    shouldKeepAwakeDuringPractice({ hasActivePhrase: activePractice !== null, metronomeEnabled }),
+    PRACTICE_KEEP_AWAKE_TAG,
+  );
 
   const [displaySeconds, setDisplaySeconds] = useState(0);
   const isTimerRunning = practiceStartTime !== null;
