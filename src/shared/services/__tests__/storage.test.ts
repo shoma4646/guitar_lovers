@@ -3,20 +3,33 @@ import mockAsyncStorage from "@react-native-async-storage/async-storage/jest/asy
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   STORAGE_KEYS,
+  StorageValidationError,
+  addFavoriteVideo,
+  addRecentVideo,
   archivePracticePhrase,
   deletePracticePhrase,
+  getFavoriteVideos,
   getPhraseAttempts,
   getPracticePhrases,
+  getPracticeSessions,
+  getRecentVideos,
   getReminderSettings,
   migrateIfNeeded,
   recordPhraseResult,
   savePhraseAttempt,
   savePracticePhrase,
+  savePracticeSession,
   updatePracticePhrase,
   updateReminderSettings,
 } from "../storage";
 import { DEFAULT_REMINDER_SETTINGS } from "@/shared/lib/schemas/reminderSettings";
-import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
+import type {
+  FavoriteVideo,
+  PhraseAttempt,
+  PracticePhrase,
+  PracticeSession,
+  RecentVideo,
+} from "@/shared/types/models";
 import {
   computeTodayTargetBpm,
   getLatestAttempt,
@@ -387,7 +400,7 @@ describe("migrateIfNeeded", () => {
   it("未設定ならschema_versionに現行バージョンを書く", async () => {
     await migrateIfNeeded();
 
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("2");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("3");
   });
 
   it("旧ビルドが検証せずに保存した値を新スキーマに収まる形へ補正し、データを失わない", async () => {
@@ -464,7 +477,7 @@ describe("migrateIfNeeded", () => {
     // 次の読み出しで移行を再試行し、旧データが補正されて返る
     const phrases = await getPracticePhrases();
     expect(phrases[0].currentBpm).toBe(240);
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("2");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("3");
   });
 
   it("起動時の移行が失敗しても例外を外へ出さず、次の読み出しで再試行する", async () => {
@@ -496,11 +509,34 @@ describe("migrateIfNeeded", () => {
     await migrateIfNeeded();
 
     expect((await getPracticePhrases())[0].currentBpm).toBe(240);
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("2");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("3");
+  });
+
+  it("練習セッションの日付だけの日時をISO 8601へ移行し、退避しない", async () => {
+    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "2");
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.PRACTICE_SESSIONS,
+      JSON.stringify([
+        { id: "s1", date: "2026-04-27", duration: 600 },
+        { id: "s2", date: "2026-04-28T09:00:00+09:00", duration: 300 },
+        { id: "s3", date: "2026-04-29T00:00:00.000Z", duration: 120 },
+      ]),
+    );
+
+    await migrateIfNeeded();
+
+    const sessions = await getPracticeSessions();
+    expect(sessions.map((s) => s.date)).toEqual([
+      "2026-04-27T00:00:00.000Z",
+      "2026-04-28T00:00:00.000Z",
+      "2026-04-29T00:00:00.000Z",
+    ]);
+    const keys = await AsyncStorage.getAllKeys();
+    expect(keys.filter((k) => k.includes("__corrupt_") || k.includes("__dropped_"))).toHaveLength(0);
   });
 
   it("既に現行バージョンなら何もしない", async () => {
-    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "2");
+    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "3");
     // モックのsetItemは元からjest.fnなので、spyOn+mockRestoreで実装を消さないよう呼び出し履歴だけ消す
     const setItem = AsyncStorage.setItem as jest.Mock;
     setItem.mockClear();
@@ -572,7 +608,7 @@ describe("リマインド設定", () => {
   it("設定の保存でスキーマバージョンは変わらない", async () => {
     await updateReminderSettings({ enabled: false });
 
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("2");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("3");
   });
 
   it("patchにundefinedのキーがあっても既存の値を消さない", async () => {
@@ -585,5 +621,110 @@ describe("リマインド設定", () => {
       enabled: true,
       timeOverride: { hour: 21, minute: 30 },
     });
+  });
+});
+
+describe("書き込み時の検証", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    jest.spyOn(console, "warn").mockImplementation(() => {});
+    jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  async function quarantinedKeys(): Promise<string[]> {
+    const keys = await AsyncStorage.getAllKeys();
+    return keys.filter((k) => k.includes("__dropped_") || k.includes("__corrupt_"));
+  }
+
+  it("回数0の練習結果は保存せず、保存済みの記録は変わらない", async () => {
+    await savePhraseAttempt(makeAttempt("a1", "p"));
+
+    await expect(
+      savePhraseAttempt({ ...makeAttempt("a2", "p"), reps: 0 }),
+    ).rejects.toBeInstanceOf(StorageValidationError);
+
+    expect((await getPhraseAttempts()).map((a) => a.id)).toEqual(["a1"]);
+    expect(await quarantinedKeys()).toHaveLength(0);
+  });
+
+  it("終了点を開始点以下にする更新は保存せず、フレーズは元のまま", async () => {
+    await savePracticePhrase(makePhrase("x"));
+
+    await expect(updatePracticePhrase("x", { endSec: 10 })).rejects.toBeInstanceOf(
+      StorageValidationError,
+    );
+    await expect(updatePracticePhrase("x", { endSec: 5 })).rejects.toBeInstanceOf(
+      StorageValidationError,
+    );
+
+    expect(await getPracticePhrases()).toEqual([makePhrase("x")]);
+    expect(await quarantinedKeys()).toHaveLength(0);
+  });
+
+  it("整数でないBPMの記録は保存せず、記録も到達BPMも変わらない", async () => {
+    await savePracticePhrase(makePhrase("p"));
+
+    await expect(
+      recordPhraseResult({ ...makeAttempt("a1", "p"), bpm: 39.5, result: "ok" }),
+    ).rejects.toBeInstanceOf(StorageValidationError);
+    await expect(
+      recordPhraseResult({ ...makeAttempt("a2", "p"), bpm: 120.5, result: "ok" }),
+    ).rejects.toBeInstanceOf(StorageValidationError);
+
+    expect(await getPhraseAttempts()).toEqual([]);
+    expect((await getPracticePhrases())[0].currentBpm).toBe(80);
+  });
+
+  it("不正なフレーズは新規保存しない", async () => {
+    await savePracticePhrase(makePhrase("ok"));
+
+    await expect(
+      savePracticePhrase({ ...makePhrase("bad"), targetBpm: 241 }),
+    ).rejects.toBeInstanceOf(StorageValidationError);
+
+    expect((await getPracticePhrases()).map((p) => p.id)).toEqual(["ok"]);
+  });
+
+  it("ISO 8601でない日時の練習セッションは保存しない", async () => {
+    const session: PracticeSession = {
+      id: "s1",
+      date: "2026-04-27",
+      duration: 60,
+    };
+
+    await expect(savePracticeSession(session)).rejects.toBeInstanceOf(StorageValidationError);
+    expect(await getPracticeSessions()).toEqual([]);
+  });
+
+  it("正しい練習セッションは保存して読み出せる", async () => {
+    const session: PracticeSession = {
+      id: "s1",
+      date: "2026-04-27T12:00:00.000Z",
+      duration: 60,
+      notes: "メモ",
+    };
+
+    await savePracticeSession(session);
+
+    expect(await getPracticeSessions()).toEqual([session]);
+  });
+
+  it("お気に入り・最近の動画・リマインド設定も不正な値は保存しない", async () => {
+    const badFavorite = { id: "f", videoId: "v", title: "t" } as unknown as FavoriteVideo;
+    const badRecent = { videoId: "v", title: 1 } as unknown as RecentVideo;
+
+    await expect(addFavoriteVideo(badFavorite)).rejects.toBeInstanceOf(StorageValidationError);
+    await expect(addRecentVideo(badRecent)).rejects.toBeInstanceOf(StorageValidationError);
+    await expect(
+      updateReminderSettings({ permissionPromptedAt: "昨日" }),
+    ).rejects.toBeInstanceOf(StorageValidationError);
+
+    expect(await getFavoriteVideos()).toEqual([]);
+    expect(await getRecentVideos()).toEqual([]);
+    expect(await getReminderSettings()).toEqual(DEFAULT_REMINDER_SETTINGS);
   });
 });

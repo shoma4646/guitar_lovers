@@ -2,7 +2,7 @@ import { practiceSessionsSchema } from "../practiceSession";
 
 describe("practiceSessionsSchema", () => {
   it("最小フィールドのみで通る", () => {
-    const data = [{ id: "a", date: "2026-04-27", duration: 100 }];
+    const data = [{ id: "a", date: "2026-04-27T12:00:00.000Z", duration: 100 }];
     const result = practiceSessionsSchema.safeParse(data);
     expect(result.success).toBe(true);
   });
@@ -11,7 +11,7 @@ describe("practiceSessionsSchema", () => {
     const data = [
       {
         id: "a",
-        date: "2026-04-27",
+        date: "2026-04-27T12:00:00.000Z",
         duration: 100,
         videoId: "vid",
         videoTitle: "曲",
@@ -23,15 +23,22 @@ describe("practiceSessionsSchema", () => {
   });
 
   it("durationが負の値のときは失敗する", () => {
-    const data = [{ id: "a", date: "2026-04-27", duration: -1 }];
+    const data = [{ id: "a", date: "2026-04-27T12:00:00.000Z", duration: -1 }];
     const result = practiceSessionsSchema.safeParse(data);
     expect(result.success).toBe(false);
   });
 
   it("型が違うフィールドがあれば失敗する", () => {
-    const data = [{ id: 1, date: "2026-04-27", duration: 10 }];
+    const data = [{ id: 1, date: "2026-04-27T12:00:00.000Z", duration: 10 }];
     const result = practiceSessionsSchema.safeParse(data);
     expect(result.success).toBe(false);
+  });
+
+  it("日時がISO 8601でなければ失敗する", () => {
+    for (const date of ["2026-04-27", "2026/04/27 12:00", ""]) {
+      const result = practiceSessionsSchema.safeParse([{ id: "a", date, duration: 10 }]);
+      expect(result.success).toBe(false);
+    }
   });
 
   it("空配列は通る", () => {

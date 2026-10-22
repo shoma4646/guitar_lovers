@@ -1,9 +1,11 @@
 import { z } from "zod";
 
-/** 練習セッションのZodスキーマ。AsyncStorage復元値をパースする */
+/** 練習セッションのZodスキーマ。AsyncStorageの読み書きの両方で検証に使う */
 export const practiceSessionSchema = z.object({
   id: z.string(),
-  date: z.string(),
+  /** 練習日時（ISO 8601形式） */
+  date: z.iso.datetime(),
+  /** 練習時間（秒） */
   duration: z.number().nonnegative(),
   videoUrl: z.string().optional(),
   videoId: z.string().optional(),
@@ -12,5 +14,3 @@ export const practiceSessionSchema = z.object({
 });
 
 export const practiceSessionsSchema = z.array(practiceSessionSchema);
-
-export type PracticeSessionParsed = z.infer<typeof practiceSessionSchema>;
