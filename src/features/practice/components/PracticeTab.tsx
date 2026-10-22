@@ -39,6 +39,7 @@ import { applyPoint, isValidLoopRange, resolvePointTime, shouldLoopBack } from "
 import { stepBpm } from "@/features/practice/lib/tempo";
 import { useMetronomeEngine } from "@/features/practice/hooks/useMetronomeEngine";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
+import { usePausePlayerOnBlur } from "@/features/practice/hooks/usePausePlayerOnBlur";
 import { VideoPlayerCard } from "./VideoPlayerCard";
 import { PlaybackRateChips } from "./PlaybackRateChips";
 import { PracticeControlPanel } from "./PracticeControlPanel";
@@ -122,6 +123,8 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const sendToPlayer = useCallback((cmd: Record<string, unknown>) => {
     webViewRef.current?.postMessage(JSON.stringify(cmd));
   }, []);
+  const isPlayerMounted = useCallback(() => webViewRef.current !== null, []);
+  usePausePlayerOnBlur(sendToPlayer, isPlayerMounted);
 
   const [displaySeconds, setDisplaySeconds] = useState(0);
   const isTimerRunning = practiceStartTime !== null;
