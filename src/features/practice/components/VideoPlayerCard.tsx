@@ -9,6 +9,11 @@
 import { forwardRef } from "react";
 import { View, StyleSheet, useWindowDimensions } from "react-native";
 import WebView from "react-native-webview";
+import {
+  handlePlayerNavigationRequest,
+  openExternally,
+  parsePlayerMessage,
+} from "@/features/practice/lib/webViewNavigation";
 import { buildYouTubeHtml, YOUTUBE_EMBED_ORIGIN } from "@/features/practice/lib/youtubeHtml";
 import { SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
 
@@ -51,18 +56,17 @@ export const VideoPlayerCard = forwardRef<WebView, Props>(
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled
           domStorageEnabled
+          originWhitelist={["https://*", "about:*"]}
+          onShouldStartLoadWithRequest={handlePlayerNavigationRequest}
+          onOpenWindow={(event) => openExternally(event.nativeEvent.targetUrl)}
           onMessage={(event) => {
-            try {
-              const data = JSON.parse(event.nativeEvent.data);
-              if (data.type === "time") {
-                onTimeUpdate(data.currentTime);
-              } else if (data.type === "ready") {
-                onDurationReady(data.duration);
-              } else if (data.type === "error") {
-                onPlayerError(typeof data.code === "number" ? data.code : -1);
-              }
-            } catch {
-              // ignore
+            const message = parsePlayerMessage(event.nativeEvent);
+            if (message?.type === "time") {
+              onTimeUpdate(message.currentTime);
+            } else if (message?.type === "ready") {
+              onDurationReady(message.duration);
+            } else if (message?.type === "error") {
+              onPlayerError(message.code);
             }
           }}
           onError={() => onPlayerError(-1)}
