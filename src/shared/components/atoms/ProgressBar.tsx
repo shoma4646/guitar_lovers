@@ -45,6 +45,7 @@ export function ProgressBar({
 
   return (
     <View
+      accessible
       accessibilityRole="progressbar"
       accessibilityLabel={accessibilityLabel}
       accessibilityValue={{ now: Math.round(clamped * 100), min: 0, max: 100 }}

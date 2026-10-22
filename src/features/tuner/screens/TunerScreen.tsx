@@ -307,7 +307,7 @@ export function TunerScreen() {
           </View>
         </Card>
 
-        <View style={styles.stringGrid} accessibilityRole="radiogroup" accessibilityLabel="弦の状態">
+        <View style={styles.stringGrid}>
           {preset.notes.map((note, idx) => {
             const isFocused = idx === focusedStringIndex;
             const isTunedString = tunedStrings[idx];
@@ -324,8 +324,9 @@ export function TunerScreen() {
                       ? { borderWidth: 2, borderColor: colors.primary }
                       : { borderWidth: 1, borderColor: colors.outlineVariant },
                 ]}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: isFocused }}
+                accessible
+                accessibilityRole="text"
+                accessibilityState={{ selected: isFocused }}
                 accessibilityLabel={`${stringNum}弦 ${note} ${isTunedString ? "チューニング完了" : "未チューニング"}`}
               >
                 <Text

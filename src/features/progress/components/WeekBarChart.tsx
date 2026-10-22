@@ -42,6 +42,7 @@ export function WeekBarChart({ weeklyPracticedDays }: Props) {
 
   return (
     <View
+      accessible
       accessibilityRole="image"
       accessibilityLabel={buildAccessibilityLabel(weeklyPracticedDays)}
       style={styles.bars}
