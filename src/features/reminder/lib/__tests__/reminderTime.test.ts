@@ -1,3 +1,4 @@
+import * as fc from "fast-check";
 import {
   clampReminderTime,
   computeNextFireAt,
@@ -82,6 +83,108 @@ describe("resolveReminderTime", () => {
       hour: 22,
       minute: 0,
     });
+  });
+
+  it("0時をまたぐ記録（23:50と0:20）は22:00にする", () => {
+    const practiceDates = [sep(14, 23, 50), sep(15, 0, 20)];
+
+    expect(resolveReminderTime({ practiceDates, targetDay: tomorrow, now })).toEqual({
+      hour: 22,
+      minute: 0,
+    });
+  });
+
+  it("記録の大半が0:10前後でも07:00ではなく22:00にする", () => {
+    const practiceDates = [sep(13, 0, 10), sep(14, 0, 5), sep(15, 0, 15)];
+
+    expect(resolveReminderTime({ practiceDates, targetDay: tomorrow, now })).toEqual({
+      hour: 22,
+      minute: 0,
+    });
+  });
+
+  it("0〜4時の記録は前日の曜日に入れる", () => {
+    const monday = sepDate(21);
+    const practiceDates = [sep(15, 0, 30), sep(8, 0, 30), sep(16, 19), sep(17, 19)];
+    const params = { practiceDates, now: sepDate(21, 6) };
+
+    expect(resolveReminderTime({ ...params, targetDay: monday })).toEqual({ hour: 22, minute: 0 });
+    expect(resolveReminderTime({ ...params, targetDay: sepDate(22) })).toEqual({
+      hour: 21,
+      minute: 15,
+    });
+  });
+
+  it("4時以降の記録は当日の朝として扱う", () => {
+    const practiceDates = [sep(14, 4), sep(15, 4, 10)];
+
+    expect(resolveReminderTime({ practiceDates, targetDay: tomorrow, now })).toEqual({
+      hour: 7,
+      minute: 0,
+    });
+  });
+});
+
+describe("resolveReminderTime の性質", () => {
+  /** 9月1〜15日のいずれかの日の、startMinutes から spanMinutes 未満だけ後の記録日時 */
+  const sampleFrom = (startMinutes: number, spanMinutes: number) =>
+    fc
+      .tuple(fc.integer({ min: 1, max: 15 }), fc.integer({ min: 0, max: spanMinutes - 1 }))
+      .map(([day, offset]) => new Date(2026, 8, day, 0, startMinutes + offset).toISOString());
+  const anySample = sampleFrom(0, 24 * 60);
+  const targetDayArb = fc.integer({ min: 16, max: 22 }).map((day) => sepDate(day));
+
+  it("22:30〜翌4:00の記録だけなら、必ず22:00になる", () => {
+    fc.assert(
+      fc.property(
+        fc.array(sampleFrom(22 * 60 + 30, 330), { minLength: 2, maxLength: 20 }),
+        targetDayArb,
+        (practiceDates, targetDay) => {
+          const time = resolveReminderTime({ practiceDates, targetDay, now });
+          return time.hour === 22 && time.minute === 0;
+        },
+      ),
+    );
+  });
+
+  it("21:00〜翌2:00の記録だけなら、昼や朝にならず20:30〜22:00になる", () => {
+    fc.assert(
+      fc.property(
+        fc.array(sampleFrom(21 * 60, 300), { minLength: 2, maxLength: 20 }),
+        targetDayArb,
+        (practiceDates, targetDay) => {
+          const { hour, minute } = resolveReminderTime({ practiceDates, targetDay, now });
+          const minutes = hour * 60 + minute;
+          return minutes >= 20 * 60 + 30 && minutes <= 22 * 60;
+        },
+      ),
+    );
+  });
+
+  it("どんな入力でも07:00〜22:00の範囲で15分刻みになる", () => {
+    fc.assert(
+      fc.property(fc.array(anySample, { maxLength: 20 }), targetDayArb, (practiceDates, targetDay) => {
+        const { hour, minute } = resolveReminderTime({ practiceDates, targetDay, now });
+        const minutes = hour * 60 + minute;
+        return minutes >= 7 * 60 && minutes <= 22 * 60 && minute % 15 === 0;
+      }),
+    );
+  });
+
+  it("入力の並び順を入れ替えても結果は変わらない", () => {
+    fc.assert(
+      fc.property(
+        fc.array(anySample, { maxLength: 20 }).chain((dates) =>
+          fc.tuple(fc.constant(dates), fc.shuffledSubarray(dates, { minLength: dates.length })),
+        ),
+        targetDayArb,
+        ([practiceDates, shuffled], targetDay) => {
+          expect(resolveReminderTime({ practiceDates: shuffled, targetDay, now })).toEqual(
+            resolveReminderTime({ practiceDates, targetDay, now }),
+          );
+        },
+      ),
+    );
   });
 });
 
