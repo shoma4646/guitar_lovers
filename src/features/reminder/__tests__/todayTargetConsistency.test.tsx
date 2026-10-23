@@ -58,7 +58,7 @@ describe("今日の目標BPMはどの導線でも同じ値になる", () => {
   it("今日の1本カード・メニューの行・通知タップの開始BPM・通知文面がすべて100", async () => {
     const menuTarget = buildTodayMenu([mockPhrase], mockAttempts, NOW)[0].today.targetBeforeToday;
 
-    render(<TodayPickCard onStartPhrase={jest.fn()} onTryPreset={jest.fn()} />);
+    render(<TodayPickCard onStartPhrase={jest.fn()} onTryPreset={jest.fn()} onOpenAddVideo={jest.fn()} />);
     const cardShowsTarget = screen.queryByText(`${menuTarget} BPM`) !== null;
 
     await startPhrasePracticeFromReminder("p1");
