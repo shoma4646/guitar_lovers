@@ -6,7 +6,8 @@ import type {
 
 const DAY_MS = 1000 * 60 * 60 * 24;
 
-function toDayKey(date: Date): string {
+/** 端末ローカルの暦日を表すキーを返す（同じ暦日なら同じ値） */
+export function toDayKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
