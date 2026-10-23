@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import { applyPoint, isValidLoopRange, resolvePointTime, shouldLoopBack } from "../abLoop";
+import { applyPoint, isValidLoopRange, resolvePointTime } from "../abLoop";
 import { markerRatios } from "../seekBar";
 import type { ABLoop } from "@/shared/types/models";
 
@@ -20,29 +20,6 @@ describe("isValidLoopRange", () => {
   it("A点がB点以上ならfalse", () => {
     expect(isValidLoopRange(loop({ pointA: 20, pointB: 20 }))).toBe(false);
     expect(isValidLoopRange(loop({ pointA: 30, pointB: 20 }))).toBe(false);
-  });
-});
-
-describe("shouldLoopBack", () => {
-  it("ループ有効・A/B両方設定済み・B点到達で真を返す", () => {
-    const abLoop = loop({ pointA: 10, pointB: 20, enabled: true });
-    expect(shouldLoopBack(20, abLoop)).toBe(true);
-    expect(shouldLoopBack(25, abLoop)).toBe(true);
-  });
-
-  it("B点未到達なら偽を返す", () => {
-    const abLoop = loop({ pointA: 10, pointB: 20, enabled: true });
-    expect(shouldLoopBack(19.9, abLoop)).toBe(false);
-  });
-
-  it("ループ無効なら偽を返す", () => {
-    const abLoop = loop({ pointA: 10, pointB: 20, enabled: false });
-    expect(shouldLoopBack(25, abLoop)).toBe(false);
-  });
-
-  it("A点・B点のいずれかが未設定なら偽を返す", () => {
-    expect(shouldLoopBack(25, loop({ pointA: 10, pointB: null, enabled: true }))).toBe(false);
-    expect(shouldLoopBack(25, loop({ pointA: null, pointB: 20, enabled: true }))).toBe(false);
   });
 });
 
@@ -80,8 +57,7 @@ describe("resolvePointTime", () => {
   it("B点は0.1秒単位で切り上げ、押した位置より前にならない", () => {
     const b = resolvePointTime("B", 12.93, 60);
     expect(b).toBeCloseTo(13.0);
-    expect(b).toBeGreaterThanOrEqual(12.93);
-    expect(shouldLoopBack(12.93, loop({ pointA: 10, pointB: b, enabled: true }))).toBe(false);
+    expect(b).toBeGreaterThan(12.93);
   });
 
   it("A点は0.1秒単位で切り捨てる", () => {

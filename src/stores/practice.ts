@@ -38,8 +38,6 @@ interface PracticeState {
   loadedVideoId: string | null;
   /** 動画タイトル */
   videoTitle: string;
-  /** 現在の再生位置（秒） */
-  currentTime: number;
   /** 動画の総時間（秒） */
   duration: number;
   /** 再生速度 */
@@ -131,7 +129,6 @@ interface PracticeState {
    * 動画・区間・再生速度・メトロノームBPM・練習中フレーズを一貫して設定する唯一の入口
    */
   startPhrasePractice: (phrase: PracticePhrase, goalBpm: number) => void;
-  setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
   setPlaybackRate: (rate: PlaybackRate) => void;
   startPracticeTimer: () => void;
@@ -183,7 +180,6 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   urlInput: "",
   loadedVideoId: null,
   videoTitle: "",
-  currentTime: 0,
   duration: 0,
   playbackRate: 1.0,
   videoStartSeconds: 0,
@@ -215,7 +211,6 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     set((state) => ({
       loadedVideoId: id,
       videoTitle: title,
-      currentTime: 0,
       duration: 0,
       videoStartSeconds: options?.abLoop?.pointA ?? 0,
       videoInitialRate: nextPlaybackRate,
@@ -252,7 +247,6 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     set({
       loadedVideoId: null,
       videoTitle: "",
-      currentTime: 0,
       duration: 0,
       videoStartSeconds: 0,
       videoInitialRate: 1.0,
@@ -270,7 +264,6 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       state.loadedVideoId === null
         ? {}
         : {
-            currentTime: 0,
             duration: 0,
             videoInitialRate: state.playbackRate,
             videoLoadNonce: state.videoLoadNonce + 1,
@@ -278,7 +271,6 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
           }
     ),
 
-  setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
   setPlaybackRate: (rate) => set({ playbackRate: rate }),
 

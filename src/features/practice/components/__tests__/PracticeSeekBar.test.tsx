@@ -29,7 +29,6 @@ describe("PracticeSeekBar のアクセシビリティ", () => {
         onScrubStart={jest.fn()}
         onScrubEnd={jest.fn()}
         onScrubCancel={jest.fn()}
-        scrubbingRef={{ current: false }}
       />,
     );
     const seekBar = screen.getByRole("adjustable", { name: "再生位置" });

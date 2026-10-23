@@ -9,21 +9,6 @@ export function isValidLoopRange(abLoop: Pick<ABLoop, "pointA" | "pointB">): boo
   return abLoop.pointA !== null && abLoop.pointB !== null && abLoop.pointA < abLoop.pointB;
 }
 
-/**
- * B点到達によるA点への巻き戻しが必要かを判定する
- * ドラッグ中に呼ぶと再生位置がユーザー操作と競合するため、呼び出し側でドラッグ中は判定自体をスキップすること
- * @param currentTime - 現在の再生位置（秒）
- * @param abLoop - 対象のABループ設定
- */
-export function shouldLoopBack(currentTime: number, abLoop: ABLoop): boolean {
-  return (
-    abLoop.enabled &&
-    abLoop.pointA !== null &&
-    abLoop.pointB !== null &&
-    currentTime >= abLoop.pointB
-  );
-}
-
 /** A点・B点を保存する時刻の刻み（秒） */
 const POINT_STEP_SEC = 0.1;
 /** 再生位置×10 の浮動小数誤差（0.3 * 10 = 3.0000000000000004 など）で1刻みずれないための許容幅 */
