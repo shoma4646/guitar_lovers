@@ -1,5 +1,5 @@
-import { render, fireEvent, screen } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { render, fireEvent, screen, act } from "@testing-library/react-native";
+import { Modal, Platform, Text } from "react-native";
 import { BottomSheet } from "../BottomSheet";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -38,5 +38,47 @@ describe("BottomSheet", () => {
     const closers = screen.getAllByLabelText("閉じる");
     fireEvent.press(closers[closers.length - 1]);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  describe("onDismissed", () => {
+    const originalOS = Platform.OS;
+
+    afterEach(() => {
+      Platform.OS = originalOS;
+    });
+
+    function renderSheet(visible: boolean, onDismissed: () => void) {
+      return (
+        <BottomSheet visible={visible} onClose={jest.fn()} title="t" onDismissed={onDismissed}>
+          <Text>中身</Text>
+        </BottomSheet>
+      );
+    }
+
+    it("iOSではModalが閉じ終わったとき（onDismiss）に呼ぶ", () => {
+      Platform.OS = "ios";
+      const onDismissed = jest.fn();
+      const { rerender } = render(renderSheet(true, onDismissed));
+
+      rerender(renderSheet(false, onDismissed));
+      expect(onDismissed).not.toHaveBeenCalled();
+
+      act(() => screen.UNSAFE_getByType(Modal).props.onDismiss());
+      expect(onDismissed).toHaveBeenCalledTimes(1);
+    });
+
+    it("iOS以外ではModalのonDismissが無いため、閉じた時点で1回だけ呼ぶ", () => {
+      Platform.OS = "android";
+      const onDismissed = jest.fn();
+      const { rerender } = render(renderSheet(false, onDismissed));
+      expect(onDismissed).not.toHaveBeenCalled();
+
+      rerender(renderSheet(true, onDismissed));
+      rerender(renderSheet(false, onDismissed));
+      rerender(renderSheet(false, onDismissed));
+
+      expect(onDismissed).toHaveBeenCalledTimes(1);
+      expect(screen.UNSAFE_getByType(Modal).props.onDismiss).toBeUndefined();
+    });
   });
 });

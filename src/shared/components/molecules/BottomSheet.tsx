@@ -4,7 +4,7 @@
  * 1画面に収まらない情報の逃がし先。ドラッグでの段階切り替えは持たず、開くか閉じるかだけにする。
  */
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -30,6 +30,11 @@ type Props = {
   maxHeightRatio?: number;
   /** 閉じるボタンを右上に出す */
   showCloseButton?: boolean;
+  /**
+   * 閉じ終わった後に呼ぶ。続けて別のモーダルを開くときは、ここで開く
+   * （iOSは表示中のモーダルから2枚目を重ねて出せないため、閉じ終わるのを待つ必要がある）
+   */
+  onDismissed?: () => void;
 };
 
 export function BottomSheet({
@@ -39,10 +44,25 @@ export function BottomSheet({
   children,
   maxHeightRatio = 0.9,
   showCloseButton = true,
+  onDismissed,
 }: Props) {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const progress = useSharedValue(0);
+  const onDismissedRef = useRef(onDismissed);
+  const wasVisibleRef = useRef(visible);
+
+  useEffect(() => {
+    onDismissedRef.current = onDismissed;
+  }, [onDismissed]);
+
+  useEffect(() => {
+    // ModalのonDismissはiOSでしか呼ばれないため、他のプラットフォームでは閉じた時点で通知する
+    if (Platform.OS !== "ios" && wasVisibleRef.current && !visible) {
+      onDismissedRef.current?.();
+    }
+    wasVisibleRef.current = visible;
+  }, [visible]);
 
   useEffect(() => {
     progress.value = withTiming(visible ? 1 : 0, {
@@ -59,7 +79,13 @@ export function BottomSheet({
   const backdropStyle = useAnimatedStyle(() => ({ opacity: progress.value * 0.55 }));
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={onClose}
+      onDismiss={Platform.OS === "ios" ? onDismissed : undefined}
+    >
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
         <Animated.View
           style={[StyleSheet.absoluteFill, { backgroundColor: colors.inverseSurface }, backdropStyle]}

@@ -20,6 +20,7 @@ import { colors } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
 import type { PracticeSession, PracticeStats } from "@/shared/types/models";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
+import { useRunAfterDismiss } from "@/shared/hooks/useRunAfterDismiss";
 import { usePracticeStore } from "@/stores/practice";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { usePracticeSessions } from "@/features/progress/api/usePracticeSessions";
@@ -59,6 +60,8 @@ export function ProgressScreen() {
   const [showRecentSheet, setShowRecentSheet] = useState(false);
   const [showAllPhrasesSheet, setShowAllPhrasesSheet] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const { schedule: runAfterRecentSheetDismissed, flush: handleRecentSheetDismissed } =
+    useRunAfterDismiss();
 
   const stats = useMemo<PracticeStats>(() => calcStats(sessions, attempts), [sessions, attempts]);
 
@@ -80,6 +83,11 @@ export function ProgressScreen() {
     },
     [saveSession],
   );
+
+  const handleAddPressInRecentSheet = useCallback(() => {
+    runAfterRecentSheetDismissed(() => setShowAddModal(true));
+    setShowRecentSheet(false);
+  }, [runAfterRecentSheetDismissed]);
 
   const handleShare = useCallback(async () => {
     const text = [
@@ -232,7 +240,8 @@ export function ProgressScreen() {
           onClose={() => setShowRecentSheet(false)}
           sessions={sessions}
           onDelete={handleDelete}
-          onAddPress={() => setShowAddModal(true)}
+          onAddPress={handleAddPressInRecentSheet}
+          onDismissed={handleRecentSheetDismissed}
         />
 
         <AllPhrasesProgressSheet

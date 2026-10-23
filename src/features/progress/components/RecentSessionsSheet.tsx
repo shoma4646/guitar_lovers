@@ -18,11 +18,25 @@ type Props = {
   sessions: PracticeSession[];
   onDelete: (id: string) => void | Promise<void>;
   onAddPress: () => void;
+  /** シートが閉じ終わった後に呼ぶ */
+  onDismissed?: () => void;
 };
 
-export function RecentSessionsSheet({ visible, onClose, sessions, onDelete, onAddPress }: Props) {
+export function RecentSessionsSheet({
+  visible,
+  onClose,
+  sessions,
+  onDelete,
+  onAddPress,
+  onDismissed,
+}: Props) {
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={`最近の記録（${sessions.length}件）`}>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={`最近の記録（${sessions.length}件）`}
+      onDismissed={onDismissed}
+    >
       <Button
         label="記録を手動で追加"
         variant="tonal"

@@ -29,6 +29,7 @@ import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePr
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { PhraseNotFoundError } from "@/shared/services/storage";
+import { useRunAfterDismiss } from "@/shared/hooks/useRunAfterDismiss";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
 import { buildTodayMenu, resolveCurrentBpm, resolveGraduatedAt } from "@/features/practice/lib/progression";
@@ -119,6 +120,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const webViewRef = useRef<WebView>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const [showAllPhrases, setShowAllPhrases] = useState(false);
+  const { schedule: runAfterMenuDismissed, flush: handleMenuDismissed } = useRunAfterDismiss();
 
   const sendToPlayer = useCallback((cmd: Record<string, unknown>) => {
     webViewRef.current?.postMessage(JSON.stringify(cmd));
@@ -470,9 +472,10 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       onAddBookmark={handleAddBookmark}
       onRemoveBookmark={removeBookmark}
       onOpenAddVideo={() => {
+        runAfterMenuDismissed(onOpenAddVideo);
         setShowMenu(false);
-        onOpenAddVideo();
       }}
+      onDismissed={handleMenuDismissed}
       onCloseVideo={handleCloseVideo}
     />
   );
