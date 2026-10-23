@@ -23,7 +23,8 @@ export function Chip({ label, selected, onPress, accessibilityLabel, grow = fals
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       accessibilityLabel={accessibilityLabel ?? label}
-      style={({ pressed }) => ({
+      className="active:opacity-80"
+      style={{
         flex: grow ? 1 : undefined,
         height: 44,
         paddingHorizontal: grow ? 0 : 14,
@@ -33,8 +34,7 @@ export function Chip({ label, selected, onPress, accessibilityLabel, grow = fals
         backgroundColor: selected ? colors.primary : colors.surfaceContainerLowest,
         borderWidth: selected ? 0 : 1,
         borderColor: colors.outlineVariant,
-        opacity: pressed ? 0.8 : 1,
-      })}
+      }}
     >
       <Text
         maxFontSizeMultiplier={1.3}

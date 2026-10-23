@@ -84,10 +84,8 @@ function MicStatusChip({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !onPress }}
-      style={({ pressed }) => [
-        styles.micChip,
-        { opacity: !onPress ? 0.7 : pressed ? 0.8 : 1 },
-      ]}
+      className={onPress ? "active:opacity-80" : undefined}
+      style={[styles.micChip, { opacity: onPress ? 1 : 0.7 }]}
     >
       <View style={[styles.micChipDot, { backgroundColor: MIC_CHIP_DOT_COLOR[tone] }]} />
       <Text style={styles.micChipLabel}>{label}</Text>

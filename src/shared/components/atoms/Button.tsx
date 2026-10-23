@@ -63,7 +63,8 @@ export function Button({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled }}
-      style={({ pressed }) => [
+      className={disabled ? undefined : "active:opacity-80"}
+      style={[
         {
           height: HEIGHT[size],
           paddingHorizontal: size === "sm" ? 14 : 18,
@@ -76,7 +77,7 @@ export function Button({
           justifyContent: "center",
           gap: 8,
           alignSelf: fullWidth ? "stretch" : "auto",
-          opacity: disabled ? 0.4 : pressed ? 0.8 : 1,
+          opacity: disabled ? 0.4 : 1,
         },
         style,
       ]}

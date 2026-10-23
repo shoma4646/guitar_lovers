@@ -40,14 +40,15 @@ export function IconButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled, selected }}
-      style={({ pressed }) => [
+      className={disabled ? undefined : "active:opacity-70"}
+      style={[
         {
           width: TOUCH_SIZE,
           height: TOUCH_SIZE,
           borderRadius: TOUCH_SIZE / 2,
           alignItems: "center",
           justifyContent: "center",
-          opacity: disabled ? 0.4 : pressed ? 0.7 : 1,
+          opacity: disabled ? 0.4 : 1,
         },
         style,
       ]}
