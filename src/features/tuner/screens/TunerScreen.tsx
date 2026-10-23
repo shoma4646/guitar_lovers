@@ -29,11 +29,13 @@ import {
 } from "@/shared/constants/tuning";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
+import { useKeepAwakeWhileFocused } from "@/shared/hooks/useKeepAwakeWhileFocused";
 import {
   usePitchDetector,
   type PitchDetectorStatus,
 } from "@/features/tuner/hooks/usePitchDetector";
 import { NeedleMeter } from "@/features/tuner/components/NeedleMeter";
+import { shouldKeepAwakeWhileTuning, TUNER_KEEP_AWAKE_TAG } from "@/features/tuner/lib/keepAwake";
 import {
   frequencyToNote,
   nearestStringInPreset,
@@ -118,6 +120,7 @@ const BADGE_STYLE: Record<BadgeTone, { bg: string; fg: string }> = {
 export function TunerScreen() {
   const router = useRouter();
   const { status, hz, inputLevelDb, pausedByUser, pause, resume } = usePitchDetector();
+  useKeepAwakeWhileFocused(shouldKeepAwakeWhileTuning(status), TUNER_KEEP_AWAKE_TAG);
 
   const [selectedPreset, setSelectedPreset] = useState<TuningPresetKey>("standard");
   const [focusedStringIndex, setFocusedStringIndex] = useState<number | null>(null);
