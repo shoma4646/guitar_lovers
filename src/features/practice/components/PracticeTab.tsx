@@ -315,7 +315,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           date,
           bpm,
           result,
-          // repsは正の整数のみ保存できる（0を入れると読み込み時に記録ごと隔離される）
+          // repsは正の整数のみ保存できる（0を渡すと記録の保存自体が失敗する）
           ...(activePractice.completedReps > 0 ? { reps: activePractice.completedReps } : {}),
         };
         try {

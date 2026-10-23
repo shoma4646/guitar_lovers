@@ -2,25 +2,13 @@
  * アプリ全体で使用するデータモデルの型定義
  */
 
-import type { PlaybackRate } from "@/shared/constants/playback";
+import type { z } from "zod";
+import type { practiceSessionSchema } from "@/shared/lib/schemas/practiceSession";
+import type { practicePhraseSchema } from "@/shared/lib/schemas/practicePhrase";
+import type { phraseAttemptSchema } from "@/shared/lib/schemas/phraseAttempt";
 
 /** 練習セッションの記録 */
-export interface PracticeSession {
-  /** 一意のID */
-  id: string;
-  /** 練習日時（ISO 8601形式） */
-  date: string;
-  /** 練習時間（秒） */
-  duration: number;
-  /** YouTube動画のURL（任意） */
-  videoUrl?: string;
-  /** YouTube動画ID（任意） */
-  videoId?: string;
-  /** 動画タイトル（任意） */
-  videoTitle?: string;
-  /** メモ（任意） */
-  notes?: string;
-}
+export type PracticeSession = z.infer<typeof practiceSessionSchema>;
 
 /** ブックマーク（動画の特定時間） */
 export interface Bookmark {
@@ -45,52 +33,10 @@ export interface ABLoop {
 }
 
 /** 練習フレーズ（動画内の反復練習区間） */
-export interface PracticePhrase {
-  /** 一意のID */
-  id: string;
-  /** YouTube動画ID */
-  videoId: string;
-  /** 動画タイトル */
-  videoTitle: string;
-  /** ユーザーが付ける名前（例: 速弾きフレーズ1） */
-  name: string;
-  /** 区間開始（秒） */
-  startSec: number;
-  /** 区間終了（秒） */
-  endSec: number;
-  /** 現在の到達BPM */
-  currentBpm: number;
-  /** 目標BPM */
-  targetBpm: number;
-  /** 区間再生時の再生速度 */
-  playbackRate: PlaybackRate;
-  /** 作成日時（ISO 8601形式） */
-  createdAt: string;
-  /** 更新日時（ISO 8601形式） */
-  updatedAt: string;
-  /** アーカイブ日時（ISO 8601形式、任意）。設定されていれば今日の練習メニューと進捗一覧に表示しない（記録は保持） */
-  archivedAt?: string;
-  /** 保存時のBPM（任意）。導入前に保存したフレーズには無い */
-  initialBpm?: number;
-  /** 目標BPMに到達した日時（ISO 8601形式、任意）。卒業かどうかは到達BPMと目標BPMから判定し、この値単独では判定しない */
-  graduatedAt?: string;
-}
+export type PracticePhrase = z.infer<typeof practicePhraseSchema>;
 
 /** フレーズ1回分の練習結果 */
-export interface PhraseAttempt {
-  /** 一意のID */
-  id: string;
-  /** 対象フレーズのID */
-  phraseId: string;
-  /** 練習日時（ISO 8601形式） */
-  date: string;
-  /** その回のBPM */
-  bpm: number;
-  /** 結果。ok=弾けた / partial=あやしい / ng=弾けなかった */
-  result: "ok" | "partial" | "ng";
-  /** その回に弾いた回数（任意） */
-  reps?: number;
-}
+export type PhraseAttempt = z.infer<typeof phraseAttemptSchema>;
 
 /** 動画プリセット */
 export interface VideoPreset {

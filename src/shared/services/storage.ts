@@ -140,6 +140,29 @@ function serialized<T>(operation: () => Promise<T>): Promise<T> {
   });
 }
 
+/** 書き込もうとした値がスキーマに合わないときの例外。このとき保存は行わない */
+export class StorageValidationError extends Error {
+  constructor(
+    readonly key: string,
+    readonly zodError: z.ZodError
+  ) {
+    super(`[storage] ${key}へ書き込む値がスキーマに合いません`);
+    this.name = "StorageValidationError";
+  }
+}
+
+/**
+ * 書き込む値を読み出しと同じスキーマで検証し、検証済みの値を返す
+ * 読み出し側は不正な要素を退避して画面から消すため、不正な値はここで保存前に弾く
+ */
+function parseForWrite<T>(key: string, schema: z.ZodType<T>, value: unknown): T {
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) {
+    throw new StorageValidationError(key, parsed.error);
+  }
+  return parsed.data;
+}
+
 async function writeList(key: string, list: unknown[]): Promise<void> {
   await AsyncStorage.setItem(key, JSON.stringify(list));
 }
@@ -194,8 +217,9 @@ async function writeObject(key: string, value: unknown): Promise<void> {
 /**
  * 現在のストレージスキーマバージョン
  * 2: BPMを40〜240の整数、区間をstartSec < endSec、再生速度を選択肢の値、日時をISO 8601に限定した
+ * 3: 練習セッションの日時もISO 8601に限定した
  */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -267,6 +291,13 @@ async function migrateToV2(): Promise<void> {
   );
 }
 
+/** バージョン3への移行: 練習セッションの日時をISO 8601へ揃える */
+async function migrateToV3(): Promise<void> {
+  await rewriteRawList(STORAGE_KEYS.PRACTICE_SESSIONS, (item) =>
+    isRecord(item) ? { ...item, date: normalizeDateTime(item.date) } : item
+  );
+}
+
 /** スキーマバージョンを確認し、古ければ移行してバージョンを書く。失敗時は例外を伝播する */
 async function ensureMigratedUnlocked(): Promise<void> {
   const stored = await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION);
@@ -275,6 +306,9 @@ async function ensureMigratedUnlocked(): Promise<void> {
 
   if (version < 2) {
     await migrateToV2();
+  }
+  if (version < 3) {
+    await migrateToV3();
   }
   await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, String(SCHEMA_VERSION));
 }
@@ -332,7 +366,11 @@ export function updateReminderSettings(
     const definedPatch = Object.fromEntries(
       Object.entries(patch).filter(([, value]) => value !== undefined)
     ) as Partial<ReminderSettings>;
-    const next = { ...(await loadReminderSettings()), ...definedPatch };
+    const next = parseForWrite(
+      STORAGE_KEYS.REMINDER_SETTINGS,
+      reminderSettingsSchema,
+      { ...(await loadReminderSettings()), ...definedPatch }
+    );
     await writeObject(STORAGE_KEYS.REMINDER_SETTINGS, next);
     return next;
   });
@@ -359,8 +397,9 @@ export function getPracticeSessions(): Promise<PracticeSession[]> {
  */
 export function savePracticeSession(session: PracticeSession): Promise<void> {
   return serialized(async () => {
+    const valid = parseForWrite(STORAGE_KEYS.PRACTICE_SESSIONS, practiceSessionSchema, session);
     const sessions = await loadPracticeSessions();
-    sessions.unshift(session);
+    sessions.unshift(valid);
     await writeList(STORAGE_KEYS.PRACTICE_SESSIONS, sessions);
   });
 }
@@ -400,9 +439,10 @@ export function getFavoriteVideos(): Promise<FavoriteVideo[]> {
  */
 export function addFavoriteVideo(video: FavoriteVideo): Promise<void> {
   return serialized(async () => {
+    const valid = parseForWrite(STORAGE_KEYS.FAVORITE_VIDEOS, favoriteVideoSchema, video);
     const favorites = await loadFavoriteVideos();
-    if (favorites.some((f) => f.videoId === video.videoId)) return;
-    favorites.unshift(video);
+    if (favorites.some((f) => f.videoId === valid.videoId)) return;
+    favorites.unshift(valid);
     await writeList(STORAGE_KEYS.FAVORITE_VIDEOS, favorites);
   });
 }
@@ -443,9 +483,10 @@ export function getRecentVideos(): Promise<RecentVideo[]> {
  */
 export function addRecentVideo(video: RecentVideo): Promise<void> {
   return serialized(async () => {
+    const valid = parseForWrite(STORAGE_KEYS.RECENT_VIDEOS, recentVideoSchema, video);
     const recents = await loadRecentVideos();
-    const filtered = recents.filter((r) => r.videoId !== video.videoId);
-    filtered.unshift(video);
+    const filtered = recents.filter((r) => r.videoId !== valid.videoId);
+    filtered.unshift(valid);
     await writeList(
       STORAGE_KEYS.RECENT_VIDEOS,
       filtered.slice(0, MAX_RECENT_VIDEOS)
@@ -475,7 +516,11 @@ async function updatePracticePhraseUnlocked(
   const phrases = await loadPracticePhrases();
   await writeList(
     STORAGE_KEYS.PRACTICE_PHRASES,
-    phrases.map((p) => (p.id === id ? { ...p, ...patch } : p))
+    phrases.map((p) =>
+      p.id === id
+        ? parseForWrite(STORAGE_KEYS.PRACTICE_PHRASES, practicePhraseSchema, { ...p, ...patch })
+        : p
+    )
   );
 }
 
@@ -485,8 +530,9 @@ async function updatePracticePhraseUnlocked(
  */
 export function savePracticePhrase(phrase: PracticePhrase): Promise<void> {
   return serialized(async () => {
+    const valid = parseForWrite(STORAGE_KEYS.PRACTICE_PHRASES, practicePhraseSchema, phrase);
     const phrases = await loadPracticePhrases();
-    phrases.unshift(phrase);
+    phrases.unshift(valid);
     await writeList(STORAGE_KEYS.PRACTICE_PHRASES, phrases);
   });
 }
@@ -548,9 +594,10 @@ export function getPhraseAttempts(): Promise<PhraseAttempt[]> {
 }
 
 async function savePhraseAttemptUnlocked(attempt: PhraseAttempt): Promise<void> {
+  const valid = parseForWrite(STORAGE_KEYS.PHRASE_ATTEMPTS, phraseAttemptSchema, attempt);
   const attempts = await loadPhraseAttempts();
-  const others = attempts.filter((a) => a.id !== attempt.id);
-  others.unshift(attempt);
+  const others = attempts.filter((a) => a.id !== valid.id);
+  others.unshift(valid);
   await writeList(STORAGE_KEYS.PHRASE_ATTEMPTS, others);
 }
 
