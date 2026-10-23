@@ -32,7 +32,6 @@ type Props = {
   onScrubStart: () => void;
   onScrubEnd: (time: number) => void;
   onScrubCancel: () => void;
-  scrubbingRef: React.MutableRefObject<boolean>;
   bookmarkCount: number;
   onAddBookmark: () => void;
   onOpenSavePhrase: () => void;
@@ -57,7 +56,6 @@ export function PracticeControlPanel({
   onScrubStart,
   onScrubEnd,
   onScrubCancel,
-  scrubbingRef,
   bookmarkCount,
   onAddBookmark,
   onOpenSavePhrase,
@@ -117,7 +115,6 @@ export function PracticeControlPanel({
         onScrubStart={onScrubStart}
         onScrubEnd={onScrubEnd}
         onScrubCancel={onScrubCancel}
-        scrubbingRef={scrubbingRef}
       />
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>

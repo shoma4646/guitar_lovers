@@ -2,11 +2,10 @@
  * 動画のシークバー
  *
  * 再生位置の表示はReanimatedのSharedValueを直接styleに反映し、200msごとのonTimeUpdateでも
- * JS側の再レンダリングを起こさない。ドラッグ中はscrubbingRefを立て、呼び出し側はその間
- * ABループの巻き戻し判定を止める（B点を越えた瞬間にループがシークを奪い合うため）。
+ * JS側の再レンダリングを起こさない。
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   type AccessibilityActionEvent,
   type LayoutChangeEvent,
@@ -36,8 +35,6 @@ type Props = {
   onScrubEnd: (time: number) => void;
   /** ドラッグが中断されたとき（onPanResponderTerminate）に呼ぶ。シークはせず再生だけ再開する */
   onScrubCancel: () => void;
-  /** ドラッグ中フラグ。ABループの巻き戻し判定をドラッグ中だけ止めるために書き込む */
-  scrubbingRef: React.MutableRefObject<boolean>;
 };
 
 /** タップ・ドラッグの当たり判定を44pt確保するための外枠の高さ */
@@ -54,7 +51,6 @@ export function PracticeSeekBar({
   onScrubStart,
   onScrubEnd,
   onScrubCancel,
-  scrubbingRef,
 }: Props) {
   const width = useSharedValue(0);
   const dragRatio = useSharedValue(0);
@@ -80,21 +76,6 @@ export function PracticeSeekBar({
       ? { start: timeToRatio(abLoop.pointA, duration), end: timeToRatio(abLoop.pointB, duration) }
       : null;
 
-  const setScrubbing = useCallback(
-    (value: boolean) => {
-      scrubbingRef.current = value;
-    },
-    [scrubbingRef],
-  );
-
-  // アンマウント時にドラッグ中フラグが立ったままにならないようにする
-  // （立ちっぱなしだとABループの巻き戻し判定が以後ずっと止まってしまう）
-  useEffect(() => {
-    return () => {
-      scrubbingRef.current = false;
-    };
-  }, [scrubbingRef]);
-
   const handleLayout = (event: LayoutChangeEvent) => {
     width.value = event.nativeEvent.layout.width;
   };
@@ -106,7 +87,6 @@ export function PracticeSeekBar({
         onMoveShouldSetPanResponder: () => true,
         onPanResponderGrant: (event) => {
           isDragging.value = true;
-          runOnJS(setScrubbing)(true);
           runOnJS(onScrubStart)();
           dragRatio.value =
             width.value > 0 ? Math.max(0, Math.min(1, event.nativeEvent.locationX / width.value)) : 0;
@@ -118,17 +98,15 @@ export function PracticeSeekBar({
         onPanResponderRelease: () => {
           isDragging.value = false;
           const time = ratioToTime(dragRatio.value, durationRef.current);
-          runOnJS(setScrubbing)(false);
           runOnJS(onScrubEnd)(time);
         },
         onPanResponderTerminate: () => {
           // ジェスチャーの異常終了。ドラッグ位置は確定させず、一時停止だけ解除して再生へ戻す
           isDragging.value = false;
-          runOnJS(setScrubbing)(false);
           runOnJS(onScrubCancel)();
         },
       }),
-    [dragRatio, isDragging, onScrubCancel, onScrubEnd, onScrubStart, setScrubbing, width],
+    [dragRatio, isDragging, onScrubCancel, onScrubEnd, onScrubStart, width],
   );
 
   const fillStyle = useAnimatedStyle(() => {
