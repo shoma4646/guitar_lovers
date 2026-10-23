@@ -487,7 +487,11 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           showsVerticalScrollIndicator={false}
         >
           <View style={{ gap: 12 }}>
-            <TodayPickCard onStartPhrase={handleStartPhrase} onTryPreset={handleTryPreset} />
+            <TodayPickCard
+              onStartPhrase={handleStartPhrase}
+              onTryPreset={handleTryPreset}
+              onOpenAddVideo={onOpenAddVideo}
+            />
             <TodayPhraseRows
               onStartPhrase={handleStartPhrase}
               onOpenAllPhrases={() => setShowAllPhrases(true)}
@@ -566,6 +570,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
               bookmarkCount={bookmarks.length}
               onAddBookmark={handleAddBookmark}
               onOpenSavePhrase={() => setShowSavePhrase(true)}
+              hasNoPhrases={allPhrases.length === 0}
               metronomeBpm={metronomeBpm}
               metronomeEnabled={metronomeEnabled}
               metronomeActiveBeat={activeBeat}
