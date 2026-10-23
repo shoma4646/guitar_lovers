@@ -2,7 +2,7 @@
  * 動画追加シート
  *
  * ヘッダーの「＋」から開き、YouTube URLを貼り付けて動画を読み込む。
- * 直前に読み込んだ動画が埋め込み不可だった場合は、開いた時点でその案内を先に出す。
+ * 直前に読み込んだ動画が再生できなかった場合は、開いた時点でそのエラーの案内を先に出す。
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -15,22 +15,21 @@ import { usePracticeStore, extractVideoId } from "@/stores/practice";
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { useRecentVideos } from "@/features/practice/api/useRecentVideos";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
+import { describePlayerError, describePlayerErrorTitle } from "@/features/practice/lib/playerError";
 
 type Props = {
   visible: boolean;
   onClose: () => void;
 };
 
-type SheetState = "idle" | "error";
-type ErrorKind = "url" | "embed";
+type SheetError = { kind: "url" } | { kind: "player"; code: number };
 
 /** シート内に表示する最近開いた動画の件数 */
 const RECENT_COUNT = 3;
 
 export function AddVideoSheet({ visible, onClose }: Props) {
   const [url, setUrl] = useState("");
-  const [state, setState] = useState<SheetState>("idle");
-  const [errorKind, setErrorKind] = useState<ErrorKind | null>(null);
+  const [error, setError] = useState<SheetError | null>(null);
 
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const setPracticeSubTab = usePracticeStore((s) => s.setPracticeSubTab);
@@ -44,13 +43,7 @@ export function AddVideoSheet({ visible, onClose }: Props) {
   useEffect(() => {
     if (visible && !wasVisibleRef.current) {
       setUrl("");
-      if (playerError !== null) {
-        setState("error");
-        setErrorKind("embed");
-      } else {
-        setState("idle");
-        setErrorKind(null);
-      }
+      setError(playerError !== null ? { kind: "player", code: playerError } : null);
     }
     wasVisibleRef.current = visible;
   }, [visible, playerError]);
@@ -68,8 +61,7 @@ export function AddVideoSheet({ visible, onClose }: Props) {
     if (!url.trim()) return;
     const videoId = extractVideoId(url.trim());
     if (!videoId) {
-      setState("error");
-      setErrorKind("url");
+      setError({ kind: "url" });
       return;
     }
     // openVideoはconfirmSwitch経由のAlertを挟むことがあり、Alert表示中はネイティブモーダルが
@@ -85,10 +77,7 @@ export function AddVideoSheet({ visible, onClose }: Props) {
             value={url}
             onChangeText={(text) => {
               setUrl(text);
-              if (state === "error") {
-                setState("idle");
-                setErrorKind(null);
-              }
+              setError(null);
             }}
             placeholder="https://youtube.com/watch?v=..."
             placeholderTextColor={colors.onSurfaceVariant}
@@ -111,8 +100,10 @@ export function AddVideoSheet({ visible, onClose }: Props) {
           <Button label="読み込む" onPress={handleSubmit} />
         </View>
 
-        {state === "error" && errorKind !== null && (
+        {error !== null && (
           <View
+            accessible
+            accessibilityRole="alert"
             style={{
               gap: 4,
               padding: 12,
@@ -121,14 +112,14 @@ export function AddVideoSheet({ visible, onClose }: Props) {
             }}
           >
             <Text style={{ fontSize: 14, fontWeight: "700", color: colors.onErrorContainer }}>
-              {errorKind === "url"
+              {error.kind === "url"
                 ? "YouTubeの動画URLではないようです"
-                : "この動画はアプリ内で再生できません"}
+                : describePlayerErrorTitle(error.code)}
             </Text>
             <Text style={{ fontSize: 13, color: colors.onErrorContainer }}>
-              {errorKind === "url"
+              {error.kind === "url"
                 ? "youtube.com または youtu.be から始まるURLを貼り付けてください。"
-                : "投稿者が外部サイトでの再生を許可していない動画です。同じ曲の別の動画を探してください。"}
+                : describePlayerError(error.code)}
             </Text>
           </View>
         )}

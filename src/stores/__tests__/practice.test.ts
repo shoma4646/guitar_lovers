@@ -133,3 +133,24 @@ describe("pendingAttemptIdの寿命", () => {
     expect(usePracticeStore.getState().pendingAttemptId).toBeNull();
   });
 });
+
+describe("reloadVideo", () => {
+  it("読み込み失敗の状態から、練習中のフレーズと区間を保ったまま動画を読み込み直す", () => {
+    const phrase = makePhrase();
+    usePracticeStore.getState().startPhrasePractice(phrase, 85);
+    usePracticeStore.getState().incrementCompletedReps();
+    usePracticeStore.getState().setPlayerError(-1);
+    const before = usePracticeStore.getState();
+
+    usePracticeStore.getState().reloadVideo();
+
+    const after = usePracticeStore.getState();
+    expect(after.videoLoadNonce).toBe(before.videoLoadNonce + 1);
+    expect(after.playerError).toBeNull();
+    expect(after.activePhrasePractice).toBe(before.activePhrasePractice);
+    expect(after.abLoop).toBe(before.abLoop);
+    expect(after.loadedVideoId).toBe(phrase.videoId);
+    expect(after.videoStartSeconds).toBe(phrase.startSec);
+    expect(after.pendingAttemptId).toBe(before.pendingAttemptId);
+  });
+});

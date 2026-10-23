@@ -124,6 +124,8 @@ interface PracticeState {
     },
   ) => void;
   clearVideo: () => void;
+  /** 読み込み済みの動画を読み込み直す。練習中のフレーズ・区間・再生速度は保ち、プレイヤーのエラーを消す */
+  reloadVideo: () => void;
   /**
    * 今日の練習メニューからフレーズ練習を開始する
    * 動画・区間・再生速度・メトロノームBPM・練習中フレーズを一貫して設定する唯一の入口
@@ -262,6 +264,19 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       pendingAttemptId: null,
       playerError: null,
     }),
+
+  reloadVideo: () =>
+    set((state) =>
+      state.loadedVideoId === null
+        ? {}
+        : {
+            currentTime: 0,
+            duration: 0,
+            videoInitialRate: state.playbackRate,
+            videoLoadNonce: state.videoLoadNonce + 1,
+            playerError: null,
+          }
+    ),
 
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),

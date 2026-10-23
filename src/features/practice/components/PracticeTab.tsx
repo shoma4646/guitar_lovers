@@ -10,16 +10,14 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, Pressable, ScrollView, Alert, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Alert, StyleSheet } from "react-native";
 import WebView from "react-native-webview";
 import { useSharedValue } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { randomUUID } from "expo-crypto";
 import { usePracticeStore, type PlaybackRate } from "@/stores/practice";
 import { colors } from "@/shared/theme";
-import { Icon } from "@/shared/components/atoms/Icon";
 import { IconButton } from "@/shared/components/atoms/IconButton";
-import { Card } from "@/shared/components/molecules/Card";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import { useSavePracticeSession } from "@/features/progress/api/useSavePracticeSession";
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
@@ -34,12 +32,12 @@ import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
 import { buildTodayMenu, resolveCurrentBpm, resolveGraduatedAt } from "@/features/practice/lib/progression";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
-import { describePlayerError } from "@/features/practice/lib/playerError";
 import { formatDuration } from "@/features/practice/lib/formatters";
 import { applyPoint, isValidLoopRange, resolvePointTime, shouldLoopBack } from "@/features/practice/lib/abLoop";
 import { stepBpm } from "@/features/practice/lib/tempo";
 import { useMetronomeEngine } from "@/features/practice/hooks/useMetronomeEngine";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
+import { useCloseVideo } from "@/features/practice/hooks/useCloseVideo";
 import { usePausePlayerOnBlur } from "@/features/practice/hooks/usePausePlayerOnBlur";
 import { VideoPlayerCard } from "./VideoPlayerCard";
 import { PlaybackRateChips } from "./PlaybackRateChips";
@@ -51,6 +49,7 @@ import { AllPhrasesSheet } from "./AllPhrasesSheet";
 import { PhraseResultSheet } from "./PhraseResultSheet";
 import { PracticeSessionBar } from "./PracticeSessionBar";
 import { PracticeMenuSheet } from "./PracticeMenuSheet";
+import { VideoErrorCard } from "./VideoErrorCard";
 
 type Props = {
   /** ヘッダーメニューの「別の動画を開く」から呼ぶ。AddVideoSheetの開閉はPracticeScreen側で持つ */
@@ -82,7 +81,6 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const videoStartSeconds = usePracticeStore((s) => s.videoStartSeconds);
   const videoInitialRate = usePracticeStore((s) => s.videoInitialRate);
   const videoLoadNonce = usePracticeStore((s) => s.videoLoadNonce);
-  const clearVideo = usePracticeStore((s) => s.clearVideo);
   // 「今日の練習メニュー」から開始した練習中フレーズ。サブタブ切替をまたいで保持するためストアで管理する
   const activePractice = usePracticeStore((s) => s.activePhrasePractice);
   const setActivePractice = usePracticeStore((s) => s.setActivePhrasePractice);
@@ -386,12 +384,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     });
   }, [presets, confirmSwitch, loadVideo, addRecent]);
 
-  const handleCloseVideo = useCallback(() => {
-    confirmSwitch(() => {
-      setShowMenu(false);
-      clearVideo();
-    });
-  }, [confirmSwitch, setShowMenu, clearVideo]);
+  const handleCloseVideo = useCloseVideo();
 
   const handleTapPoint = useCallback(
     (point: "A" | "B") => {
@@ -532,30 +525,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         </View>
 
         {playerError !== null ? (
-          <Card style={{ alignItems: "center", gap: 12 }}>
-            <Icon name="error" size={28} color={colors.error} />
-            <Text style={{ fontSize: 15, fontWeight: "600", color: colors.onSurface, textAlign: "center" }}>
-              この動画は再生できません
-            </Text>
-            <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, textAlign: "center" }}>
-              {describePlayerError(playerError)}
-            </Text>
-            <Pressable
-              onPress={clearVideo}
-              className="active:opacity-90"
-              style={{
-                paddingHorizontal: 20,
-                paddingVertical: 10,
-                borderRadius: 9999,
-                backgroundColor: colors.primary,
-              }}
-              accessibilityRole="button"
-            >
-              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.onPrimary }}>
-                別の動画を読み込む
-              </Text>
-            </Pressable>
-          </Card>
+          <VideoErrorCard code={playerError} />
         ) : (
           <>
             <VideoPlayerCard
