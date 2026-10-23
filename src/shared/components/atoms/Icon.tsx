@@ -62,6 +62,8 @@ const ICON_MAP: Record<
   menu: { set: "material", name: "menu" },
   content_cut: { set: "material", name: "content-cut" },
   metronome: { set: "community", name: "metronome" },
+  circle: { set: "community", name: "circle-outline" },
+  change_history: { set: "community", name: "triangle-outline" },
 };
 
 export type IconName = keyof typeof ICON_MAP;

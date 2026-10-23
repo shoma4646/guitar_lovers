@@ -22,10 +22,10 @@ import type { PhraseProgressSummary } from "@/features/progress/lib/phraseProgre
 type Result = PhraseAttempt["result"];
 type SubmitAction = "next" | "finish";
 
-const RESULT_OPTIONS: { key: Result; label: string; icon: "add" | "remove" | "star" }[] = [
-  { key: "ok", label: "弾けた", icon: "star" },
-  { key: "partial", label: "あやしい", icon: "add" },
-  { key: "ng", label: "弾けなかった", icon: "remove" },
+const RESULT_OPTIONS: { key: Result; label: string; icon: "circle" | "change_history" | "close" }[] = [
+  { key: "ok", label: "弾けた", icon: "circle" },
+  { key: "partial", label: "あやしい", icon: "change_history" },
+  { key: "ng", label: "弾けなかった", icon: "close" },
 ];
 
 type Props = {
@@ -133,7 +133,11 @@ export function PhraseResultSheet({
           </View>
         )}
 
-        <View style={{ flexDirection: "row", gap: 8 }}>
+        <View
+          style={{ flexDirection: "row", gap: 8 }}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="練習の結果"
+        >
           {RESULT_OPTIONS.map((opt) => {
             const active = result === opt.key;
             return (
@@ -148,7 +152,7 @@ export function PhraseResultSheet({
                   backgroundColor: active ? colors.primary : colors.surfaceContainer,
                 }}
                 accessibilityRole="radio"
-                accessibilityState={{ selected: active }}
+                accessibilityState={{ checked: active }}
               >
                 <Icon name={opt.icon} size={18} color={active ? colors.onPrimary : colors.onSurfaceVariant} />
                 <Text
