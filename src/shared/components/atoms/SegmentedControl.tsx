@@ -55,17 +55,19 @@ export function SegmentedControl<T extends string>({
             onPress={() => onChange(item.value)}
             accessibilityRole={role}
             accessibilityState={role === "tab" ? { selected } : { checked: selected }}
-            style={({ pressed }) => ({
-              flex: 1,
-              borderRadius: radius["2xl"],
-              backgroundColor: selected ? colors.surfaceContainerLowest : "transparent",
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "row",
-              gap: 4,
-              opacity: pressed && !selected ? 0.7 : 1,
-              ...(selected ? shadows.layered : null),
-            })}
+            className={selected ? undefined : "active:opacity-70"}
+            style={[
+              {
+                flex: 1,
+                borderRadius: radius["2xl"],
+                backgroundColor: selected ? colors.surfaceContainerLowest : "transparent",
+                alignItems: "center",
+                justifyContent: "center",
+                flexDirection: "row",
+                gap: 4,
+              },
+              selected ? shadows.layered : null,
+            ]}
           >
             <Text
               numberOfLines={1}

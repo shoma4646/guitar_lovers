@@ -6,5 +6,19 @@ module.exports = defineConfig([
   expoConfig,
   {
     ignores: ["dist/*"],
-  }
+  },
+  {
+    files: ["src/**/*.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "JSXOpeningElement[name.name='Pressable'] > JSXAttribute[name.name='style'] > JSXExpressionContainer > :matches(ArrowFunctionExpression, FunctionExpression)",
+          message:
+            "NativeWindのcss-interopはPressableの関数形式styleを呼ばずに捨て、見た目が全て消える。静的なstyleと className=\"active:opacity-80\" で押下表現を書く",
+        },
+      ],
+    },
+  },
 ]);
