@@ -6,6 +6,7 @@
  */
 
 import "../../global.css";
+import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -15,6 +16,7 @@ import { colors } from "@/shared/theme";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { ReminderBridge } from "@/features/reminder/components/ReminderBridge";
 import { REMINDER_DATA_TYPE } from "@/features/reminder/lib/planReminder";
+import { connectQueryFocusToAppState } from "@/shared/lib/queryFocus";
 
 // このハンドラはアプリが前面のときだけ呼ばれる。練習中にリマインドのバナーを出さない
 Notifications.setNotificationHandler({
@@ -32,6 +34,8 @@ Notifications.setNotificationHandler({
 const queryClient = new QueryClient();
 
 export default function RootLayout() {
+  useEffect(() => connectQueryFocusToAppState(), []);
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
