@@ -23,7 +23,7 @@ function daysSinceMonday(): number {
 
 describe("calcStats", () => {
   it("空配列のときは初期値を返す", () => {
-    const stats = calcStats([], []);
+    const stats = calcStats([], [], new Date());
     expect(stats.totalDuration).toBe(0);
     expect(stats.totalSessions).toBe(0);
     expect(stats.weeklyDuration).toBe(0);
@@ -37,6 +37,7 @@ describe("calcStats", () => {
     const stats = calcStats(
       [makeSession(daysAgoIso(1), 600), makeSession(daysAgoIso(40), 1200)],
       [],
+      new Date(),
     );
     expect(stats.totalDuration).toBe(1800);
     expect(stats.totalSessions).toBe(2);
@@ -46,6 +47,7 @@ describe("calcStats", () => {
     const stats = calcStats(
       [makeSession(daysAgoIso(0), 60), makeSession(daysAgoIso(1), 60)],
       [],
+      new Date(),
     );
     expect(stats.streakDays).toBe(2);
   });
@@ -54,12 +56,13 @@ describe("calcStats", () => {
     const stats = calcStats(
       [makeSession(daysAgoIso(2), 60), makeSession(daysAgoIso(3), 60)],
       [],
+      new Date(),
     );
     expect(stats.streakDays).toBe(0);
   });
 
   it("結果記録だけの日も今週の練習日数と連続日数に数える", () => {
-    const stats = calcStats([], [makeAttempt(daysAgoIso(0))]);
+    const stats = calcStats([], [makeAttempt(daysAgoIso(0))], new Date());
     expect(stats.weeklyPracticeDays).toBe(1);
     expect(stats.streakDays).toBe(1);
   });
@@ -68,6 +71,7 @@ describe("calcStats", () => {
     const stats = calcStats(
       [makeSession(daysAgoIso(1), 60)],
       [makeAttempt(daysAgoIso(0))],
+      new Date(),
     );
     expect(stats.streakDays).toBe(2);
   });
@@ -76,13 +80,14 @@ describe("calcStats", () => {
     const stats = calcStats(
       [makeSession(daysAgoIso(0, 9), 60)],
       [makeAttempt(daysAgoIso(0, 21)), makeAttempt(daysAgoIso(0, 22))],
+      new Date(),
     );
     expect(stats.weeklyPracticeDays).toBe(1);
   });
 
   it("当週内の異なる日を数える", () => {
     const days = Array.from({ length: daysSinceMonday() + 1 }, (_, i) => i);
-    const stats = calcStats([], days.map((n) => makeAttempt(daysAgoIso(n))));
+    const stats = calcStats([], days.map((n) => makeAttempt(daysAgoIso(n))), new Date());
     expect(stats.weeklyPracticeDays).toBe(days.length);
   });
 
@@ -91,13 +96,14 @@ describe("calcStats", () => {
     const stats = calcStats(
       [makeSession(daysAgoIso(lastWeek), 60)],
       [makeAttempt(daysAgoIso(lastWeek + 1))],
+      new Date(),
     );
     expect(stats.weeklyPracticeDays).toBe(0);
   });
 
   it("結果記録だけの日もバーに立つ", () => {
     const todayIdx = daysSinceMonday();
-    const stats = calcStats([], [makeAttempt(daysAgoIso(0))]);
+    const stats = calcStats([], [makeAttempt(daysAgoIso(0))], new Date());
     expect(stats.weeklyPracticedDays[todayIdx]).toBe(true);
     expect(stats.weeklyPracticedDays.filter(Boolean)).toHaveLength(1);
   });
@@ -106,9 +112,25 @@ describe("calcStats", () => {
     const stats = calcStats(
       [makeSession(daysAgoIso(0), 300)],
       [makeAttempt(daysAgoIso(0)), makeAttempt(daysAgoIso(1))],
+      new Date(),
     );
     expect(stats.totalDuration).toBe(300);
     expect(stats.totalSessions).toBe(1);
     expect(stats.weeklyDuration).toBe(300);
+  });
+
+  it("渡した now の暦日を今日として週と連続日数を決める", () => {
+    const sundayEvening = new Date(2026, 9, 18, 21, 0).toISOString();
+    const sessions = [makeSession(sundayEvening, 600)];
+
+    const onSunday = calcStats(sessions, [], new Date(2026, 9, 18, 23, 0));
+    expect(onSunday.weeklyPracticeDays).toBe(1);
+    expect(onSunday.weeklyDuration).toBe(600);
+    expect(onSunday.streakDays).toBe(1);
+
+    const onMonday = calcStats(sessions, [], new Date(2026, 9, 19, 0, 5));
+    expect(onMonday.weeklyPracticeDays).toBe(0);
+    expect(onMonday.weeklyDuration).toBe(0);
+    expect(onMonday.weeklyPracticedDays).toEqual([false, false, false, false, false, false, false]);
   });
 });

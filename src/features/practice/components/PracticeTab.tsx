@@ -40,6 +40,8 @@ import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhra
 import { useCloseVideo } from "@/features/practice/hooks/useCloseVideo";
 import { usePausePlayerOnBlur } from "@/features/practice/hooks/usePausePlayerOnBlur";
 import { useKeepAwakeWhileFocused } from "@/shared/hooks/useKeepAwakeWhileFocused";
+import { useLocalDay } from "@/shared/hooks/useLocalDay";
+import { localDayToDate } from "@/shared/lib/localDay";
 import {
   PRACTICE_KEEP_AWAKE_TAG,
   shouldKeepAwakeDuringPractice,
@@ -296,9 +298,10 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     setShowResultSheet(true);
   }, [activePractice, beginResultEntry]);
 
+  const localDay = useLocalDay();
   const todayMenu = useMemo(
-    () => buildTodayMenu(allPhrases, allPhraseAttempts, new Date()),
-    [allPhrases, allPhraseAttempts],
+    () => buildTodayMenu(allPhrases, allPhraseAttempts, localDayToDate(localDay)),
+    [allPhrases, allPhraseAttempts, localDay],
   );
 
   // 卒業済みに加え、当日すでに目標へ到達したフレーズも除いた「今日まだ残っている」メニュー。
