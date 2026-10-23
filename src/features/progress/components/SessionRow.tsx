@@ -4,26 +4,44 @@
  * - 左: 角丸アイコンタイル（primary 色アイコン）
  * - 中央: タイトル（日付）+ サブ（notes or 種別）
  * - 右: 練習時間 + 相対日付
- * - 長押しで削除確認ダイアログ
+ * - 長押し、またはスクリーンリーダーの「削除」アクションで削除確認ダイアログ
  */
 
 import { useCallback } from "react";
-import { View, Text, Pressable, Alert, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  Alert,
+  StyleSheet,
+  type AccessibilityActionEvent,
+} from "react-native";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { colors, shadows } from "@/shared/theme";
 import type { PracticeSession } from "@/shared/types/models";
 import {
   formatDateShort,
+  formatDurationLong,
   formatDurationShort,
 } from "@/features/progress/lib/formatters";
+import { formatRelativeDay } from "@/features/progress/lib/relativeDay";
 
-function formatRelative(iso: string): string {
-  const date = new Date(iso);
-  const diff = Date.now() - date.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days <= 0) return "Today";
-  if (days === 1) return "Yesterday";
-  return formatDateShort(iso);
+const DELETE_ACTION = "delete";
+
+function buildAccessibilityLabel(
+  session: PracticeSession,
+  relativeDay: string,
+): string {
+  const date = new Date(session.date);
+  const dateLabel = `${date.getMonth() + 1}月${date.getDate()}日`;
+  const isNamedDay = relativeDay !== formatDateShort(session.date);
+  return [
+    isNamedDay ? `${dateLabel}（${relativeDay}）` : dateLabel,
+    `練習${formatDurationLong(session.duration)}`,
+    session.notes ? `メモ ${session.notes}` : null,
+  ]
+    .filter(Boolean)
+    .join("、");
 }
 
 type Props = {
@@ -32,7 +50,9 @@ type Props = {
 };
 
 export function SessionRow({ session, onDelete }: Props) {
-  const handleLongPress = useCallback(() => {
+  const relativeDay = formatRelativeDay(session.date, new Date());
+
+  const confirmDelete = useCallback(() => {
     Alert.alert("削除確認", "この練習記録を削除しますか？", [
       { text: "キャンセル", style: "cancel" },
       {
@@ -43,14 +63,23 @@ export function SessionRow({ session, onDelete }: Props) {
     ]);
   }, [session.id, onDelete]);
 
+  const handleAccessibilityAction = useCallback(
+    (event: AccessibilityActionEvent) => {
+      if (event.nativeEvent.actionName === DELETE_ACTION) confirmDelete();
+    },
+    [confirmDelete],
+  );
+
   return (
     <Pressable
-      onLongPress={handleLongPress}
+      onLongPress={confirmDelete}
       delayLongPress={500}
       className="bg-surface-container-lowest active:opacity-90"
       style={[styles.row, shadowStyle]}
-      accessibilityRole="button"
-      accessibilityHint="長押しで削除"
+      accessible
+      accessibilityLabel={buildAccessibilityLabel(session, relativeDay)}
+      accessibilityActions={[{ name: DELETE_ACTION, label: "削除" }]}
+      onAccessibilityAction={handleAccessibilityAction}
     >
       <View
         style={[
@@ -81,7 +110,7 @@ export function SessionRow({ session, onDelete }: Props) {
             className="text-label-sm"
             style={{ color: colors.onSurfaceVariant, fontWeight: "600", marginTop: 2 }}
           >
-            Practice Session
+            練習
           </Text>
         )}
       </View>
@@ -100,7 +129,7 @@ export function SessionRow({ session, onDelete }: Props) {
           className="text-label-sm"
           style={{ color: colors.onSurfaceVariant, fontWeight: "600", marginTop: 2 }}
         >
-          {formatRelative(session.date)}
+          {relativeDay}
         </Text>
       </View>
     </Pressable>
