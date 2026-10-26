@@ -35,6 +35,8 @@ type Props = {
   bookmarkCount: number;
   onAddBookmark: () => void;
   onOpenSavePhrase: () => void;
+  /** 保存済みフレーズが0本か。0本で区間が有効なら保存ボタンの意味を文字でも示す */
+  hasNoPhrases: boolean;
   metronomeBpm: number;
   metronomeEnabled: boolean;
   metronomeActiveBeat: number;
@@ -59,6 +61,7 @@ export function PracticeControlPanel({
   bookmarkCount,
   onAddBookmark,
   onOpenSavePhrase,
+  hasNoPhrases,
   metronomeBpm,
   metronomeEnabled,
   metronomeActiveBeat,
@@ -68,6 +71,7 @@ export function PracticeControlPanel({
   phraseProgress,
 }: Props) {
   const canSavePhrase = isValidLoopRange(abLoop);
+  const showSavePhraseLabel = hasNoPhrases && canSavePhrase;
   const canToggleLoop = isValidLoopRange(abLoop);
   const hasAnyPoint = abLoop.pointA !== null || abLoop.pointB !== null;
 
@@ -168,9 +172,24 @@ export function PracticeControlPanel({
         </Pressable>
       </View>
 
-      <Text style={{ fontSize: 11, color: colors.onSurfaceVariant }}>
-        タップでその位置へ移動（未設定ならその位置を設定）・長押しで地点を設定し直す
-      </Text>
+      {showSavePhraseLabel ? (
+        <Pressable
+          onPress={onOpenSavePhrase}
+          hitSlop={{ top: 12, bottom: 12 }}
+          style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4 }}
+          accessibilityRole="button"
+          accessibilityLabel="この区間をフレーズとして保存"
+        >
+          <Icon name="content_cut" size={14} color={colors.primary} />
+          <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primary }}>
+            フレーズとして保存
+          </Text>
+        </Pressable>
+      ) : (
+        <Text style={{ fontSize: 11, color: colors.onSurfaceVariant }}>
+          タップでその位置へ移動（未設定ならその位置を設定）・長押しで地点を設定し直す
+        </Text>
+      )}
 
       <Divider />
 

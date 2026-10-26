@@ -3,6 +3,7 @@
  *
  * 練習タブの主役。今日の練習メニューの先頭（今日の1本）を大きく見せ、
  * 前回BPM → 今日の目標BPMと進捗バー、開始ボタンをまとめる。
+ * フレーズが0本のときは、動画の追加からフレーズ保存までの流れを案内する「はじめに」カードになる。
  */
 
 import { View, Text, ActivityIndicator } from "react-native";
@@ -21,6 +22,8 @@ import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress"
 import { formatDuration } from "@/features/practice/lib/formatters";
 import type { PracticePhrase } from "@/shared/types/models";
 
+const FIRST_STEPS = ["YouTubeのURLを貼る", "A・Bで区間を囲んで保存", "翌日からワンタップで練習"];
+
 const TODAY_PICK_REASONS: Record<Exclude<TodayMenuPriority, "graduated">, string> = {
   retry: "前回はうまくいかなかったので、無理のないテンポでもう一度",
   stale: "前回は弾けたフレーズ",
@@ -31,9 +34,11 @@ type Props = {
   onStartPhrase: (phrase: PracticePhrase, startBpm: number) => void;
   /** 空状態でサンプル動画から練習を試すためのコールバック */
   onTryPreset: () => void;
+  /** 空状態の主ボタンから動画追加シートを開くためのコールバック */
+  onOpenAddVideo: () => void;
 };
 
-export function TodayPickCard({ onStartPhrase, onTryPreset }: Props) {
+export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Props) {
   const { data: phrases, isLoading: isLoadingPhrases } = usePracticePhrases();
   const { data: attempts, isLoading: isLoadingAttempts } = usePhraseAttempts();
   const isLoading = isLoadingPhrases || isLoadingAttempts;
@@ -49,22 +54,19 @@ export function TodayPickCard({ onStartPhrase, onTryPreset }: Props) {
   const menuItems = buildTodayMenu(phrases ?? [], attempts ?? [], new Date());
   const todayPick = pickTodayPick(menuItems);
 
+  if (menuItems.length === 0) {
+    return <FirstStepsCard onOpenAddVideo={onOpenAddVideo} onTryPreset={onTryPreset} />;
+  }
+
   if (!todayPick) {
     return (
       <Card style={{ gap: 12 }}>
         <Text style={{ fontSize: 15, fontWeight: "700", color: colors.onSurface }}>
-          {menuItems.length === 0
-            ? "今日の1本を見つけよう"
-            : "今日の1本は全て目標BPMに到達しました"}
+          今日の1本は全て目標BPMに到達しました
         </Text>
         <Text style={{ fontSize: 13, color: colors.onSurfaceVariant }}>
-          {menuItems.length === 0
-            ? "動画を読み込み、A点・B点を決めてフレーズとして保存すると、ここに表示されます"
-            : "新しいフレーズを追加すると、また今日の1本が選ばれます"}
+          新しいフレーズを追加すると、また今日の1本が選ばれます
         </Text>
-        {menuItems.length === 0 && (
-          <Button label="サンプル動画で試す" onPress={onTryPreset} variant="tonal" size="sm" />
-        )}
       </Card>
     );
   }
@@ -158,6 +160,56 @@ export function TodayPickCard({ onStartPhrase, onTryPreset }: Props) {
         icon="play_arrow"
         fullWidth
       />
+    </Card>
+  );
+}
+
+type FirstStepsCardProps = {
+  onOpenAddVideo: () => void;
+  onTryPreset: () => void;
+};
+
+function FirstStepsCard({ onOpenAddVideo, onTryPreset }: FirstStepsCardProps) {
+  return (
+    <Card style={{ gap: 12 }}>
+      <View style={{ gap: 4 }}>
+        <Text style={{ fontSize: 12, fontWeight: "800", color: colors.primary }}>はじめに</Text>
+        <Text style={{ fontSize: 17, fontWeight: "800", color: colors.onSurface }}>
+          練習したいフレーズを登録しよう
+        </Text>
+      </View>
+      <View style={{ gap: 6 }}>
+        {FIRST_STEPS.map((step, index) => (
+          <View key={step} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: radius.pill,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: colors.primaryFixed,
+              }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: "800", color: colors.onPrimaryFixedVariant }}>
+                {index + 1}
+              </Text>
+            </View>
+            <Text style={{ flex: 1, fontSize: 13, color: colors.onSurfaceVariant }} numberOfLines={1}>
+              {step}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <Button
+        label="YouTubeの動画を追加"
+        onPress={onOpenAddVideo}
+        variant="primary"
+        size="lg"
+        icon="add"
+        fullWidth
+      />
+      <Button label="サンプル動画で試す" onPress={onTryPreset} variant="ghost" size="sm" fullWidth />
     </Card>
   );
 }
