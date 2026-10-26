@@ -21,6 +21,8 @@ import { semantic } from "@/shared/theme/semantic";
 import type { PracticeSession, PracticeStats } from "@/shared/types/models";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { useRunAfterDismiss } from "@/shared/hooks/useRunAfterDismiss";
+import { useLocalDay } from "@/shared/hooks/useLocalDay";
+import { localDayToDate } from "@/shared/lib/localDay";
 import { usePracticeStore } from "@/stores/practice";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { usePracticeSessions } from "@/features/progress/api/usePracticeSessions";
@@ -63,11 +65,16 @@ export function ProgressScreen() {
   const { schedule: runAfterRecentSheetDismissed, flush: handleRecentSheetDismissed } =
     useRunAfterDismiss();
 
-  const stats = useMemo<PracticeStats>(() => calcStats(sessions, attempts), [sessions, attempts]);
+  const localDay = useLocalDay();
+
+  const stats = useMemo<PracticeStats>(
+    () => calcStats(sessions, attempts, localDayToDate(localDay)),
+    [sessions, attempts, localDay],
+  );
 
   const todayPick = useMemo(
-    () => pickTodayPick(buildTodayMenu(phrases, attempts, new Date())),
-    [phrases, attempts],
+    () => pickTodayPick(buildTodayMenu(phrases, attempts, localDayToDate(localDay))),
+    [phrases, attempts, localDay],
   );
 
   const handleDelete = useCallback(

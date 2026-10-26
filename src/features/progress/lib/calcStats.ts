@@ -13,14 +13,14 @@ export function toDayKey(date: Date): string {
 
 /**
  * セッションとフレーズ練習結果から週次集計・練習日数・累計を計算する純粋関数。
- * 月曜起点で当週を集計する。練習日（今週の練習日数・連続日数・weeklyPracticedDays）は
+ * `now` の暦日を今日として、月曜起点で当週を集計する。練習日（今週の練習日数・連続日数・weeklyPracticedDays）は
  * セッションと結果記録のどちらかがあった日を数え、時間と回数はセッションのみから集計する。
  */
 export function calcStats(
   sessions: PracticeSession[],
   attempts: PhraseAttempt[],
+  now: Date,
 ): PracticeStats {
-  const now = new Date();
   const monday = new Date(now);
   monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
   monday.setHours(0, 0, 0, 0);

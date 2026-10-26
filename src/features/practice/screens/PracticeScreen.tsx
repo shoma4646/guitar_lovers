@@ -22,6 +22,8 @@ import { PracticeTab } from "@/features/practice/components/PracticeTab";
 import { PresetsTab } from "@/features/practice/components/PresetsTab";
 import { FavoritesTab } from "@/features/practice/components/FavoritesTab";
 import { AddVideoSheet } from "@/features/practice/components/AddVideoSheet";
+import { useLocalDay } from "@/shared/hooks/useLocalDay";
+import { localDayToDate } from "@/shared/lib/localDay";
 
 const TABS: { key: PracticeSubTab; label: string }[] = [
   { key: "practice", label: "今日" },
@@ -44,6 +46,7 @@ export function PracticeScreen() {
   const setToolsSheetOpen = usePracticeStore((s) => s.setToolsSheetOpen);
   const router = useRouter();
   const [addVideoVisible, setAddVideoVisible] = useState(false);
+  const localDay = useLocalDay();
 
   // 道具シート（メトロノーム・タイマー）はpracticeサブタブのPracticeTabが持つため、
   // 他のサブタブから開いても表示できるようpracticeへ切り替えてから開く
@@ -60,7 +63,7 @@ export function PracticeScreen() {
             <View style={{ height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
               <View>
                 <Text style={{ fontSize: 12, fontWeight: "600", color: colors.onSurfaceVariant }}>
-                  {formatHeaderDate(new Date())}
+                  {formatHeaderDate(localDayToDate(localDay))}
                 </Text>
                 <Text style={{ fontSize: 22, fontWeight: "800", color: colors.onSurface }}>
                   今日の練習
