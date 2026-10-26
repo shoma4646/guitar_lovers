@@ -33,12 +33,13 @@ import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useRemind
 import { buildTodayMenu, resolveCurrentBpm, resolveGraduatedAt } from "@/features/practice/lib/progression";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { formatDuration } from "@/features/practice/lib/formatters";
-import { applyPoint, isValidLoopRange, resolvePointTime, shouldLoopBack } from "@/features/practice/lib/abLoop";
+import { applyPoint, isValidLoopRange, resolvePointTime } from "@/features/practice/lib/abLoop";
 import { stepBpm } from "@/features/practice/lib/tempo";
 import { useMetronomeEngine } from "@/features/practice/hooks/useMetronomeEngine";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { useCloseVideo } from "@/features/practice/hooks/useCloseVideo";
 import { usePausePlayerOnBlur } from "@/features/practice/hooks/usePausePlayerOnBlur";
+import { useSyncPlayerLoop } from "@/features/practice/hooks/useSyncPlayerLoop";
 import { useKeepAwakeWhileFocused } from "@/shared/hooks/useKeepAwakeWhileFocused";
 import { useLocalDay } from "@/shared/hooks/useLocalDay";
 import { localDayToDate } from "@/shared/lib/localDay";
@@ -73,7 +74,6 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const playbackRate = usePracticeStore((s) => s.playbackRate);
   const setDuration = usePracticeStore((s) => s.setDuration);
   const duration = usePracticeStore((s) => s.duration);
-  const setCurrentTime = usePracticeStore((s) => s.setCurrentTime);
 
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const setABLoop = usePracticeStore((s) => s.setABLoop);
@@ -132,6 +132,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   }, []);
   const isPlayerMounted = useCallback(() => webViewRef.current !== null, []);
   usePausePlayerOnBlur(sendToPlayer, isPlayerMounted);
+  const resendLoopToPlayer = useSyncPlayerLoop(abLoop, sendToPlayer);
   useKeepAwakeWhileFocused(
     shouldKeepAwakeDuringPractice({ hasActivePhrase: activePractice !== null, metronomeEnabled }),
     PRACTICE_KEEP_AWAKE_TAG,
@@ -154,33 +155,26 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     return () => clearInterval(timer);
   }, [isTimerRunning, elapsedSeconds, practiceStartTime]);
 
-  // 再生位置の高頻度な値（onTimeUpdateは200msごと）はここに集約する。
+  // 再生位置の高頻度な値（onTimeUpdateは再生中200msごと）はここに集約する。
   // currentTimeRef=JS側の同期読み取り用、currentTimeShared=シークバー描画用で、
   // どちらもZustandを経由しないためツリー全体の再レンダリングを起こさない
   const currentTimeRef = useRef(0);
   const currentTimeShared = useSharedValue(0);
-  const abLoopRef = useRef(abLoop);
-  const isScrubbingRef = useRef(false);
-
-  useEffect(() => {
-    abLoopRef.current = abLoop;
-  }, [abLoop]);
 
   const handleTimeUpdate = useCallback(
     (time: number) => {
       currentTimeRef.current = time;
       currentTimeShared.value = time;
-
-      // ドラッグ中はユーザーのシークとループ巻き戻しが競合するため判定自体を止める
-      if (!isScrubbingRef.current && shouldLoopBack(time, abLoopRef.current)) {
-        const target = abLoopRef.current.pointA;
-        if (target !== null) sendToPlayer({ action: "seek", time: target });
-      }
-
-      // ストアのcurrentTimeはこのタブでは購読せず（毎秒の再レンダリングを避けるため）書き込みだけ残す
-      setCurrentTime(time);
     },
-    [currentTimeShared, sendToPlayer, setCurrentTime],
+    [currentTimeShared],
+  );
+
+  const handlePlayerReady = useCallback(
+    (videoDuration: number) => {
+      setDuration(videoDuration);
+      resendLoopToPlayer();
+    },
+    [setDuration, resendLoopToPlayer],
   );
 
   const handleScrubStart = useCallback(() => {
@@ -191,11 +185,10 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     (time: number) => {
       currentTimeRef.current = time;
       currentTimeShared.value = time;
-      setCurrentTime(time);
       sendToPlayer({ action: "seek", time });
       sendToPlayer({ action: "play" });
     },
-    [currentTimeShared, sendToPlayer, setCurrentTime],
+    [currentTimeShared, sendToPlayer],
   );
 
   const handleScrubCancel = useCallback(() => {
@@ -547,7 +540,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
               startSeconds={videoStartSeconds}
               initialRate={videoInitialRate}
               onTimeUpdate={handleTimeUpdate}
-              onDurationReady={setDuration}
+              onDurationReady={handlePlayerReady}
               onPlayerError={setPlayerError}
             />
 
@@ -570,7 +563,6 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
               onScrubStart={handleScrubStart}
               onScrubEnd={handleScrubEnd}
               onScrubCancel={handleScrubCancel}
-              scrubbingRef={isScrubbingRef}
               bookmarkCount={bookmarks.length}
               onAddBookmark={handleAddBookmark}
               onOpenSavePhrase={() => setShowSavePhrase(true)}
