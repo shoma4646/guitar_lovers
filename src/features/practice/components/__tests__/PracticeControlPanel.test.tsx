@@ -22,7 +22,6 @@ function renderPanel({ abLoop, hasNoPhrases }: { abLoop: ABLoop; hasNoPhrases: b
       onScrubStart={jest.fn()}
       onScrubEnd={jest.fn()}
       onScrubCancel={jest.fn()}
-      scrubbingRef={{ current: false }}
       bookmarkCount={0}
       onAddBookmark={jest.fn()}
       onOpenSavePhrase={onOpenSavePhrase}
