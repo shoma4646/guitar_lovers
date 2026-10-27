@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import { Modal } from "react-native";
+import { createTestQueryClient } from "@/shared/testing/createTestQueryClient";
 import { ProgressScreen } from "../ProgressScreen";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -19,8 +20,15 @@ jest.mock("@/shared/services/storage", () => ({
   deletePracticeSession: jest.fn(async () => undefined),
 }));
 
+let client: QueryClient | undefined;
+
+afterEach(() => {
+  client?.clear();
+  client = undefined;
+});
+
 function renderScreen() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client = createTestQueryClient();
   render(
     <QueryClientProvider client={client}>
       <ProgressScreen />
