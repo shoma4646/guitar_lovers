@@ -63,13 +63,21 @@ export const textStyles = {
     lineHeight: 24, // 1.5
     letterSpacing: 0,
   },
-  /** 13px / 600 — 小ラベル・タブラベル */
+  /** 13px / 600 — 1行の小ラベル・タブラベル（行の高さ=文字サイズのため折り返す文には使わない） */
   labelSm: {
     fontFamily: fontFamily.inter,
     fontSize: 13,
     fontWeight: "600" as const,
     lineHeight: 13, // 1
     letterSpacing: 0.26, // 0.02em × 13
+  },
+  /** 13px / 400 — 折り返しうる補足・説明文 */
+  caption: {
+    fontFamily: fontFamily.inter,
+    fontSize: 13,
+    fontWeight: "400" as const,
+    lineHeight: 18,
+    letterSpacing: 0,
   },
 } as const;
 

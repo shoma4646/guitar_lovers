@@ -76,6 +76,7 @@ module.exports = {
             fontWeight: "600",
           },
         ],
+        caption: ["13px", { lineHeight: "18px", fontWeight: "400" }],
       },
 
       boxShadow: {
