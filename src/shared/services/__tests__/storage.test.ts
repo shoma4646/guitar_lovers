@@ -3,11 +3,13 @@ import mockAsyncStorage from "@react-native-async-storage/async-storage/jest/asy
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   STORAGE_KEYS,
+  StorageReadError,
   StorageValidationError,
   addFavoriteVideo,
   addRecentVideo,
   archivePracticePhrase,
   deletePracticePhrase,
+  deletePracticeSession,
   getFavoriteVideos,
   getPhraseAttempts,
   getPracticePhrases,
@@ -16,6 +18,7 @@ import {
   getReminderSettings,
   migrateIfNeeded,
   recordPhraseResult,
+  removeFavoriteVideo,
   savePhraseAttempt,
   savePracticePhrase,
   savePracticeSession,
@@ -726,5 +729,126 @@ describe("書き込み時の検証", () => {
     expect(await getFavoriteVideos()).toEqual([]);
     expect(await getRecentVideos()).toEqual([]);
     expect(await getReminderSettings()).toEqual(DEFAULT_REMINDER_SETTINGS);
+  });
+});
+
+describe("読み出し失敗時の扱い（上書き消失防止）", () => {
+  const VIDEO_ID = "abc123def45";
+  const session: PracticeSession = { id: "s-new", date: "2026-09-03T00:00:00.000Z", duration: 60 };
+  const favorite: FavoriteVideo = {
+    id: "f-new",
+    videoId: "zyx987wvu65",
+    title: "新しいお気に入り",
+    addedAt: "2026-09-03T00:00:00.000Z",
+  };
+  const recent: RecentVideo = {
+    videoId: "zyx987wvu65",
+    title: "新しい動画",
+    lastWatchedAt: "2026-09-03T00:00:00.000Z",
+  };
+
+  /** 指定キーのgetItemだけを失敗させる。戻り値で元の実装に戻す */
+  function failGetItemFor(targetKey: string): () => void {
+    const getItem = AsyncStorage.getItem as jest.Mock;
+    const original = getItem.getMockImplementation()!;
+    getItem.mockImplementation(async (key: string) => {
+      if (key === targetKey) throw new Error("Couldn't read row 0, col 0 from CursorWindow");
+      return original(key);
+    });
+    return () => getItem.mockImplementation(original);
+  }
+
+  function setItemCallsFor(key: string): unknown[][] {
+    return (AsyncStorage.setItem as jest.Mock).mock.calls.filter(([k]) => k === key);
+  }
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "3");
+    await AsyncStorage.setItem(STORAGE_KEYS.PRACTICE_PHRASES, JSON.stringify([makePhrase("p1")]));
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.PHRASE_ATTEMPTS,
+      JSON.stringify([makeAttempt("a1", "p1")]),
+    );
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.PRACTICE_SESSIONS,
+      JSON.stringify([{ id: "s1", date: "2026-09-01T00:00:00.000Z", duration: 600 }]),
+    );
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.FAVORITE_VIDEOS,
+      JSON.stringify([
+        { id: "f1", videoId: VIDEO_ID, title: "お気に入り", addedAt: "2026-09-01T00:00:00.000Z" },
+      ]),
+    );
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.RECENT_VIDEOS,
+      JSON.stringify([{ videoId: VIDEO_ID, title: "最近", lastWatchedAt: "2026-09-01T00:00:00.000Z" }]),
+    );
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.REMINDER_SETTINGS,
+      JSON.stringify({ ...DEFAULT_REMINDER_SETTINGS, enabled: false }),
+    );
+    (AsyncStorage.setItem as jest.Mock).mockClear();
+    jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const writes: [string, string, () => Promise<unknown>][] = [
+    ["recordPhraseResult（結果の読み出し失敗）", STORAGE_KEYS.PHRASE_ATTEMPTS, () => recordPhraseResult({ ...makeAttempt("a2", "p1"), bpm: 90 })],
+    ["recordPhraseResult（フレーズの読み出し失敗）", STORAGE_KEYS.PRACTICE_PHRASES, () => recordPhraseResult({ ...makeAttempt("a2", "p1"), bpm: 90 })],
+    ["savePhraseAttempt", STORAGE_KEYS.PHRASE_ATTEMPTS, () => savePhraseAttempt(makeAttempt("a2", "p1"))],
+    ["savePracticeSession", STORAGE_KEYS.PRACTICE_SESSIONS, () => savePracticeSession(session)],
+    ["deletePracticeSession", STORAGE_KEYS.PRACTICE_SESSIONS, () => deletePracticeSession("s1")],
+    ["deletePracticePhrase（結果の読み出し失敗）", STORAGE_KEYS.PHRASE_ATTEMPTS, () => deletePracticePhrase("p1")],
+    ["deletePracticePhrase（フレーズの読み出し失敗）", STORAGE_KEYS.PRACTICE_PHRASES, () => deletePracticePhrase("p1")],
+    ["savePracticePhrase", STORAGE_KEYS.PRACTICE_PHRASES, () => savePracticePhrase(makePhrase("p2"))],
+    ["updatePracticePhrase", STORAGE_KEYS.PRACTICE_PHRASES, () => updatePracticePhrase("p1", { name: "改名" })],
+    ["addFavoriteVideo", STORAGE_KEYS.FAVORITE_VIDEOS, () => addFavoriteVideo(favorite)],
+    ["removeFavoriteVideo", STORAGE_KEYS.FAVORITE_VIDEOS, () => removeFavoriteVideo(VIDEO_ID)],
+    ["addRecentVideo", STORAGE_KEYS.RECENT_VIDEOS, () => addRecentVideo(recent)],
+    ["updateReminderSettings", STORAGE_KEYS.REMINDER_SETTINGS, () => updateReminderSettings({ enabled: true })],
+  ];
+
+  it.each(writes)("%s は reject し、そのキーへ書き込まない", async (_name, key, write) => {
+    const before = await AsyncStorage.getItem(key);
+    const restore = failGetItemFor(key);
+    try {
+      await expect(write()).rejects.toBeInstanceOf(StorageReadError);
+      expect(setItemCallsFor(key)).toHaveLength(0);
+    } finally {
+      restore();
+    }
+    expect(await AsyncStorage.getItem(key)).toBe(before);
+  });
+
+  const reads: [string, string, () => Promise<unknown>][] = [
+    ["getPhraseAttempts", STORAGE_KEYS.PHRASE_ATTEMPTS, getPhraseAttempts],
+    ["getPracticePhrases", STORAGE_KEYS.PRACTICE_PHRASES, getPracticePhrases],
+    ["getPracticeSessions", STORAGE_KEYS.PRACTICE_SESSIONS, getPracticeSessions],
+    ["getFavoriteVideos", STORAGE_KEYS.FAVORITE_VIDEOS, getFavoriteVideos],
+    ["getRecentVideos", STORAGE_KEYS.RECENT_VIDEOS, getRecentVideos],
+    ["getReminderSettings", STORAGE_KEYS.REMINDER_SETTINGS, getReminderSettings],
+  ];
+
+  it.each(reads)("%s は空の一覧や既定値で resolve せず reject する", async (_name, key, read) => {
+    const restore = failGetItemFor(key);
+    try {
+      await expect(read()).rejects.toBeInstanceOf(StorageReadError);
+    } finally {
+      restore();
+    }
+  });
+
+  it("読み出しが回復すれば、以前の記録がそのまま読める", async () => {
+    const restore = failGetItemFor(STORAGE_KEYS.PHRASE_ATTEMPTS);
+    await expect(savePhraseAttempt(makeAttempt("a2", "p1"))).rejects.toBeInstanceOf(StorageReadError);
+    restore();
+
+    await savePhraseAttempt(makeAttempt("a2", "p1"));
+
+    expect((await getPhraseAttempts()).map((a) => a.id)).toEqual(["a2", "a1"]);
   });
 });
