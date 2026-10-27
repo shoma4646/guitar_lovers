@@ -82,6 +82,7 @@ Steps to create a practice phrase:
 - [ ] `mise exec -- npx tsc --noEmit` が通ることを確認する
 - [ ] `mise exec -- npx expo lint` が通ることを確認する
 - [ ] テストスイートが通ることを確認する
+- [ ] 提出するコミットで CI（GitHub Actions の `CI` ワークフロー: tsc・lint・jest）が通っていることを確認する
 - [ ] 実機でチューナー機能（マイクによるピッチ検出）を確認する
 - [ ] 実機でメトロノーム機能を確認する
 - [ ] 機内モードなどネットワーク切断時に、動画読み込み失敗が適切にエラー表示されることを確認する
