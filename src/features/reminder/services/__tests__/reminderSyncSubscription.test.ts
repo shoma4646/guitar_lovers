@@ -1,4 +1,5 @@
-import { QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
+import { createTestQueryClient } from "@/shared/testing/createTestQueryClient";
 import { subscribeReminderSync } from "../reminderSyncSubscription";
 
 function runMutation(queryClient: QueryClient, mutationFn: () => Promise<unknown>) {
@@ -14,9 +15,12 @@ describe("subscribeReminderSync", () => {
   let sync: jest.Mock;
 
   beforeEach(() => {
-    // 既定のgcTime(5分)だとmutationのgcタイマーが残り、jestが終了しなくなる
-    queryClient = new QueryClient({ defaultOptions: { mutations: { gcTime: Infinity } } });
+    queryClient = createTestQueryClient();
     sync = jest.fn();
+  });
+
+  afterEach(() => {
+    queryClient.clear();
   });
 
   it("mutationが成功するたびに1回だけ呼ぶ", async () => {
