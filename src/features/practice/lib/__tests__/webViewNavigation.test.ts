@@ -1,7 +1,11 @@
+import * as fc from "fast-check";
 import { Linking } from "react-native";
 import {
+  EXTERNAL_LINK_HOSTS,
   handlePlayerNavigationRequest,
+  isAllowedExternalUrl,
   isEmbedOriginUrl,
+  openExternally,
   parsePlayerMessage,
   shouldAllowPlayerNavigation,
 } from "../webViewNavigation";
@@ -39,6 +43,104 @@ describe("shouldAllowPlayerNavigation", () => {
   });
 });
 
+describe("shouldAllowPlayerNavigation（iframe内のスキーム）", () => {
+  it.each(["tel:123", "sms:123", "intent://scan/#Intent;scheme=zxing;end", "itms-apps://apps.apple.com/app/id1", "javascript:alert(1)"])(
+    "iframe内でも %s への遷移は許可しない",
+    (url) => {
+      expect(shouldAllowPlayerNavigation({ url, isTopFrame: false })).toBe(false);
+    },
+  );
+
+  it("iframe内の http(s) と about: の読み込みは許可する", () => {
+    expect(shouldAllowPlayerNavigation({ url: "https://googleads.g.doubleclick.net/x", isTopFrame: false })).toBe(true);
+    expect(shouldAllowPlayerNavigation({ url: "about:srcdoc", isTopFrame: false })).toBe(true);
+  });
+});
+
+describe("isAllowedExternalUrl", () => {
+  it.each([
+    "https://www.youtube.com/watch?v=x",
+    "https://youtube.com/watch?v=x",
+    "https://m.youtube.com/watch?v=x",
+    "https://youtu.be/x",
+    "https://policies.google.com/privacy",
+    "https://WWW.YOUTUBE.COM/watch?v=x",
+    "https://www.youtube.com:443/watch?v=x",
+  ])("%s は外部で開いてよい", (url) => {
+    expect(isAllowedExternalUrl(url)).toBe(true);
+  });
+
+  it.each([
+    "https://example.com",
+    "http://www.youtube.com/watch?v=x",
+    "tel:123",
+    "sms:123",
+    "itms-apps://apps.apple.com/app/id1",
+    "intent://www.youtube.com/#Intent;end",
+    "https://www.youtube.com.example.com/",
+    "https://example.com/?u=youtube.com",
+    "https://www.youtube.com@example.com/",
+    "https://example.com\\@www.youtube.com/",
+    "https://notyoutube.com/",
+    "https://google.com.evil.com/",
+    "https:///www.youtube.com",
+  ])("%s は外部で開かない", (url) => {
+    expect(isAllowedExternalUrl(url)).toBe(false);
+  });
+
+  it("許可ドメインかその配下でない生成ホストは必ず開かない", () => {
+    const label = fc.stringMatching(/^[a-z0-9-]{1,12}$/);
+    const host = fc.array(label, { minLength: 1, maxLength: 4 }).map((labels) => labels.join("."));
+    const isAllowedHost = (h: string) =>
+      EXTERNAL_LINK_HOSTS.some((domain) => h === domain || h.endsWith(`.${domain}`));
+    fc.assert(
+      fc.property(host, fc.webPath(), (h, path) => {
+        fc.pre(!isAllowedHost(h));
+        expect(isAllowedExternalUrl(`https://${h}${path}`)).toBe(false);
+      }),
+    );
+  });
+
+  it("許可ドメインの配下に生成したサブドメインは開いてよい", () => {
+    const label = fc.stringMatching(/^[a-z0-9-]{1,12}$/);
+    fc.assert(
+      fc.property(label, fc.constantFrom(...EXTERNAL_LINK_HOSTS), (sub, domain) => {
+        expect(isAllowedExternalUrl(`https://${sub}.${domain}/x`)).toBe(true);
+      }),
+    );
+  });
+});
+
+describe("openExternally", () => {
+  let openURL: jest.SpyInstance;
+  let warn: jest.SpyInstance;
+
+  beforeEach(() => {
+    openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    openURL.mockRestore();
+    warn.mockRestore();
+  });
+
+  it("YouTubeのURLはLinking.openURLで開く", () => {
+    openExternally("https://www.youtube.com/watch?v=x");
+    openExternally("https://youtu.be/x");
+    expect(openURL).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["https://example.com", "http://www.youtube.com", "tel:123", "sms:123", "itms-apps://apps.apple.com/app/id1"])(
+    "%s は開かずに警告だけ出す",
+    (url) => {
+      openExternally(url);
+      expect(openURL).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalled();
+    },
+  );
+});
+
 describe("handlePlayerNavigationRequest", () => {
   let openURL: jest.SpyInstance;
 
@@ -56,6 +158,23 @@ describe("handlePlayerNavigationRequest", () => {
     expect(openURL).toHaveBeenCalledWith(url);
   });
 
+  it.each(["https://example.com", "tel:123", "sms:123", "itms-apps://apps.apple.com/app/id1", "intent://x#Intent;end"])(
+    "トップフレームの %s はWebView内で読み込まず、外部でも開かない",
+    (url) => {
+      const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+      expect(handlePlayerNavigationRequest({ url, isTopFrame: true })).toBe(false);
+      expect(openURL).not.toHaveBeenCalled();
+      warn.mockRestore();
+    },
+  );
+
+  it("iframe内の tel: は読み込まず、外部でも開かない", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    expect(handlePlayerNavigationRequest({ url: "tel:123", isTopFrame: false })).toBe(false);
+    expect(openURL).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("許可する遷移は外部で開かない", () => {
     expect(
       handlePlayerNavigationRequest({ url: "https://www.youtube.com/embed/xxx", isTopFrame: false }),
@@ -66,9 +185,9 @@ describe("handlePlayerNavigationRequest", () => {
   it("外部で開けなくても例外を投げない", async () => {
     openURL.mockRejectedValue(new Error("no handler"));
     const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
-    expect(handlePlayerNavigationRequest({ url: "https://example.com", isTopFrame: true })).toBe(
-      false,
-    );
+    expect(
+      handlePlayerNavigationRequest({ url: "https://www.youtube.com/watch?v=xxx", isTopFrame: true }),
+    ).toBe(false);
     await Promise.resolve();
     await Promise.resolve();
     expect(warn).toHaveBeenCalled();

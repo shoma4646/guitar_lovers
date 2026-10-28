@@ -13,25 +13,59 @@ export function isEmbedOriginUrl(url: string | undefined): boolean {
 }
 
 /**
+ * プレイヤーWebViewのoriginWhitelist
+ * 許可リストを外れたURLはWebViewライブラリがアプリの判定を通さず外部アプリで開くため、
+ * すべてのURLをhandlePlayerNavigationRequestの判定に回す
+ */
+export const PLAYER_ORIGIN_WHITELIST: string[] = ["*"];
+
+/** プレイヤーの外へ出る遷移のうち、外部で開いてよいホスト（その配下のサブドメインも含む） */
+export const EXTERNAL_LINK_HOSTS = ["youtube.com", "youtu.be", "google.com"] as const;
+
+/** https URLのホスト名を小文字で取り出す。ユーザー情報・ポートは除き、取り出せなければnull */
+function extractHttpsHost(url: string): string | null {
+  const match = /^https:\/\/([^/?#\\]*)/i.exec(url);
+  if (!match) return null;
+  const authority = match[1];
+  const host = authority.slice(authority.lastIndexOf("@") + 1).replace(/:\d*$/, "");
+  return host === "" ? null : host.toLowerCase();
+}
+
+/**
+ * プレイヤーの外へ出るURLを外部で開いてよいか
+ * httpsで、ホストがEXTERNAL_LINK_HOSTSのいずれかかその配下のときだけ許可する
+ * @param url - 開こうとしているURL
+ */
+export function isAllowedExternalUrl(url: string): boolean {
+  const host = extractHttpsHost(url);
+  if (host === null) return false;
+  return EXTERNAL_LINK_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
+/**
  * プレイヤーWebView内での読み込みを許可するか
- * about:blank・プレイヤーHTMLのorigin配下・iframe内（isTopFrame:false）の読み込みだけを許可する
+ * about:blank・プレイヤーHTMLのorigin配下と、iframe内（isTopFrame:false）のhttp(s)・about:の読み込みだけを許可する
  * @param req.url - 読み込み先のURL
  * @param req.isTopFrame - トップフレームの遷移か（iOSのみ。未指定ならトップフレームとみなす）
  */
 export function shouldAllowPlayerNavigation(req: { url: string; isTopFrame?: boolean }): boolean {
-  if (req.isTopFrame === false) return true;
+  if (req.isTopFrame === false) return /^(https?:|about:)/i.test(req.url);
   return req.url === "about:blank" || isEmbedOriginUrl(req.url);
 }
 
-/** WebViewへ渡す外部URLを、YouTubeアプリかブラウザで開く */
+/** 外部で開いてよいURL（isAllowedExternalUrl）だけをYouTubeアプリかブラウザで開き、それ以外は開かない */
 export function openExternally(url: string): void {
+  if (!isAllowedExternalUrl(url)) {
+    console.warn("[player] 外部で開かないURLへの遷移を止めました", url);
+    return;
+  }
   Linking.openURL(url).catch((error: unknown) => {
     console.warn("[player] 外部でURLを開けません", url, error);
   });
 }
 
 /**
- * onShouldStartLoadWithRequest用。許可しない遷移はWebView内で読み込まず外部で開く
+ * onShouldStartLoadWithRequest用。許可しない遷移はWebView内で読み込まず、外部で開いてよいURLなら外部で開く
  * @param req.url - 読み込み先のURL
  * @param req.isTopFrame - トップフレームの遷移か（iOSのみ）
  */

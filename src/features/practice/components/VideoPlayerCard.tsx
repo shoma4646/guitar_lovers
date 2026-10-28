@@ -13,6 +13,7 @@ import {
   handlePlayerNavigationRequest,
   openExternally,
   parsePlayerMessage,
+  PLAYER_ORIGIN_WHITELIST,
 } from "@/features/practice/lib/webViewNavigation";
 import { buildYouTubeHtml, YOUTUBE_EMBED_ORIGIN } from "@/features/practice/lib/youtubeHtml";
 import { SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
@@ -56,7 +57,7 @@ export const VideoPlayerCard = forwardRef<WebView, Props>(
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled
           domStorageEnabled
-          originWhitelist={["https://*", "about:*"]}
+          originWhitelist={PLAYER_ORIGIN_WHITELIST}
           onShouldStartLoadWithRequest={handlePlayerNavigationRequest}
           onOpenWindow={(event) => openExternally(event.nativeEvent.targetUrl)}
           onMessage={(event) => {
