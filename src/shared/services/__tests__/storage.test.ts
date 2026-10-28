@@ -403,7 +403,7 @@ describe("migrateIfNeeded", () => {
   it("未設定ならschema_versionに現行バージョンを書く", async () => {
     await migrateIfNeeded();
 
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("3");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("4");
   });
 
   it("旧ビルドが検証せずに保存した値を新スキーマに収まる形へ補正し、データを失わない", async () => {
@@ -480,7 +480,7 @@ describe("migrateIfNeeded", () => {
     // 次の読み出しで移行を再試行し、旧データが補正されて返る
     const phrases = await getPracticePhrases();
     expect(phrases[0].currentBpm).toBe(240);
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("3");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("4");
   });
 
   it("起動時の移行が失敗しても例外を外へ出さず、次の読み出しで再試行する", async () => {
@@ -512,7 +512,7 @@ describe("migrateIfNeeded", () => {
     await migrateIfNeeded();
 
     expect((await getPracticePhrases())[0].currentBpm).toBe(240);
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("3");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("4");
   });
 
   it("練習セッションの日付だけの日時をISO 8601へ移行し、退避しない", async () => {
@@ -538,8 +538,44 @@ describe("migrateIfNeeded", () => {
     expect(keys.filter((k) => k.includes("__corrupt_") || k.includes("__dropped_"))).toHaveLength(0);
   });
 
-  it("既に現行バージョンなら何もしない", async () => {
+  it("0秒の練習セッションを退避キーへ移して除き、他のセッションは残す", async () => {
     await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "3");
+    const zero = { id: "zero", date: "2026-04-28T00:00:00.000Z", duration: 0 };
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.PRACTICE_SESSIONS,
+      JSON.stringify([
+        { id: "s1", date: "2026-04-27T00:00:00.000Z", duration: 600 },
+        zero,
+        { id: "s3", date: "2026-04-29T00:00:00.000Z", duration: 120 },
+      ]),
+    );
+
+    await migrateIfNeeded();
+
+    expect((await getPracticeSessions()).map((s) => s.id)).toEqual(["s1", "s3"]);
+    const keys = await AsyncStorage.getAllKeys();
+    const droppedKeys = keys.filter((k) => k.startsWith(`${STORAGE_KEYS.PRACTICE_SESSIONS}__dropped_`));
+    expect(droppedKeys).toHaveLength(1);
+    expect(JSON.parse((await AsyncStorage.getItem(droppedKeys[0]))!)).toEqual([zero]);
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("4");
+  });
+
+  it("0秒の練習セッションが無ければ退避キーを作らない", async () => {
+    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "3");
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.PRACTICE_SESSIONS,
+      JSON.stringify([{ id: "s1", date: "2026-04-27T00:00:00.000Z", duration: 600 }]),
+    );
+
+    await migrateIfNeeded();
+
+    const keys = await AsyncStorage.getAllKeys();
+    expect(keys.filter((k) => k.includes("__dropped_") || k.includes("__corrupt_"))).toHaveLength(0);
+    expect((await getPracticeSessions()).map((s) => s.id)).toEqual(["s1"]);
+  });
+
+  it("既に現行バージョンなら何もしない", async () => {
+    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "4");
     // モックのsetItemは元からjest.fnなので、spyOn+mockRestoreで実装を消さないよう呼び出し履歴だけ消す
     const setItem = AsyncStorage.setItem as jest.Mock;
     setItem.mockClear();
@@ -611,7 +647,7 @@ describe("リマインド設定", () => {
   it("設定の保存でスキーマバージョンは変わらない", async () => {
     await updateReminderSettings({ enabled: false });
 
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("3");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("4");
   });
 
   it("patchにundefinedのキーがあっても既存の値を消さない", async () => {
@@ -703,6 +739,21 @@ describe("書き込み時の検証", () => {
     expect(await getPracticeSessions()).toEqual([]);
   });
 
+  it("0秒の練習セッションは保存しない", async () => {
+    const session: PracticeSession = { id: "s1", date: "2026-04-27T12:00:00.000Z", duration: 0 };
+
+    await expect(savePracticeSession(session)).rejects.toBeInstanceOf(StorageValidationError);
+    expect(await getPracticeSessions()).toEqual([]);
+  });
+
+  it("同じIDの練習セッションを並行して2回保存しても1件だけ残る", async () => {
+    const session: PracticeSession = { id: "s1", date: "2026-04-27T12:00:00.000Z", duration: 900 };
+
+    await Promise.all([savePracticeSession(session), savePracticeSession(session)]);
+
+    expect(await getPracticeSessions()).toEqual([session]);
+  });
+
   it("正しい練習セッションは保存して読み出せる", async () => {
     const session: PracticeSession = {
       id: "s1",
@@ -764,7 +815,7 @@ describe("読み出し失敗時の扱い（上書き消失防止）", () => {
 
   beforeEach(async () => {
     await AsyncStorage.clear();
-    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "3");
+    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "4");
     await AsyncStorage.setItem(STORAGE_KEYS.PRACTICE_PHRASES, JSON.stringify([makePhrase("p1")]));
     await AsyncStorage.setItem(
       STORAGE_KEYS.PHRASE_ATTEMPTS,

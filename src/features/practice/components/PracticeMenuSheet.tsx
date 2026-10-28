@@ -37,6 +37,8 @@ type Props = {
   isTimerRunning: boolean;
   onToggleTimer: () => void;
   onSaveSession: () => void;
+  /** 練習セッションの保存中か。保存中は「記録」を押せなくする */
+  isSavingSession: boolean;
   /** 動画が読み込まれているか。ブックマーク・動画を閉じる、の表示可否を切り替える */
   hasVideo: boolean;
   bookmarks: Bookmark[];
@@ -63,6 +65,7 @@ export function PracticeMenuSheet({
   isTimerRunning,
   onToggleTimer,
   onSaveSession,
+  isSavingSession,
   hasVideo,
   bookmarks,
   onAddBookmark,
@@ -119,7 +122,7 @@ export function PracticeMenuSheet({
                 onPress={onToggleTimer}
                 color={colors.primary}
               />
-              <Button label="記録" onPress={onSaveSession} variant="tonal" size="sm" />
+              <Button label="記録" onPress={onSaveSession} variant="tonal" size="sm" disabled={isSavingSession} />
             </View>
           </View>
 
