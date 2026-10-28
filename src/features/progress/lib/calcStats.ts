@@ -3,8 +3,7 @@ import type {
   PracticeSession,
   PracticeStats,
 } from "@/shared/types/models";
-
-const DAY_MS = 1000 * 60 * 60 * 24;
+import { diffLocalDays } from "@/shared/lib/localDay";
 
 /** 端末ローカルの暦日を表すキーを返す（同じ暦日なら同じ値） */
 export function toDayKey(date: Date): string {
@@ -32,7 +31,7 @@ export function calcStats(
 
   sessions.forEach((s) => {
     const date = new Date(s.date);
-    const diffDays = Math.floor((date.getTime() - monday.getTime()) / DAY_MS);
+    const diffDays = diffLocalDays(monday, date);
     if (diffDays >= 0 && diffDays < 7) {
       weeklyData[diffDays] += s.duration;
       weeklyDuration += s.duration;
@@ -48,7 +47,7 @@ export function calcStats(
 
   const weeklyPracticedDays = Array(7).fill(false) as boolean[];
   practiceDates.forEach((date) => {
-    const diffDays = Math.floor((date.getTime() - monday.getTime()) / DAY_MS);
+    const diffDays = diffLocalDays(monday, date);
     if (diffDays >= 0 && diffDays < 7) {
       weeklyPracticedDays[diffDays] = true;
     }
