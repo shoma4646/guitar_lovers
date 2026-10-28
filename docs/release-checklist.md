@@ -31,6 +31,7 @@ Guitar Loversをストア公開するための作業一覧。上から順に進�
 - [ ] アプリアイコン（1024px、透過なし）を用意する
 - [ ] 年齢レーティングを新体系で設定する（本アプリはYouTube動画を埋め込むため「無制限Webアクセス」相当の回答が必要）
 - [ ] App Privacy（プライバシー情報）で「データを収集していません」を選択する
+- [ ] `app.json` の `ios.privacyManifests`（使用APIの理由の申告）が依存ライブラリの申告と一致しているか確認する（依存を更新したときも。`npx jest src/__tests__/privacyManifest.test.ts` が通れば一致）
 - [ ] 輸出コンプライアンス（Export Compliance）が設定済みであることを確認する（`app.json`の`ITSAppUsesNonExemptEncryption: false`と整合させる）
 - [ ] アプリ名・サブタイトルに「YouTube」を含めない（YouTubeブランドガイドライン抵触回避）
 
