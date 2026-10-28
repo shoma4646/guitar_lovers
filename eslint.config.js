@@ -8,6 +8,12 @@ module.exports = defineConfig([
     ignores: ["dist/*"],
   },
   {
+    files: ["jest.setup.js"],
+    languageOptions: {
+      globals: { jest: "readonly" },
+    },
+  },
+  {
     files: ["src/**/*.tsx"],
     rules: {
       "no-restricted-syntax": [
