@@ -14,11 +14,15 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { colors } from "@/shared/theme";
-import { semantic } from "@/shared/theme/semantic";
 import { TUNING_THRESHOLD_CENTS } from "@/shared/constants/tuning";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 import { ms } from "@/shared/lib/motion";
-import { centsToMeterRatio, METER_MAX_CENTS, type TuningState } from "@/features/tuner/lib/meter";
+import {
+  centsToMeterRatio,
+  METER_MAX_CENTS,
+  tuningColor,
+  type TuningState,
+} from "@/features/tuner/lib/meter";
 
 type Props = {
   /** 生のセント値。±50を超える値も受け取り、丸めて表示する */
@@ -59,11 +63,7 @@ export function NeedleMeter({ cents, hasSignal, state }: Props) {
       : withSpring(target, { damping: 14, stiffness: 120 });
   }, [angle, cents, hasSignal, reduced]);
 
-  const needleColor = !hasSignal
-    ? semantic.tunerIdle
-    : state === "in"
-      ? semantic.tunerInTune
-      : semantic.tunerOff;
+  const needleColor = tuningColor(state, hasSignal);
 
   const needleStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${angle.value}deg` }],

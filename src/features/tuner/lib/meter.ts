@@ -6,6 +6,7 @@
  */
 
 import { TUNING_THRESHOLD_CENTS } from "@/shared/constants/tuning";
+import { semantic } from "@/shared/theme/semantic";
 
 /** 針メーターが表示する範囲（±このセント数で振り切れる） */
 export const METER_MAX_CENTS = 50;
@@ -21,6 +22,12 @@ export type TuningState = "in" | "flat" | "sharp";
 export function tuningState(cents: number): TuningState {
   if (Math.abs(cents) <= TUNING_THRESHOLD_CENTS) return "in";
   return cents < 0 ? "flat" : "sharp";
+}
+
+/** 針と音名の色を返す。音が無ければ idle、合っていれば in-tune、ずれていれば off の意味トークン */
+export function tuningColor(state: TuningState, hasSignal: boolean): string {
+  if (!hasSignal) return semantic.tunerIdle;
+  return state === "in" ? semantic.tunerInTune : semantic.tunerOff;
 }
 
 /** 状態バッジ・読み上げ用の文言を返す。stringLabelを渡すと弦名を前置きする */
