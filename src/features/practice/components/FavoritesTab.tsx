@@ -5,7 +5,7 @@
  * - 最近視聴したセクション + お気に入りセクション
  */
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -23,19 +23,12 @@ import { useFavoriteVideos } from "@/features/practice/api/useFavoriteVideos";
 import { useRecentVideos } from "@/features/practice/api/useRecentVideos";
 import { useToggleFavoriteVideo } from "@/features/practice/api/useToggleFavoriteVideo";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
+import { formatRelativeVideoDate } from "@/features/practice/lib/relativeVideoDate";
+import { useLocalDay } from "@/shared/hooks/useLocalDay";
+import { localDayToDate } from "@/shared/lib/localDay";
 
 function youtubeThumbnail(videoId: string): string {
   return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-}
-
-function formatRelative(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (days <= 0) return "今日";
-  if (days === 1) return "昨日";
-  if (days < 7) return `${days}日前`;
-  if (days < 30) return `${Math.floor(days / 7)}週前`;
-  return `${Math.floor(days / 30)}ヶ月前`;
 }
 
 export function FavoritesTab() {
@@ -45,6 +38,8 @@ export function FavoritesTab() {
   const setPracticeSubTab = usePracticeStore((s) => s.setPracticeSubTab);
   const { mutateAsync: toggleFavorite } = useToggleFavoriteVideo();
   const confirmSwitch = useConfirmPhraseSwitch();
+  const localDay = useLocalDay();
+  const today = useMemo(() => localDayToDate(localDay), [localDay]);
 
   const handleToggleFavorite = useCallback(
     async (video: RecentVideo) => {
@@ -126,7 +121,7 @@ export function FavoritesTab() {
                     className="text-label-sm mt-1"
                     style={{ color: colors.onSurfaceVariant, fontWeight: "600" }}
                   >
-                    {formatRelative(video.lastWatchedAt)}
+                    {formatRelativeVideoDate(video.lastWatchedAt, today)}
                   </Text>
                   <View className="flex-row mt-xs" style={{ gap: 8 }}>
                     <View style={[styles.badge, { backgroundColor: colors.surfaceContainer }]}>
@@ -192,7 +187,7 @@ export function FavoritesTab() {
                   className="text-label-sm mt-1"
                   style={{ color: colors.onSurfaceVariant, fontWeight: "600" }}
                 >
-                  {formatRelative(video.addedAt)}
+                  {formatRelativeVideoDate(video.addedAt, today)}
                 </Text>
               </View>
               <Pressable
