@@ -43,10 +43,35 @@ const MAX_RECENT_VIDEOS = 10;
 // 共通ヘルパー
 // ============================================================
 
+/** AsyncStorageからの読み出し自体が失敗したときの例外。このとき書き込みは行わない */
+export class StorageReadError extends Error {
+  constructor(
+    readonly key: string,
+    readonly cause: unknown
+  ) {
+    super(`[storage] ${key}の読み込みに失敗しました`);
+    this.name = "StorageReadError";
+  }
+}
+
+/**
+ * 指定キーの生の値を読み出す。読み出し失敗は空扱いにせずStorageReadErrorにする
+ * （空として全件書き戻すと既存データが消えるため）
+ */
+async function readRaw(key: string): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(key);
+  } catch (e) {
+    console.error(`[storage] ${key}の読み込みエラー`, e);
+    throw new StorageReadError(key, e);
+  }
+}
+
 /**
  * 指定キーのリストをAsyncStorageから読み込み、要素ごとにスキーマ検証する
  * 壊れた要素は退避キーへ移してから残りを返す。JSON自体が破損している場合は
- * 元データを退避キーへ移してから空配列を返す（上書き消失防止）
+ * 元データを退避キーへ移してから空配列を返す（上書き消失防止）。
+ * 読み出し自体の失敗はStorageReadErrorでrejectする
  * @param key - AsyncStorageのキー
  * @param itemSchema - 要素1件分のZodスキーマ
  */
@@ -54,13 +79,7 @@ async function readList<T>(
   key: string,
   itemSchema: z.ZodType<T>
 ): Promise<T[]> {
-  let json: string | null;
-  try {
-    json = await AsyncStorage.getItem(key);
-  } catch (e) {
-    console.error(`[storage] ${key}の読み込みエラー`, e);
-    return [];
-  }
+  const json = await readRaw(key);
   if (!json) return [];
 
   let raw: unknown;
@@ -169,23 +188,18 @@ async function writeList(key: string, list: unknown[]): Promise<void> {
 
 /**
  * 指定キーの単一オブジェクトをAsyncStorageから読み込み、スキーマ検証する
- * キーが無ければfallbackを返す。JSONの破損やスキーマ不一致は退避キーへ移してからfallbackを返す
+ * キーが無ければfallbackを返す。JSONの破損やスキーマ不一致は退避キーへ移してからfallbackを返す。
+ * 読み出し自体の失敗はStorageReadErrorでrejectする
  * @param key - AsyncStorageのキー
  * @param schema - オブジェクトのZodスキーマ
- * @param fallback - 読めなかったときに返す値
+ * @param fallback - キーが無い・内容が壊れているときに返す値
  */
 async function readObject<T>(
   key: string,
   schema: z.ZodType<T>,
   fallback: T
 ): Promise<T> {
-  let json: string | null;
-  try {
-    json = await AsyncStorage.getItem(key);
-  } catch (e) {
-    console.error(`[storage] ${key}の読み込みエラー`, e);
-    return fallback;
-  }
+  const json = await readRaw(key);
   if (!json) return fallback;
 
   let raw: unknown;

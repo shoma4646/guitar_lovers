@@ -39,9 +39,11 @@ type Props = {
 };
 
 export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Props) {
-  const { data: phrases, isLoading: isLoadingPhrases } = usePracticePhrases();
-  const { data: attempts, isLoading: isLoadingAttempts } = usePhraseAttempts();
-  const isLoading = isLoadingPhrases || isLoadingAttempts;
+  const phrasesQuery = usePracticePhrases();
+  const attemptsQuery = usePhraseAttempts();
+  const { data: phrases } = phrasesQuery;
+  const { data: attempts } = attemptsQuery;
+  const isLoading = phrasesQuery.isLoading || attemptsQuery.isLoading;
 
   if (isLoading) {
     return (
@@ -51,7 +53,18 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
     );
   }
 
-  const menuItems = buildTodayMenu(phrases ?? [], attempts ?? [], new Date());
+  if (phrases === undefined || attempts === undefined) {
+    return (
+      <ReadErrorCard
+        onRetry={() => {
+          void phrasesQuery.refetch();
+          void attemptsQuery.refetch();
+        }}
+      />
+    );
+  }
+
+  const menuItems = buildTodayMenu(phrases, attempts, new Date());
   const todayPick = pickTodayPick(menuItems);
 
   if (menuItems.length === 0) {
@@ -72,7 +85,7 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
   }
 
   const { phrase, priority } = todayPick;
-  const phraseAttempts = (attempts ?? []).filter((a) => a.phraseId === phrase.id);
+  const phraseAttempts = attempts.filter((a) => a.phraseId === phrase.id);
   const { targetBeforeToday } = todayPick.today;
   const progress = summarizePhraseProgress(phrase, phraseAttempts);
   const bpmToGoal = Math.max(0, phrase.targetBpm - targetBeforeToday);
@@ -160,6 +173,22 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
         icon="play_arrow"
         fullWidth
       />
+    </Card>
+  );
+}
+
+function ReadErrorCard({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Card style={{ gap: 12 }}>
+      <View style={{ gap: 4 }}>
+        <Text style={{ fontSize: 15, fontWeight: "700", color: colors.onSurface }}>
+          練習の記録を読み込めませんでした
+        </Text>
+        <Text style={{ fontSize: 13, lineHeight: 18, color: colors.onSurfaceVariant }}>
+          端末内の記録の読み出しに失敗しました。少し待ってから再読み込みしてください
+        </Text>
+      </View>
+      <Button label="再読み込み" onPress={onRetry} variant="primary" size="lg" icon="refresh" fullWidth />
     </Card>
   );
 }
