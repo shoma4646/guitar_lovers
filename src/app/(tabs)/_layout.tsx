@@ -10,47 +10,14 @@
  */
 
 import { Tabs } from "expo-router";
-import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Icon, IconName } from "@/shared/components/atoms/Icon";
+import { TAB_BAR_ICON_STYLE, TabIcon } from "@/shared/components/molecules/TabIcon";
 import { colors, textStyles } from "@/shared/theme";
-import { TAB_BAR_CONTENT_HEIGHT } from "@/shared/constants/layout";
-
-const ICON_SIZE = 24;
-
-
-/**
- * pill 形状のアイコン背景
- *
- * アクティブ時は primary 色の薄い背景に primary 色のアイコン、
- * 非アクティブ時は背景なし + outline 色のアイコン。
- */
-function TabIcon({
-  name,
-  focused,
-}: {
-  name: IconName;
-  focused: boolean;
-}) {
-  return (
-    <View
-      style={{
-        paddingHorizontal: focused ? 16 : 0,
-        paddingVertical: focused ? 6 : 0,
-        borderRadius: 9999,
-        backgroundColor: focused
-          ? `${colors.primaryContainer}1A` // 10% 透過
-          : "transparent",
-      }}
-    >
-      <Icon
-        name={name}
-        size={ICON_SIZE}
-        color={focused ? colors.primary : colors.outline}
-      />
-    </View>
-  );
-}
+import {
+  TAB_BAR_CONTENT_HEIGHT,
+  TAB_BAR_PADDING_TOP,
+  TAB_LABEL_MARGIN_TOP,
+} from "@/shared/constants/layout";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -64,14 +31,15 @@ export default function TabLayout() {
           borderTopColor: colors.outlineVariant,
           borderTopWidth: 1,
           height: TAB_BAR_CONTENT_HEIGHT + insets.bottom,
-          paddingTop: 8,
+          paddingTop: TAB_BAR_PADDING_TOP,
           paddingBottom: insets.bottom,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.outline,
+        tabBarIconStyle: TAB_BAR_ICON_STYLE,
         tabBarLabelStyle: {
           ...textStyles.labelSm,
-          marginTop: 4,
+          marginTop: TAB_LABEL_MARGIN_TOP,
         },
       }}
     >
