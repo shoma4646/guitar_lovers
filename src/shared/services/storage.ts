@@ -232,8 +232,9 @@ async function writeObject(key: string, value: unknown): Promise<void> {
  * 現在のストレージスキーマバージョン
  * 2: BPMを40〜240の整数、区間をstartSec < endSec、再生速度を選択肢の値、日時をISO 8601に限定した
  * 3: 練習セッションの日時もISO 8601に限定した
+ * 4: 練習セッションの練習時間を正の数に限定した
  */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -312,6 +313,30 @@ async function migrateToV3(): Promise<void> {
   );
 }
 
+/** バージョン4への移行: 練習時間0秒以下の練習セッションを退避キーへ移して除く */
+async function migrateToV4(): Promise<void> {
+  const key = STORAGE_KEYS.PRACTICE_SESSIONS;
+  const json = await AsyncStorage.getItem(key);
+  if (!json) return;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    return;
+  }
+  if (!Array.isArray(raw)) return;
+  const isEmptySession = (item: unknown) =>
+    isRecord(item) && typeof item.duration === "number" && item.duration <= 0;
+  const dropped = raw.filter(isEmptySession);
+  if (dropped.length === 0) return;
+  await quarantine(
+    key,
+    `${key}__dropped_${Date.now()}`,
+    JSON.stringify(dropped),
+    JSON.stringify(raw.filter((item) => !isEmptySession(item)))
+  );
+}
+
 /** スキーマバージョンを確認し、古ければ移行してバージョンを書く。失敗時は例外を伝播する */
 async function ensureMigratedUnlocked(): Promise<void> {
   const stored = await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION);
@@ -323,6 +348,9 @@ async function ensureMigratedUnlocked(): Promise<void> {
   }
   if (version < 3) {
     await migrateToV3();
+  }
+  if (version < 4) {
+    await migrateToV4();
   }
   await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, String(SCHEMA_VERSION));
 }
@@ -406,13 +434,14 @@ export function getPracticeSessions(): Promise<PracticeSession[]> {
 }
 
 /**
- * 練習セッションを保存する
+ * 練習セッションを保存する。同じIDのセッションが保存済みなら何もしない（再送しても重複しない）
  * @param session - 保存するセッション
  */
 export function savePracticeSession(session: PracticeSession): Promise<void> {
   return serialized(async () => {
     const valid = parseForWrite(STORAGE_KEYS.PRACTICE_SESSIONS, practiceSessionSchema, session);
     const sessions = await loadPracticeSessions();
+    if (sessions.some((s) => s.id === valid.id)) return;
     sessions.unshift(valid);
     await writeList(STORAGE_KEYS.PRACTICE_SESSIONS, sessions);
   });

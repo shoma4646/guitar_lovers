@@ -19,7 +19,6 @@ import { usePracticeStore, type PlaybackRate } from "@/stores/practice";
 import { colors } from "@/shared/theme";
 import { IconButton } from "@/shared/components/atoms/IconButton";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
-import { useSavePracticeSession } from "@/features/progress/api/useSavePracticeSession";
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { useSavePracticePhrase } from "@/features/practice/api/useSavePracticePhrase";
 import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseResult";
@@ -37,6 +36,7 @@ import { applyPoint, isValidLoopRange, resolvePointTime } from "@/features/pract
 import { stepBpm } from "@/features/practice/lib/tempo";
 import { useMetronomeEngine } from "@/features/practice/hooks/useMetronomeEngine";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
+import { useSaveTimerSession } from "@/features/practice/hooks/useSaveTimerSession";
 import { useCloseVideo } from "@/features/practice/hooks/useCloseVideo";
 import { usePausePlayerOnBlur } from "@/features/practice/hooks/usePausePlayerOnBlur";
 import { useSyncPlayerLoop } from "@/features/practice/hooks/useSyncPlayerLoop";
@@ -101,7 +101,6 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
 
   const router = useRouter();
   const { mutate: addRecent } = useAddRecentVideo();
-  const { mutateAsync: saveSession } = useSavePracticeSession();
   const { mutateAsync: savePhraseAsync } = useSavePracticePhrase();
   const { mutateAsync: recordResultAsync } = useRecordPhraseResult();
   const { mutate: graduatePhrase } = useGraduatePracticePhrase();
@@ -196,26 +195,11 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     sendToPlayer({ action: "play" });
   }, [sendToPlayer]);
 
-  const handleSaveSession = useCallback(async () => {
-    const performSave = async () => {
-      await saveSession({
-        id: randomUUID(),
-        date: new Date().toISOString(),
-        duration: displaySeconds,
-        videoId: loadedVideoId ?? undefined,
-      });
-      resetPracticeTimer();
-      Alert.alert("記録完了", "練習を記録しました");
-    };
-    if (displaySeconds < 30) {
-      Alert.alert("確認", "練習時間が30秒未満です。記録しますか？", [
-        { text: "キャンセル", style: "cancel" },
-        { text: "記録する", onPress: () => void performSave() },
-      ]);
-      return;
-    }
-    await performSave();
-  }, [displaySeconds, loadedVideoId, resetPracticeTimer, saveSession]);
+  const { saveTimerSession, isSaving: isSavingSession } = useSaveTimerSession({
+    seconds: displaySeconds,
+    videoId: loadedVideoId,
+    onSaved: resetPracticeTimer,
+  });
 
   const handleAddBookmark = useCallback(() => {
     addBookmark({
@@ -464,7 +448,8 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       displaySeconds={displaySeconds}
       isTimerRunning={isTimerRunning}
       onToggleTimer={isTimerRunning ? stopPracticeTimer : startPracticeTimer}
-      onSaveSession={() => void handleSaveSession()}
+      onSaveSession={() => void saveTimerSession()}
+      isSavingSession={isSavingSession}
       hasVideo={loadedVideoId !== null}
       bookmarks={bookmarks}
       onAddBookmark={handleAddBookmark}
