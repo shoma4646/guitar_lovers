@@ -40,10 +40,13 @@ import {
   frequencyToNote,
   nearestStringInPreset,
 } from "@/features/tuner/lib/pitch";
-import { describeTuning, tuningState } from "@/features/tuner/lib/meter";
+import { describeTuning, tuningColor, tuningState } from "@/features/tuner/lib/meter";
 
 /** 各弦の表示番号（6弦〜1弦） */
 const STRING_NUMBERS = [6, 5, 4, 3, 2, 1];
+
+/** 音名の行の高さ。未検出時も同じ高さを確保して、音を拾った瞬間にレイアウトが動かないようにする */
+const NOTE_LINE_HEIGHT = 96;
 
 /** 許容範囲内がこの時間続いたら弦をチューニング済みにする */
 const TUNED_HOLD_MS = 500;
@@ -197,8 +200,9 @@ export function TunerScreen() {
   }, []);
 
   const currentState = tuningState(cents);
-  const isTuned = focusedStringIndex !== null && Math.abs(cents) <= TUNING_THRESHOLD_CENTS;
-  const displayNote = focusedStringIndex !== null ? preset.notes[focusedStringIndex] : (freeNoteLabel ?? "--");
+  const hasSignal = focusedStringIndex !== null;
+  const noteColor = tuningColor(currentState, hasSignal);
+  const displayNote = hasSignal ? preset.notes[focusedStringIndex] : freeNoteLabel;
 
   const stringCentsText =
     focusedStringIndex !== null
@@ -274,18 +278,27 @@ export function TunerScreen() {
               </Text>
             </View>
 
-            <NeedleMeter cents={cents} hasSignal={focusedStringIndex !== null} state={currentState} />
+            <NeedleMeter cents={cents} hasSignal={hasSignal} state={currentState} />
 
             <View style={{ alignItems: "center" }}>
-              <Animated.Text
-                style={[
-                  styles.noteText,
-                  noteAnimatedStyle,
-                  { color: isTuned ? semantic.tunerInTune : colors.primary },
-                ]}
-              >
-                {displayNote}
-              </Animated.Text>
+              <View style={styles.noteBox}>
+                {displayNote === null ? (
+                  <Text
+                    testID="tuner-note"
+                    accessibilityLabel="音を検出していません"
+                    style={[styles.noteIdleText, { color: noteColor }]}
+                  >
+                    —
+                  </Text>
+                ) : (
+                  <Animated.Text
+                    testID="tuner-note"
+                    style={[styles.noteText, noteAnimatedStyle, { color: noteColor }]}
+                  >
+                    {displayNote}
+                  </Animated.Text>
+                )}
+              </View>
               <Text style={styles.stringCentsText}>{stringCentsText}</Text>
             </View>
 
@@ -416,12 +429,20 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
     fontVariant: ["tabular-nums"],
   },
+  noteBox: {
+    height: NOTE_LINE_HEIGHT,
+    justifyContent: "center",
+  },
   noteText: {
     fontSize: 88,
     fontWeight: "800",
-    lineHeight: 96,
+    lineHeight: NOTE_LINE_HEIGHT,
     letterSpacing: -5.28, // -0.06em × 88
     fontVariant: ["tabular-nums"],
+  },
+  noteIdleText: {
+    fontSize: 40,
+    fontWeight: "400",
   },
   stringCentsText: {
     marginTop: 4,
