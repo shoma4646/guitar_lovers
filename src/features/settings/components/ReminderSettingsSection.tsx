@@ -98,7 +98,7 @@ export function ReminderSettingsSection() {
           <Text className="text-body-md" style={{ color: colors.onSurface }}>
             練習リマインド
           </Text>
-          <Text className="text-label-sm" style={{ color: colors.onSurfaceVariant }}>
+          <Text className="text-caption" style={{ color: colors.onSurfaceVariant }}>
             前回のBPMと今日の目標をお知らせします。次回の予約はアプリを開いたときに更新されます
           </Text>
         </View>
@@ -132,7 +132,7 @@ export function ReminderSettingsSection() {
           <Text className="text-body-md" style={{ color: colors.onSurface }}>
             時刻
           </Text>
-          <Text className="text-label-sm" style={{ color: colors.onSurfaceVariant }}>
+          <Text className="text-caption" style={{ color: colors.onSurfaceVariant }}>
             {settings.timeOverride
               ? formatReminderTime(settings.timeOverride)
               : "自動（ふだんの練習時刻に合わせる）"}
@@ -167,7 +167,7 @@ export function ReminderSettingsSection() {
       )}
 
       <View className="px-lg py-md">
-        <Text className="text-label-sm" style={{ color: colors.onSurfaceVariant }}>
+        <Text className="text-caption" style={{ color: colors.onSurfaceVariant }}>
           {isActive && nextPlan?.fireAt
             ? `次回: ${formatFireAt(nextPlan.fireAt)}`
             : isActive && nextPlan?.syncFailed
