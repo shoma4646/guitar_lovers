@@ -13,6 +13,7 @@ import {
   ScrollView,
   Image,
   StyleSheet,
+  type AccessibilityActionEvent,
 } from "react-native";
 import { randomUUID } from "expo-crypto";
 import { Icon } from "@/shared/components/atoms/Icon";
@@ -29,6 +30,20 @@ import { localDayToDate } from "@/shared/lib/localDay";
 
 function youtubeThumbnail(videoId: string): string {
   return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+}
+
+const TOGGLE_FAVORITE_ACTION = "toggleFavorite";
+
+/** カードの読み上げ用カスタムアクション（お気に入りの追加・削除） */
+function favoriteActions(isFav: boolean) {
+  return [{ name: TOGGLE_FAVORITE_ACTION, label: isFav ? "お気に入りから削除" : "お気に入りに追加" }];
+}
+
+/** カードのカスタムアクションのうち、お気に入りの切り替えだけを onToggle へ渡す */
+function onFavoriteAction(onToggle: () => void) {
+  return (event: AccessibilityActionEvent) => {
+    if (event.nativeEvent.actionName === TOGGLE_FAVORITE_ACTION) onToggle();
+  };
 }
 
 export function FavoritesTab() {
@@ -104,6 +119,10 @@ export function FavoritesTab() {
                 onPress={() => handlePlayRecent(video)}
                 className="bg-surface-container-lowest active:opacity-90"
                 style={[styles.songCard, shadowStyle]}
+                accessibilityRole="button"
+                accessibilityLabel={`${video.title}を再生、${formatRelativeVideoDate(video.lastWatchedAt, today)}`}
+                accessibilityActions={favoriteActions(isFav)}
+                onAccessibilityAction={onFavoriteAction(() => void handleToggleFavorite(video))}
               >
                 <Image
                   source={{ uri: youtubeThumbnail(video.videoId) }}
@@ -136,7 +155,6 @@ export function FavoritesTab() {
                     e.stopPropagation();
                     void handleToggleFavorite(video);
                   }}
-                  hitSlop={8}
                   className="active:opacity-70"
                   style={styles.starPosition}
                   accessibilityRole="button"
@@ -170,6 +188,12 @@ export function FavoritesTab() {
               onPress={() => handlePlayFavorite(video)}
               className="bg-surface-container-lowest active:opacity-90"
               style={[styles.songCard, shadowStyle]}
+              accessibilityRole="button"
+              accessibilityLabel={`${video.title}を再生、${formatRelativeVideoDate(video.addedAt, today)}`}
+              accessibilityActions={favoriteActions(true)}
+              onAccessibilityAction={onFavoriteAction(
+                () => void toggleFavorite({ type: "remove", videoId: video.videoId }),
+              )}
             >
               <Image
                 source={{ uri: youtubeThumbnail(video.videoId) }}
@@ -195,7 +219,6 @@ export function FavoritesTab() {
                   e.stopPropagation();
                   void toggleFavorite({ type: "remove", videoId: video.videoId });
                 }}
-                hitSlop={8}
                 className="active:opacity-70"
                 style={styles.starPosition}
                 accessibilityRole="button"
@@ -249,7 +272,11 @@ const styles = StyleSheet.create({
   },
   starPosition: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: 1,
+    right: 1,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
