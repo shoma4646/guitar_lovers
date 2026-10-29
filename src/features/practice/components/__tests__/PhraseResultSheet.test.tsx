@@ -27,7 +27,8 @@ function getResultGroup() {
   return group;
 }
 
-function setup(onSubmit = jest.fn()) {
+function setup(onSubmit = jest.fn(), completedReps = 2) {
+  const onChangeCompletedReps = jest.fn();
   render(
     <PhraseResultSheet
       visible
@@ -35,15 +36,43 @@ function setup(onSubmit = jest.fn()) {
       bpm={85}
       progress={null}
       phraseElapsedSeconds={60}
-      completedReps={2}
-      onChangeCompletedReps={jest.fn()}
+      completedReps={completedReps}
+      onChangeCompletedReps={onChangeCompletedReps}
       isSubmitting={false}
       onClose={jest.fn()}
       onSubmit={onSubmit}
     />,
   );
-  return { onSubmit };
+  return { onSubmit, onChangeCompletedReps };
 }
+
+describe("PhraseResultSheet の回数の読み上げ", () => {
+  it("回数は調整可能な要素で、値に「N回」を含む", () => {
+    setup(jest.fn(), 3);
+    const reps = screen.getByRole("adjustable", { name: "回数" });
+    expect(reps.props.accessibilityValue.now).toBe(3);
+    expect(reps.props.accessibilityValue.text).toContain("3回");
+  });
+
+  it("increment で onChangeCompletedReps(1)、decrement で onChangeCompletedReps(-1) が呼ばれる", () => {
+    const { onChangeCompletedReps } = setup();
+    const reps = screen.getByRole("adjustable", { name: "回数" });
+
+    fireEvent(reps, "accessibilityAction", { nativeEvent: { actionName: "increment" } });
+    expect(onChangeCompletedReps).toHaveBeenLastCalledWith(1);
+
+    fireEvent(reps, "accessibilityAction", { nativeEvent: { actionName: "decrement" } });
+    expect(onChangeCompletedReps).toHaveBeenLastCalledWith(-1);
+  });
+
+  it("0回のときの decrement は −ボタンと同じく何もしない", () => {
+    const { onChangeCompletedReps } = setup(jest.fn(), 0);
+    const reps = screen.getByRole("adjustable", { name: "回数" });
+
+    fireEvent(reps, "accessibilityAction", { nativeEvent: { actionName: "decrement" } });
+    expect(onChangeCompletedReps).not.toHaveBeenCalled();
+  });
+});
 
 describe("PhraseResultSheet の結果の3択", () => {
   it("3択は「練習の結果」という名前のradiogroupの中にある", () => {

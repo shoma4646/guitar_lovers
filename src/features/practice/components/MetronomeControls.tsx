@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useRef } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, type AccessibilityActionEvent } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -16,6 +16,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { colors } from "@/shared/theme";
+import { BPM_MAX, BPM_MIN } from "@/shared/constants/bpm";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 import { EASING, ms } from "@/shared/lib/motion";
 
@@ -99,6 +100,17 @@ export function MetronomeControls({
   }, [activeBeat, enabled, reduced, pulse]);
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
+  const handleTempoAction = useCallback(
+    (event: AccessibilityActionEvent) => {
+      if (event.nativeEvent.actionName === "increment") onStepBpm(1);
+      if (event.nativeEvent.actionName === "decrement") onStepBpm(-1);
+    },
+    [onStepBpm],
+  );
+  const tempoValueText = phraseProgress
+    ? `${bpm} BPM、前回 ${phraseProgress.lastReachedBpm}、卒業まであと${phraseProgress.bpmToGraduate}`
+    : `${bpm} BPM`;
+
   return (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
       <Pressable
@@ -114,12 +126,24 @@ export function MetronomeControls({
           backgroundColor: `${colors.primaryContainer}33`,
         }}
         accessibilityRole="button"
-        accessibilityLabel="メトロノームBPMを1下げる。長押しで連続変更"
+        accessibilityLabel="メトロノームBPMを1下げる"
+        accessibilityHint="長押しで連続変更"
       >
         <Icon name="remove" size={20} color={colors.primary} />
       </Pressable>
 
-      <View style={{ alignItems: "center" }}>
+      <View
+        style={{ alignItems: "center" }}
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel="メトロノームのテンポ"
+        accessibilityValue={{ min: BPM_MIN, max: BPM_MAX, now: bpm, text: tempoValueText }}
+        accessibilityActions={[
+          { name: "increment", label: "1上げる" },
+          { name: "decrement", label: "1下げる" },
+        ]}
+        onAccessibilityAction={handleTempoAction}
+      >
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
           <Animated.Text
             style={[
@@ -167,7 +191,8 @@ export function MetronomeControls({
           backgroundColor: `${colors.primaryContainer}33`,
         }}
         accessibilityRole="button"
-        accessibilityLabel="メトロノームBPMを1上げる。長押しで連続変更"
+        accessibilityLabel="メトロノームBPMを1上げる"
+        accessibilityHint="長押しで連続変更"
       >
         <Icon name="add" size={20} color={colors.primary} />
       </Pressable>
