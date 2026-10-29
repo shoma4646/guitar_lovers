@@ -387,6 +387,15 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     [abLoop, currentTimeShared, sendToPlayer],
   );
 
+  const handleSeekBookmark = useCallback(
+    (time: number) => {
+      currentTimeRef.current = time;
+      currentTimeShared.value = time;
+      sendToPlayer({ action: "seek", time });
+    },
+    [currentTimeShared, sendToPlayer],
+  );
+
   const handleSetPoint = useCallback(
     (point: "A" | "B") => {
       setABLoop(applyPoint(abLoop, point, resolvePointTime(point, currentTimeRef.current, duration)));
@@ -454,6 +463,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       bookmarks={bookmarks}
       onAddBookmark={handleAddBookmark}
       onRemoveBookmark={removeBookmark}
+      onSeekBookmark={handleSeekBookmark}
       onOpenAddVideo={() => {
         runAfterMenuDismissed(onOpenAddVideo);
         setShowMenu(false);
