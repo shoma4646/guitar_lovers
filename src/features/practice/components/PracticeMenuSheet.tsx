@@ -44,6 +44,8 @@ type Props = {
   bookmarks: Bookmark[];
   onAddBookmark: () => void;
   onRemoveBookmark: (id: string) => void;
+  /** ブックマークの位置（秒）へ動画を移動する */
+  onSeekBookmark: (time: number) => void;
   onOpenAddVideo: () => void;
   onCloseVideo: () => void;
   /** シートが閉じ終わった後に呼ぶ */
@@ -70,6 +72,7 @@ export function PracticeMenuSheet({
   bookmarks,
   onAddBookmark,
   onRemoveBookmark,
+  onSeekBookmark,
   onOpenAddVideo,
   onCloseVideo,
   onDismissed,
@@ -201,20 +204,35 @@ export function PracticeMenuSheet({
                       style={{
                         flexDirection: "row",
                         alignItems: "center",
-                        gap: 12,
-                        height: 44,
-                        paddingHorizontal: 12,
+                        paddingRight: 12,
                         borderRadius: radius.sm,
                         backgroundColor: colors.surfaceContainerLow,
                       }}
                     >
-                      <Icon name="bookmark" size={16} color={colors.primary} />
-                      <Text style={{ flex: 1, fontSize: 14, color: colors.onSurface }} numberOfLines={1}>
-                        {bm.label ?? formatDuration(bm.time)}
-                      </Text>
-                      <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}>
-                        {formatDuration(bm.time)}
-                      </Text>
+                      <Pressable
+                        onPress={() => {
+                          onSeekBookmark(bm.time);
+                          onClose();
+                        }}
+                        style={{
+                          flex: 1,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 12,
+                          height: 44,
+                          paddingHorizontal: 12,
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${bm.label ?? formatDuration(bm.time)}、${formatDuration(bm.time)}へ移動`}
+                      >
+                        <Icon name="bookmark" size={16} color={colors.primary} />
+                        <Text style={{ flex: 1, fontSize: 14, color: colors.onSurface }} numberOfLines={1}>
+                          {bm.label ?? formatDuration(bm.time)}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}>
+                          {formatDuration(bm.time)}
+                        </Text>
+                      </Pressable>
                       <IconButton
                         name="close"
                         size={16}
