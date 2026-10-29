@@ -12,6 +12,7 @@ import { AudioContext, AudioManager } from "react-native-audio-api";
 import { usePracticeStore } from "@/stores/practice";
 import { bpmToIntervalSec, scheduleBeats } from "@/features/practice/lib/metronomeScheduler";
 import { scheduleClick } from "@/features/practice/lib/metronomeClick";
+import { useStopMetronomeOnBlur } from "./useStopMetronomeOnBlur";
 
 const BEATS_PER_BAR = 4;
 /** 先読み予約する秒数。ポーリング間隔より十分長くしないと拍が抜ける */
@@ -23,6 +24,7 @@ const FIRST_BEAT_DELAY_SEC = 0.05;
 export function useMetronomeEngine() {
   const bpm = usePracticeStore((s) => s.metronomeBpm);
   const enabled = usePracticeStore((s) => s.metronomeEnabled);
+  useStopMetronomeOnBlur();
 
   const intervalSecRef = useRef(bpmToIntervalSec(bpm));
   const [activeBeat, setActiveBeat] = useState(0);

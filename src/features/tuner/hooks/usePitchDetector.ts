@@ -88,8 +88,6 @@ export function usePitchDetector(): PitchDetectorState {
   // pause()/resume()と同時に更新する。effect側は再購読を避けるためstateでなくこちらを読む
   const pausedByUserRef = useRef(false);
   const isFocusedRef = useRef(false);
-  /** start()時点のメトロノーム設定値。nullならこのhookはまだ変更していない */
-  const metronomeWasEnabledRef = useRef<boolean | null>(null);
 
   /** 録音リソースを解放し、再度startできる状態に戻す */
   const releaseRecorder = useCallback(async () => {
@@ -105,10 +103,6 @@ export function usePitchDetector(): PitchDetectorState {
     smootherRef.current.reset();
     detectorRef.current = null;
     restorePlaybackSession();
-    if (metronomeWasEnabledRef.current !== null) {
-      usePracticeStore.getState().setMetronomeEnabled(metronomeWasEnabledRef.current);
-      metronomeWasEnabledRef.current = null;
-    }
     setHz(null);
     setClarity(0);
     setInputLevelDb(null);
@@ -127,8 +121,8 @@ export function usePitchDetector(): PitchDetectorState {
     const runId = runIdRef.current;
     const isCancelled = () => runIdRef.current !== runId;
     try {
-      // メトロノームのクリック音（800/1000Hz）をマイクが拾い、弦の音として検出してしまうため止める。stop側で元に戻す
-      metronomeWasEnabledRef.current = usePracticeStore.getState().metronomeEnabled;
+      // メトロノームのクリック音（800/1000Hz）をマイクが拾い、弦の音として検出してしまうため止める。
+      // 停止時に元へ戻すと、マイクの一時停止でクリックが鳴り出すため戻さない
       usePracticeStore.getState().setMetronomeEnabled(false);
 
       AudioManager.setAudioSessionOptions({
