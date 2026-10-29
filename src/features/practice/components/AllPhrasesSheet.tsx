@@ -13,6 +13,7 @@ import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progression";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
+import { buildPhraseRowLabel, PHRASE_ROW_HINT } from "@/features/practice/lib/phraseRowLabel";
 import type { PracticePhrase } from "@/shared/types/models";
 
 type Props = {
@@ -43,6 +44,7 @@ export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
             menuItems.map((entry, index) => {
               const phraseAttempts = allAttempts.filter((a) => a.phraseId === entry.phrase.id);
               const { targetBeforeToday } = entry.today;
+              const currentBpm = resolveCurrentBpm(entry.phrase.currentBpm, phraseAttempts);
               return (
                 <Pressable
                   key={entry.phrase.id}
@@ -58,8 +60,8 @@ export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
                     borderTopColor: colors.divider,
                   }}
                   accessibilityRole="button"
-                  accessibilityLabel={`${entry.phrase.name}の練習を開始`}
-                  accessibilityHint="長押しでアーカイブ・削除"
+                  accessibilityLabel={buildPhraseRowLabel(entry, currentBpm)}
+                  accessibilityHint={PHRASE_ROW_HINT}
                 >
                   <Text
                     style={{ flex: 1, fontSize: 15, fontWeight: "600", color: colors.onSurface }}
@@ -73,7 +75,7 @@ export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
                   <Text
                     style={{ fontSize: 13, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}
                   >
-                    {resolveCurrentBpm(entry.phrase.currentBpm, phraseAttempts)} → {targetBeforeToday}
+                    {currentBpm} → {targetBeforeToday}
                   </Text>
                 </Pressable>
               );
