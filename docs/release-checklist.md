@@ -75,7 +75,11 @@ Steps to create a practice phrase:
 - [ ] Data safety（データセーフティ）フォームで「収集なし」を選択する
 - [ ] IARC（国際年齢レーティング連合）のコンテンツレーティング調査に回答する
 - [ ] `targetSdkVersion`がExpo SDK 54既定値（36）を満たしているか確認する
-- [ ] 本番AABの権限一覧がマイク・通知・インターネット・バイブのみであることを確認する（`app.json`の`android.blockedPermissions`で外した重ね表示・ストレージ権限が出ていないこと）
+- [ ] 本番AABの権限一覧が次の想定どおりであることを確認する（`app.json`の`android.blockedPermissions`で外した重ね表示・ストレージ権限が出ていないこと）
+  - アプリの機能に必要: `RECORD_AUDIO`（チューナー）、`POST_NOTIFICATIONS`（リマインド）、`INTERNET`（YouTube）、`VIBRATE`（メトロノーム）、`RECEIVE_BOOT_COMPLETED`（端末の再起動後に予約済みのリマインドを入れ直す。expo-notifications が追加）
+  - ライブラリが自動で足す（このアプリはリモートプッシュを使わないため実質未使用）: expo-notifications が取り込む Firebase Messaging 由来の `WAKE_LOCK`・`ACCESS_NETWORK_STATE`・`com.google.android.c2dm.permission.RECEIVE` など
+  - 注意: `RECEIVE_BOOT_COMPLETED` は「余分な権限」ではない。`blockedPermissions` に入れると、再起動後にアプリを開くまでリマインドが届かなくなる
+  - 確認方法: `bundletool dump manifest --bundle <aab>` の `uses-permission`、または Play Console の App bundle explorer の権限一覧を見る
 
 ## (g) 提出前の最終確認
 
