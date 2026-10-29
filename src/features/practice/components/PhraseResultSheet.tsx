@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, type AccessibilityActionEvent } from "react-native";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
 import { Button } from "@/shared/components/atoms/Button";
 import { Icon } from "@/shared/components/atoms/Icon";
@@ -172,6 +172,7 @@ export function PhraseResultSheet({
         <Stepper
           label="回数"
           value={completedReps}
+          spokenValue={`${completedReps}回`}
           onDecrement={() => onChangeCompletedReps(-1)}
           onIncrement={() => onChangeCompletedReps(1)}
           decrementDisabled={completedReps === 0}
@@ -212,13 +213,20 @@ export function PhraseResultSheet({
 type StepperProps = {
   label: string;
   value: number;
+  /** 読み上げで値として伝える文言（例:「3回」） */
+  spokenValue: string;
   suffix?: string;
   onDecrement: () => void;
   onIncrement: () => void;
   decrementDisabled?: boolean;
 };
 
-function Stepper({ label, value, suffix, onDecrement, onIncrement, decrementDisabled }: StepperProps) {
+function Stepper({ label, value, spokenValue, suffix, onDecrement, onIncrement, decrementDisabled }: StepperProps) {
+  const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
+    if (event.nativeEvent.actionName === "increment") onIncrement();
+    if (event.nativeEvent.actionName === "decrement" && !decrementDisabled) onDecrement();
+  };
+
   return (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
       <Text style={{ fontSize: 13, fontWeight: "600", color: colors.onSurfaceVariant }}>{label}</Text>
@@ -242,6 +250,15 @@ function Stepper({ label, value, suffix, onDecrement, onIncrement, decrementDisa
         </Pressable>
         <Text
           style={{ minWidth: 40, textAlign: "center", fontSize: 16, fontWeight: "800", color: colors.onSurface, fontVariant: ["tabular-nums"] }}
+          accessible
+          accessibilityRole="adjustable"
+          accessibilityLabel={label}
+          accessibilityValue={{ min: 0, now: value, text: spokenValue }}
+          accessibilityActions={[
+            { name: "increment", label: `${label}を増やす` },
+            { name: "decrement", label: `${label}を減らす` },
+          ]}
+          onAccessibilityAction={handleAccessibilityAction}
         >
           {value}
           {suffix ? ` ${suffix}` : ""}
