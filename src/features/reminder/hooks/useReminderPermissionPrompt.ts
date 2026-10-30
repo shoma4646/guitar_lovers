@@ -12,8 +12,9 @@ import { reminderQueryKeys } from "@/features/reminder/api/useReminderSettings";
 /**
  * フレーズ保存後に通知許可を依頼する関数を返す
  *
- * 一度でも依頼していれば何もしない。OSの許可ダイアログは一度しか出せないため、
- * 先にアプリ内で確認し、受け取ると答えた場合だけOSに依頼する
+ * アプリ内で一度でも依頼していれば何もしない（依頼済みかはアプリの記録だけで判定する）。
+ * OSの許可ダイアログは一度しか出せないため、先にアプリ内で確認し、受け取ると答えた場合だけOSに依頼する。
+ * OSで許可済みならOSのダイアログは出さずにリマインドをONにし、拒否済みで再依頼できなければ確認も出さない
  */
 export function useReminderPermissionPrompt(): () => Promise<void> {
   const queryClient = useQueryClient();
@@ -21,9 +22,9 @@ export function useReminderPermissionPrompt(): () => Promise<void> {
   return useCallback(async () => {
     try {
       const settings = await getReminderSettings();
-      if (settings.permissionPromptedAt) return;
+      if (settings.permissionPromptedAt || settings.enabled) return;
       const permission = await getReminderPermission();
-      if (!permission.undetermined) return;
+      if (!permission.granted && !permission.undetermined) return;
 
       // 依頼済みフラグはAlertの各ボタンが押された後に書く。表示前に書くと、
       // 表示中のクラッシュ・強制終了で二度と依頼できなくなる
