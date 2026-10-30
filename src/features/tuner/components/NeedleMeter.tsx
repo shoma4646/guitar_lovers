@@ -35,6 +35,11 @@ type Props = {
 const MAX_ANGLE_DEG = 60;
 const RING_DIAMETER = 256;
 const RING_RADIUS = RING_DIAMETER / 2;
+const RING_STROKE_WIDTH = 12;
+// 円の中心を枠の下端に置くため、半径より低いと頂点の帯が切り取られる（線の太さ分は上の余白）
+const METER_HEIGHT = RING_RADIUS + RING_STROKE_WIDTH;
+const TICK_GAP_FROM_RING = 4;
+const TICK_OUTER_RADIUS = RING_RADIUS - RING_STROKE_WIDTH - TICK_GAP_FROM_RING;
 const NEEDLE_LENGTH = 80;
 const TICK_STEP_CENTS = 10;
 const TICK_VALUES = Array.from(
@@ -70,9 +75,10 @@ export function NeedleMeter({ cents, hasSignal, state }: Props) {
   }));
 
   return (
-    <View style={styles.wrap} accessible={false}>
-      <View style={styles.ringTrack} />
+    <View testID="needle-meter" style={styles.wrap} accessible={false}>
+      <View testID="needle-meter-ring" style={styles.ringTrack} />
       <View
+        testID="needle-meter-in-tune-band"
         style={[
           styles.inTuneBand,
           { width: IN_TUNE_BAND_WIDTH, marginLeft: -IN_TUNE_BAND_WIDTH / 2 },
@@ -102,7 +108,7 @@ export function NeedleMeter({ cents, hasSignal, state }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     width: "100%",
-    height: 96,
+    height: METER_HEIGHT,
     alignItems: "center",
     justifyContent: "flex-end",
     overflow: "hidden",
@@ -112,7 +118,7 @@ const styles = StyleSheet.create({
     width: RING_DIAMETER,
     height: RING_DIAMETER,
     bottom: -RING_RADIUS,
-    borderWidth: 12,
+    borderWidth: RING_STROKE_WIDTH,
     borderColor: colors.surfaceContainerHigh,
     borderRadius: RING_RADIUS,
   },
@@ -121,14 +127,14 @@ const styles = StyleSheet.create({
     height: RING_DIAMETER,
     bottom: -RING_RADIUS,
     left: "50%",
-    borderTopWidth: 12,
+    borderTopWidth: RING_STROKE_WIDTH,
     borderColor: colors.primaryContainer,
   },
   tickPivot: {
     position: "absolute",
     bottom: 0,
     width: 2,
-    height: 92,
+    height: TICK_OUTER_RADIUS,
     alignItems: "center",
     transformOrigin: "bottom",
   },
