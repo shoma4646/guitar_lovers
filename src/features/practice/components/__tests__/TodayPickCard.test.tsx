@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, within } from "@testing-library/react-native";
 import { TodayPickCard } from "../TodayPickCard";
 
 type QueryStub = { data: unknown[] | undefined; isLoading: boolean; refetch: jest.Mock };
@@ -66,5 +66,43 @@ describe("TodayPickCard（記録の読み出し失敗）", () => {
     fireEvent.press(screen.getByRole("button", { name: "再読み込み" }));
     expect(mockPhrasesQuery.refetch).toHaveBeenCalledTimes(1);
     expect(mockAttemptsQuery.refetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("TodayPickCard（今日の1本の進捗バー）", () => {
+  beforeEach(() => {
+    mockPhrasesQuery.data = [
+      {
+        id: "p1",
+        videoId: "abc123def45",
+        videoTitle: "動画",
+        name: "速弾きのリフ",
+        startSec: 0,
+        endSec: 10,
+        currentBpm: 155,
+        initialBpm: 120,
+        targetBpm: 240,
+        playbackRate: 1,
+        createdAt: "2026-09-01T00:00:00.000Z",
+        updatedAt: "2026-09-01T00:00:00.000Z",
+      },
+    ];
+    render(<TodayPickCard onStartPhrase={jest.fn()} onTryPreset={jest.fn()} onOpenAddVideo={jest.fn()} />);
+  });
+
+  it("「開始 N」「卒業 N」は1行に固定する", () => {
+    expect(screen.getByText("開始 120").props.numberOfLines).toBe(1);
+    expect(screen.getByText("卒業 240").props.numberOfLines).toBe(1);
+  });
+
+  it("進捗バーの行は前回BPMと今日の目標を並べた行の外に置く", () => {
+    const bpmRow = screen.getByTestId("today-pick-bpm-row");
+    const progressRow = screen.getByTestId("today-pick-progress-row");
+
+    expect(within(bpmRow).queryByRole("progressbar")).toBeNull();
+    expect(within(bpmRow).queryByText("開始 120")).toBeNull();
+    expect(within(progressRow).getByRole("progressbar")).toBeTruthy();
+    expect(within(progressRow).getByText("開始 120")).toBeTruthy();
+    expect(within(progressRow).getByText("卒業 240")).toBeTruthy();
   });
 });

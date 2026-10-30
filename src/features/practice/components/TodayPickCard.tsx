@@ -121,7 +121,7 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
         </Text>
       </View>
 
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+      <View testID="today-pick-bpm-row" style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <View>
           <Text style={{ fontSize: 11, color: colors.onSurfaceVariant }}>前回</Text>
           <Text
@@ -149,20 +149,20 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
             {targetBeforeToday} BPM
           </Text>
         </View>
-        <View style={{ flex: 1, gap: 4 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }}>
-              開始 {progress.startBpm}
-            </Text>
-            <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }}>
-              卒業 {progress.targetBpm}
-            </Text>
-          </View>
-          <ProgressBar
-            ratio={progress.progressRatio}
-            accessibilityLabel={`${phrase.name}の進捗、開始${progress.startBpm}から目標${progress.targetBpm}のうち現在${progress.currentBpm}`}
-          />
-        </View>
+      </View>
+
+      <View testID="today-pick-progress-row" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }} numberOfLines={1}>
+          開始 {progress.startBpm}
+        </Text>
+        <ProgressBar
+          ratio={progress.progressRatio}
+          accessibilityLabel={`${phrase.name}の進捗、開始${progress.startBpm}から目標${progress.targetBpm}のうち現在${progress.currentBpm}`}
+          style={{ flex: 1 }}
+        />
+        <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }} numberOfLines={1}>
+          卒業 {progress.targetBpm}
+        </Text>
       </View>
 
       <Button
