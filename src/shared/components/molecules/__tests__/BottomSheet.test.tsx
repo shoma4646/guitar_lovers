@@ -1,5 +1,5 @@
 import { render, fireEvent, screen, act } from "@testing-library/react-native";
-import { Modal, Platform, Text } from "react-native";
+import { Modal, Platform, StyleSheet, Text } from "react-native";
 import { BottomSheet } from "../BottomSheet";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -38,6 +38,31 @@ describe("BottomSheet", () => {
     const closers = screen.getAllByLabelText("閉じる");
     fireEvent.press(closers[closers.length - 1]);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  describe("長い見出し", () => {
+    it("見出しは既定で2行まで、縮んで閉じるボタンを押し出さない", () => {
+      setup(true);
+      const title = screen.getByTestId("bottom-sheet-title");
+      expect(title.props.numberOfLines).toBe(2);
+      expect(StyleSheet.flatten(title.props.style).flexShrink).toBeGreaterThanOrEqual(1);
+    });
+
+    it("見出し行は高さ固定ではなく最小44で、折り返した分だけ伸びる", () => {
+      setup(true);
+      const header = StyleSheet.flatten(screen.getByTestId("bottom-sheet-header").props.style);
+      expect(header.height).toBeUndefined();
+      expect(header.minHeight).toBe(44);
+    });
+
+    it("titleNumberOfLinesで最大行数を変えられる", () => {
+      render(
+        <BottomSheet visible onClose={jest.fn()} title="t" titleNumberOfLines={1}>
+          <Text>中身</Text>
+        </BottomSheet>,
+      );
+      expect(screen.getByTestId("bottom-sheet-title").props.numberOfLines).toBe(1);
+    });
   });
 
   describe("onDismissed", () => {

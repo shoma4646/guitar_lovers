@@ -108,3 +108,27 @@ describe("PhraseResultSheet の結果の3択", () => {
     expect(within(group).queryByLabelText("回数を減らす")).toBeNull();
   });
 });
+
+describe("PhraseResultSheet の見出し", () => {
+  it("40文字のフレーズ名でも見出しは1〜2行に収める", () => {
+    const longName = "イントロのスウィープアルペジオ（サビ前の速いパッセージ）とチョーキングの組み合わせ練習";
+    expect(longName.length).toBeGreaterThanOrEqual(40);
+    render(
+      <PhraseResultSheet
+        visible
+        phrase={{ ...phrase, name: longName }}
+        bpm={85}
+        progress={null}
+        phraseElapsedSeconds={60}
+        completedReps={0}
+        onChangeCompletedReps={jest.fn()}
+        isSubmitting={false}
+        onClose={jest.fn()}
+        onSubmit={jest.fn()}
+      />,
+    );
+    const title = screen.getByTestId("bottom-sheet-title");
+    expect(title.props.children).toBe(longName);
+    expect([1, 2]).toContain(title.props.numberOfLines);
+  });
+});
