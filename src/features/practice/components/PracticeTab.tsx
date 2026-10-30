@@ -29,7 +29,8 @@ import { PhraseNotFoundError } from "@/shared/services/storage";
 import { useRunAfterDismiss } from "@/shared/hooks/useRunAfterDismiss";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
-import { buildTodayMenu, resolveCurrentBpm, resolveGraduatedAt } from "@/features/practice/lib/progression";
+import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progression";
+import { filterOpenMenuEntries, planAfterResult } from "@/features/practice/lib/afterResult";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { formatDuration } from "@/features/practice/lib/formatters";
 import { applyPoint, isValidLoopRange, resolvePointTime } from "@/features/practice/lib/abLoop";
@@ -283,10 +284,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
 
   // 卒業済みに加え、当日すでに目標へ到達したフレーズも除いた「今日まだ残っている」メニュー。
   // ヘッダーの「残りN本」表示と「次の1本へ」の候補選びの両方をこの1つの集合に揃える
-  const openMenuEntries = useMemo(
-    () => todayMenu.filter((entry) => entry.priority !== "graduated" && !entry.today.reached),
-    [todayMenu],
-  );
+  const openMenuEntries = useMemo(() => filterOpenMenuEntries(todayMenu), [todayMenu]);
 
   const handleSubmitResult = useCallback(
     async ({ result }: { result: "ok" | "partial" | "ng" }, action: "next" | "finish") => {
@@ -320,11 +318,9 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           return;
         }
         const { phrase } = activePractice;
-        if (result === "ok" && bpm >= phrase.targetBpm && !phrase.graduatedAt) {
-          const phraseAttempts = allPhraseAttempts.filter((a) => a.phraseId === phrase.id);
-          // 到達済みフレーズの卒業日が再記録のたびに今日へ前進しないよう、記録から最初の到達日を再計算する
-          const graduatedAt = resolveGraduatedAt(phrase, [...phraseAttempts, attempt]) ?? date;
-          graduatePhrase({ id: phrase.id, graduatedAt });
+        const plan = planAfterResult({ phrase, attempts: allPhraseAttempts, attempt, todayMenu });
+        if (plan.graduatedAt) {
+          graduatePhrase({ id: phrase.id, graduatedAt: plan.graduatedAt });
         }
         setShowResultSheet(false);
         // 保存済みなので、次のフレーズへ進む前に完了させる。先に完了させないと、直後の
@@ -335,12 +331,9 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           setActivePractice(null);
         }
 
-        if (action === "next") {
-          const nextEntry = openMenuEntries.find((entry) => entry.phrase.id !== phrase.id);
-          if (nextEntry) {
-            // 直前に保存が成功しており未保存の記録は無いため、確認ダイアログを経由せず開始する
-            startPhraseDirectly(nextEntry.phrase, nextEntry.today.targetBeforeToday);
-          }
+        if (action === "next" && plan.next) {
+          // 直前に保存が成功しており未保存の記録は無いため、確認ダイアログを経由せず開始する
+          startPhraseDirectly(plan.next.phrase, plan.next.startBpm);
         }
       } finally {
         isSubmittingResultRef.current = false;
@@ -355,7 +348,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       setActivePractice,
       allPhraseAttempts,
       metronomeBpm,
-      openMenuEntries,
+      todayMenu,
       startPhraseDirectly,
     ],
   );
