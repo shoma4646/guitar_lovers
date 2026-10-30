@@ -28,6 +28,8 @@ type Props = {
   children: ReactNode;
   /** シートの最大高さ（画面高に対する割合） */
   maxHeightRatio?: number;
+  /** 見出しの最大行数。超えた分は省略記号で切る */
+  titleNumberOfLines?: number;
   /** 閉じるボタンを右上に出す */
   showCloseButton?: boolean;
   /**
@@ -43,6 +45,7 @@ export function BottomSheet({
   title,
   children,
   maxHeightRatio = 0.9,
+  titleNumberOfLines = 2,
   showCloseButton = true,
   onDismissed,
 }: Props) {
@@ -125,16 +128,20 @@ export function BottomSheet({
               }}
             />
             <View
+              testID="bottom-sheet-header"
               style={{
-                height: 44,
+                minHeight: 44,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
+                gap: 8,
               }}
             >
               <Text
+                testID="bottom-sheet-title"
+                numberOfLines={titleNumberOfLines}
                 maxFontSizeMultiplier={1.3}
-                style={{ fontSize: 17, fontWeight: "800", color: colors.onSurface }}
+                style={{ flexShrink: 1, fontSize: 17, fontWeight: "800", color: colors.onSurface }}
               >
                 {title}
               </Text>
