@@ -25,6 +25,8 @@ type Props = {
   duration: number;
   onToggleLoop: () => void;
   onClearLoop: () => void;
+  /** 練習中フレーズの区間のままか。そのままの間は解除ボタンを出さない（誤タップで区間を失わないため） */
+  isAtActivePhraseRange: boolean;
   /** A点/B点ボタンのタップ = 設定済みのその位置へ非破壊で移動（未設定なら何もしない） */
   onTapPoint: (point: "A" | "B") => void;
   /** A点/B点ボタンの長押し（未設定時はタップでも呼ぶ） = 現在位置をその点として設定 */
@@ -53,6 +55,7 @@ export function PracticeControlPanel({
   duration,
   onToggleLoop,
   onClearLoop,
+  isAtActivePhraseRange,
   onTapPoint,
   onSetPoint,
   onScrubStart,
@@ -73,20 +76,20 @@ export function PracticeControlPanel({
   const canSavePhrase = isValidLoopRange(abLoop);
   const showSavePhraseLabel = hasNoPhrases && canSavePhrase;
   const canToggleLoop = isValidLoopRange(abLoop);
-  const hasAnyPoint = abLoop.pointA !== null || abLoop.pointB !== null;
+  const showClearLoop = !isAtActivePhraseRange && (abLoop.pointA !== null || abLoop.pointB !== null);
 
   return (
     <Card padding={12} style={{ gap: 8 }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <Text style={{ fontSize: 13, fontWeight: "700", color: colors.onSurface }}>ABループ</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          {hasAnyPoint && (
+        <View testID="ab-loop-header-actions" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {showClearLoop && (
             <IconButton name="close" size={18} accessibilityLabel="ABループを解除" onPress={onClearLoop} />
           )}
           <Pressable
             onPress={onToggleLoop}
             disabled={!canToggleLoop}
-            hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+            hitSlop={{ top: 10, bottom: 10, left: 0, right: 8 }}
             accessibilityRole="switch"
             accessibilityState={{ checked: abLoop.enabled, disabled: !canToggleLoop }}
             accessibilityLabel="ABループの有効・無効"

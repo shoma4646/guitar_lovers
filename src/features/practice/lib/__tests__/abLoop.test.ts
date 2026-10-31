@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import { applyPoint, isValidLoopRange, resolvePointTime } from "../abLoop";
+import { applyPoint, isAtPhraseRange, isValidLoopRange, resolvePointTime } from "../abLoop";
 import { markerRatios } from "../seekBar";
 import type { ABLoop } from "@/shared/types/models";
 
@@ -109,5 +109,16 @@ describe("resolvePointTime", () => {
         }
       }),
     );
+  });
+});
+
+describe("isAtPhraseRange", () => {
+  const phrase = { startSec: 10, endSec: 20 };
+
+  it("A点・B点がフレーズの開始・終了位置と一致するときだけtrue", () => {
+    expect(isAtPhraseRange({ pointA: 10, pointB: 20 }, phrase)).toBe(true);
+    expect(isAtPhraseRange({ pointA: 10.1, pointB: 20 }, phrase)).toBe(false);
+    expect(isAtPhraseRange({ pointA: 10, pointB: null }, phrase)).toBe(false);
+    expect(isAtPhraseRange({ pointA: null, pointB: null }, phrase)).toBe(false);
   });
 });

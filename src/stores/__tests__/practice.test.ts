@@ -85,6 +85,44 @@ describe("startPhrasePractice", () => {
   });
 });
 
+describe("restorePhraseSettings", () => {
+  it("区間を解除した後でも、フレーズの開始・終了位置・有効なABループに戻し、回数と開始時刻は保つ", () => {
+    const { startPhrasePractice, incrementCompletedReps, clearABLoop, setPlaybackRate, setMetronomeBpm } =
+      usePracticeStore.getState();
+    const phrase = makePhrase({ startSec: 12, endSec: 34, playbackRate: 0.75 });
+    startPhrasePractice(phrase, 85);
+    incrementCompletedReps();
+    incrementCompletedReps();
+    const startedAt = usePracticeStore.getState().activePhrasePractice?.startedAt;
+    clearABLoop();
+    setPlaybackRate(1);
+    setMetronomeBpm(100);
+
+    usePracticeStore.getState().restorePhraseSettings(phrase, 85);
+
+    const state = usePracticeStore.getState();
+    expect(state.abLoop).toEqual({ pointA: 12, pointB: 34, enabled: true });
+    expect(state.playbackRate).toBe(0.75);
+    expect(state.metronomeBpm).toBe(85);
+    expect(state.activePhrasePractice?.completedReps).toBe(2);
+    expect(state.activePhrasePractice?.startedAt).toBe(startedAt);
+  });
+
+  it("練習中のフレーズと別のフレーズを渡したときは何もしない", () => {
+    const { startPhrasePractice, clearABLoop } = usePracticeStore.getState();
+    startPhrasePractice(makePhrase(), 85);
+    clearABLoop();
+    const before = usePracticeStore.getState();
+
+    usePracticeStore.getState().restorePhraseSettings(makePhrase({ id: "p2", startSec: 1, endSec: 2 }), 60);
+
+    const after = usePracticeStore.getState();
+    expect(after.abLoop).toEqual(before.abLoop);
+    expect(after.metronomeBpm).toBe(before.metronomeBpm);
+    expect(after.activePhrasePractice).toBe(before.activePhrasePractice);
+  });
+});
+
 describe("incrementCompletedReps", () => {
   it("増やした後の回数を返し、目標回数を超えても数え続ける", () => {
     const { startPhrasePractice, incrementCompletedReps } = usePracticeStore.getState();

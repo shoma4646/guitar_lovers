@@ -1,4 +1,4 @@
-import type { ABLoop } from "@/shared/types/models";
+import type { ABLoop, PracticePhrase } from "@/shared/types/models";
 
 /**
  * A点とB点が両方設定され、B点がA点より後にあるか
@@ -7,6 +7,14 @@ import type { ABLoop } from "@/shared/types/models";
  */
 export function isValidLoopRange(abLoop: Pick<ABLoop, "pointA" | "pointB">): boolean {
   return abLoop.pointA !== null && abLoop.pointB !== null && abLoop.pointA < abLoop.pointB;
+}
+
+/** ABループのA点・B点がフレーズの開始・終了位置と一致しているか */
+export function isAtPhraseRange(
+  abLoop: Pick<ABLoop, "pointA" | "pointB">,
+  phrase: Pick<PracticePhrase, "startSec" | "endSec">,
+): boolean {
+  return abLoop.pointA === phrase.startSec && abLoop.pointB === phrase.endSec;
 }
 
 /** A点・B点を保存する時刻の刻み（秒） */

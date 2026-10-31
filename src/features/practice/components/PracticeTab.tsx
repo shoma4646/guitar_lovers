@@ -33,7 +33,12 @@ import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progr
 import { filterOpenMenuEntries, planAfterResult } from "@/features/practice/lib/afterResult";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { formatDuration } from "@/features/practice/lib/formatters";
-import { applyPoint, isValidLoopRange, resolvePointTime } from "@/features/practice/lib/abLoop";
+import {
+  applyPoint,
+  isAtPhraseRange,
+  isValidLoopRange,
+  resolvePointTime,
+} from "@/features/practice/lib/abLoop";
 import { stepBpm } from "@/features/practice/lib/tempo";
 import { useMetronomeEngine } from "@/features/practice/hooks/useMetronomeEngine";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
@@ -83,6 +88,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const removeBookmark = usePracticeStore((s) => s.removeBookmark);
   const setPlaybackRate = usePracticeStore((s) => s.setPlaybackRate);
   const startPhrasePractice = usePracticeStore((s) => s.startPhrasePractice);
+  const restorePhraseSettings = usePracticeStore((s) => s.restorePhraseSettings);
   const startPracticeTimer = usePracticeStore((s) => s.startPracticeTimer);
   const stopPracticeTimer = usePracticeStore((s) => s.stopPracticeTimer);
   const resetPracticeTimer = usePracticeStore((s) => s.resetPracticeTimer);
@@ -258,14 +264,14 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
 
   const handleStartPhrase = useCallback(
     (phrase: PracticePhrase, startBpm: number) => {
-      // 今練習中のフレーズを選び直しただけなら確認不要
+      // 今練習中のフレーズを選び直したときは、回数を残したまま区間・速度・BPMだけを戻す
       if (activePractice?.phrase.id === phrase.id) {
-        startPhraseDirectly(phrase, startBpm);
+        restorePhraseSettings(phrase, startBpm);
         return;
       }
       confirmSwitch(() => startPhraseDirectly(phrase, startBpm));
     },
-    [activePractice, confirmSwitch, startPhraseDirectly],
+    [activePractice, confirmSwitch, restorePhraseSettings, startPhraseDirectly],
   );
 
   const handleFinishPractice = useCallback(() => {
@@ -550,6 +556,9 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
               duration={duration}
               onToggleLoop={handleToggleLoop}
               onClearLoop={clearABLoop}
+              isAtActivePhraseRange={
+                activePractice !== null && isAtPhraseRange(abLoop, activePractice.phrase)
+              }
               onTapPoint={handleTapPoint}
               onSetPoint={handleSetPoint}
               onScrubStart={handleScrubStart}
