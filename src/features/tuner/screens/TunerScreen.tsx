@@ -34,6 +34,7 @@ import {
   usePitchDetector,
   type PitchDetectorStatus,
 } from "@/features/tuner/hooks/usePitchDetector";
+import { useTuningAnnouncement } from "@/features/tuner/hooks/useTuningAnnouncement";
 import { NeedleMeter } from "@/features/tuner/components/NeedleMeter";
 import { shouldKeepAwakeWhileTuning, TUNER_KEEP_AWAKE_TAG } from "@/features/tuner/lib/keepAwake";
 import {
@@ -203,6 +204,17 @@ export function TunerScreen() {
   const hasSignal = focusedStringIndex !== null;
   const noteColor = tuningColor(currentState, hasSignal);
   const displayNote = hasSignal ? preset.notes[focusedStringIndex] : freeNoteLabel;
+  const isJudging = status === "listening" && !pausedByUser && focusedStringIndex !== null;
+
+  useTuningAnnouncement(
+    isJudging
+      ? {
+          stringNumber: STRING_NUMBERS[focusedStringIndex],
+          state: currentState,
+          tuned: tunedStrings[focusedStringIndex],
+        }
+      : null,
+  );
 
   const stringCentsText =
     focusedStringIndex !== null
@@ -220,7 +232,7 @@ export function TunerScreen() {
         : status === "requesting"
           ? "準備中です"
           : focusedStringIndex !== null
-            ? describeTuning(currentState)
+            ? describeTuning(currentState, `${STRING_NUMBERS[focusedStringIndex]}弦`)
             : "弦を1本ずつ鳴らしてください";
 
   const badgeTone: BadgeTone = pausedByUser
@@ -303,7 +315,11 @@ export function TunerScreen() {
             </View>
 
             <View style={[styles.badge, { backgroundColor: badgeStyle.bg }]}>
-              <Text style={[styles.badgeText, { color: badgeStyle.fg }]} accessibilityLiveRegion="polite">
+              {/* 判定中は告知APIで読み上げるため、Androidで二重に読まれないようライブリージョンを切る */}
+              <Text
+                style={[styles.badgeText, { color: badgeStyle.fg }]}
+                accessibilityLiveRegion={isJudging ? "none" : "polite"}
+              >
                 {badgeText}
               </Text>
             </View>
