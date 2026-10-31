@@ -126,9 +126,14 @@ interface PracticeState {
   reloadVideo: () => void;
   /**
    * 今日の練習メニューからフレーズ練習を開始する
-   * 動画・区間・再生速度・メトロノームBPM・練習中フレーズを一貫して設定する唯一の入口
+   * 動画・区間・再生速度・メトロノームBPM・練習中フレーズを一貫して設定し、回数0から始める
    */
   startPhrasePractice: (phrase: PracticePhrase, goalBpm: number) => void;
+  /**
+   * 練習中のフレーズの区間・再生速度・メトロノームBPMだけをフレーズの設定に戻す
+   * 弾き終えた回数と開始時刻は保つ。練習中のフレーズと別のフレーズを渡したときは何もしない
+   */
+  restorePhraseSettings: (phrase: PracticePhrase, goalBpm: number) => void;
   setDuration: (duration: number) => void;
   setPlaybackRate: (rate: PlaybackRate) => void;
   startPracticeTimer: () => void;
@@ -170,6 +175,15 @@ function extractVideoId(url: string): string | null {
     if (match) return match[1];
   }
   return null;
+}
+
+/** フレーズの区間・再生速度でそのフレーズの動画を読み込むときのオプション */
+function phraseLoadOptions(phrase: PracticePhrase) {
+  return {
+    abLoop: { pointA: phrase.startSec, pointB: phrase.endSec, enabled: true },
+    playbackRate: phrase.playbackRate,
+    phraseId: phrase.id,
+  };
 }
 
 /**
@@ -226,11 +240,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   },
 
   startPhrasePractice: (phrase, goalBpm) => {
-    get().loadVideo(phrase.videoId, phrase.videoTitle, {
-      abLoop: { pointA: phrase.startSec, pointB: phrase.endSec, enabled: true },
-      playbackRate: phrase.playbackRate,
-      phraseId: phrase.id,
-    });
+    get().loadVideo(phrase.videoId, phrase.videoTitle, phraseLoadOptions(phrase));
     set({
       activePhrasePractice: {
         phrase,
@@ -241,6 +251,12 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
       },
       metronomeBpm: clampBpm(goalBpm),
     });
+  },
+
+  restorePhraseSettings: (phrase, goalBpm) => {
+    if (get().activePhrasePractice?.phrase.id !== phrase.id) return;
+    get().loadVideo(phrase.videoId, phrase.videoTitle, phraseLoadOptions(phrase));
+    set({ metronomeBpm: clampBpm(goalBpm) });
   },
 
   clearVideo: () =>
