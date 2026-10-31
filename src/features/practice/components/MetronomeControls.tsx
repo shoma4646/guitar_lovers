@@ -6,7 +6,7 @@
  * 同じ道具として使う。
  */
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { Pressable, Text, View, type AccessibilityActionEvent } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -37,11 +37,15 @@ const HOLD_REPEAT_DELAY_MS = 350;
 const HOLD_REPEAT_INTERVAL_MS = 70;
 
 /**
- * Pressableの長押しでコールバックを繰り返し呼ぶ
+ * Pressableの長押しでコールバックを繰り返し呼ぶ（押している間も毎回最新のonStepを呼ぶ）
  * VoiceOverのダブルタップはonPressIn/onPressOutを発火せずonPressのみを呼ぶため、
  * 長押しリピートが始まっていなければonPressでも1段階だけ進められるようにする
  */
 function useHoldRepeat(onStep: () => void) {
+  const latestOnStepRef = useRef(onStep);
+  useLayoutEffect(() => {
+    latestOnStepRef.current = onStep;
+  });
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const repeatingRef = useRef(false);
@@ -54,13 +58,14 @@ function useHoldRepeat(onStep: () => void) {
   }, []);
 
   const handlePressIn = useCallback(() => {
+    stop();
     repeatingRef.current = false;
     timeoutRef.current = setTimeout(() => {
       repeatingRef.current = true;
-      onStep();
-      intervalRef.current = setInterval(onStep, HOLD_REPEAT_INTERVAL_MS);
+      latestOnStepRef.current();
+      intervalRef.current = setInterval(() => latestOnStepRef.current(), HOLD_REPEAT_INTERVAL_MS);
     }, HOLD_REPEAT_DELAY_MS);
-  }, [onStep]);
+  }, [stop]);
 
   const handlePressOut = useCallback(() => {
     stop();
