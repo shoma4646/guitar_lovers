@@ -22,6 +22,7 @@ import { Card } from "@/shared/components/molecules/Card";
 import { ScreenFrame } from "@/shared/components/molecules/ScreenFrame";
 import { colors, radius } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
+import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import {
   tuningPresets,
   TuningPresetKey,
@@ -305,6 +306,7 @@ export function TunerScreen() {
                 ) : (
                   <Animated.Text
                     testID="tuner-note"
+                    maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
                     style={[styles.noteText, noteAnimatedStyle, { color: noteColor }]}
                   >
                     {displayNote}

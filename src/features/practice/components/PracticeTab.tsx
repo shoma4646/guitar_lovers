@@ -9,7 +9,7 @@
  * 動画読み込み前でもPracticeMenuSheet経由でメトロノーム単体を使えるようにするため。
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { View, Text, ScrollView, Alert, StyleSheet } from "react-native";
 import WebView from "react-native-webview";
 import { useSharedValue } from "react-native-reanimated";
@@ -47,6 +47,8 @@ import { useCloseVideo } from "@/features/practice/hooks/useCloseVideo";
 import { usePausePlayerOnBlur } from "@/features/practice/hooks/usePausePlayerOnBlur";
 import { useSyncPlayerLoop } from "@/features/practice/hooks/useSyncPlayerLoop";
 import { useKeepAwakeWhileFocused } from "@/shared/hooks/useKeepAwakeWhileFocused";
+import { useFitsOneScreen } from "@/shared/hooks/useFitsOneScreen";
+import { SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
 import { useLocalDay } from "@/shared/hooks/useLocalDay";
 import { localDayToDate } from "@/shared/lib/localDay";
 import {
@@ -299,6 +301,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   }, [activePractice, beginResultEntry]);
 
   const localDay = useLocalDay();
+  const fitsOneScreen = useFitsOneScreen();
   const todayMenu = useMemo(
     () => buildTodayMenu(allPhrases, allPhraseAttempts, localDayToDate(localDay)),
     [allPhrases, allPhraseAttempts, localDay],
@@ -528,76 +531,78 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
 
   return (
     <View style={{ flex: 1, justifyContent: "space-between" }}>
-      <View style={{ gap: 10 }}>
-        <View style={styles.header}>
-          <IconButton name="menu" accessibilityLabel="メニューを開く" onPress={() => setShowMenu(true)} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {headerTitle}
-            </Text>
-            {headerSubtitle && (
-              <Text style={styles.headerSubtitle} numberOfLines={1}>
-                {headerSubtitle}
+      <ScrollWhenOverflow enabled={!fitsOneScreen}>
+        <View style={{ gap: 10 }}>
+          <View style={styles.header}>
+            <IconButton name="menu" accessibilityLabel="メニューを開く" onPress={() => setShowMenu(true)} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                {headerTitle}
               </Text>
-            )}
+              {headerSubtitle && (
+                <Text style={styles.headerSubtitle} numberOfLines={1}>
+                  {headerSubtitle}
+                </Text>
+              )}
+            </View>
+            <Text style={styles.headerTimer}>{formatDuration(displaySeconds)}</Text>
+            <IconButton name="tune" accessibilityLabel="チューナーを開く" onPress={() => router.push("/(tabs)/tuner")} />
+            <IconButton name="settings" accessibilityLabel="設定を開く" onPress={() => router.push("/settings")} />
           </View>
-          <Text style={styles.headerTimer}>{formatDuration(displaySeconds)}</Text>
-          <IconButton name="tune" accessibilityLabel="チューナーを開く" onPress={() => router.push("/(tabs)/tuner")} />
-          <IconButton name="settings" accessibilityLabel="設定を開く" onPress={() => router.push("/settings")} />
+
+          {playerError !== null ? (
+            <VideoErrorCard code={playerError} />
+          ) : (
+            <>
+              <VideoPlayerCard
+                key={videoLoadNonce}
+                ref={webViewRef}
+                videoId={loadedVideoId}
+                startSeconds={videoStartSeconds}
+                initialRate={videoInitialRate}
+                onTimeUpdate={handleTimeUpdate}
+                onDurationReady={handlePlayerReady}
+                onPlayerError={setPlayerError}
+              />
+
+              <PlaybackRateChips
+                value={playbackRate}
+                onChange={(rate: PlaybackRate) => {
+                  setPlaybackRate(rate);
+                  sendToPlayer({ action: "setRate", rate });
+                }}
+              />
+
+              <PracticeControlPanel
+                abLoop={abLoop}
+                currentTimeShared={currentTimeShared}
+                duration={duration}
+                onToggleLoop={handleToggleLoop}
+                onClearLoop={clearABLoop}
+                isAtActivePhraseRange={
+                  activePractice !== null && isAtPhraseRange(abLoop, activePractice.phrase)
+                }
+                onTapPoint={handleTapPoint}
+                onSetPoint={handleSetPoint}
+                onScrubStart={handleScrubStart}
+                onScrubEnd={handleScrubEnd}
+                onScrubCancel={handleScrubCancel}
+                bookmarkCount={bookmarks.length}
+                onAddBookmark={handleAddBookmark}
+                onOpenSavePhrase={() => setShowSavePhrase(true)}
+                hasNoPhrases={allPhrases.length === 0}
+                metronomeBpm={metronomeBpm}
+                metronomeEnabled={metronomeEnabled}
+                metronomeActiveBeat={activeBeat}
+                metronomeBeatsPerBar={beatsPerBar}
+                onStepMetronomeBpm={handleStepMetronomeBpm}
+                onToggleMetronome={handleToggleMetronome}
+                phraseProgress={panelPhraseProgress}
+              />
+            </>
+          )}
         </View>
-
-        {playerError !== null ? (
-          <VideoErrorCard code={playerError} />
-        ) : (
-          <>
-            <VideoPlayerCard
-              key={videoLoadNonce}
-              ref={webViewRef}
-              videoId={loadedVideoId}
-              startSeconds={videoStartSeconds}
-              initialRate={videoInitialRate}
-              onTimeUpdate={handleTimeUpdate}
-              onDurationReady={handlePlayerReady}
-              onPlayerError={setPlayerError}
-            />
-
-            <PlaybackRateChips
-              value={playbackRate}
-              onChange={(rate: PlaybackRate) => {
-                setPlaybackRate(rate);
-                sendToPlayer({ action: "setRate", rate });
-              }}
-            />
-
-            <PracticeControlPanel
-              abLoop={abLoop}
-              currentTimeShared={currentTimeShared}
-              duration={duration}
-              onToggleLoop={handleToggleLoop}
-              onClearLoop={clearABLoop}
-              isAtActivePhraseRange={
-                activePractice !== null && isAtPhraseRange(abLoop, activePractice.phrase)
-              }
-              onTapPoint={handleTapPoint}
-              onSetPoint={handleSetPoint}
-              onScrubStart={handleScrubStart}
-              onScrubEnd={handleScrubEnd}
-              onScrubCancel={handleScrubCancel}
-              bookmarkCount={bookmarks.length}
-              onAddBookmark={handleAddBookmark}
-              onOpenSavePhrase={() => setShowSavePhrase(true)}
-              hasNoPhrases={allPhrases.length === 0}
-              metronomeBpm={metronomeBpm}
-              metronomeEnabled={metronomeEnabled}
-              metronomeActiveBeat={activeBeat}
-              metronomeBeatsPerBar={beatsPerBar}
-              onStepMetronomeBpm={handleStepMetronomeBpm}
-              onToggleMetronome={handleToggleMetronome}
-              phraseProgress={panelPhraseProgress}
-            />
-          </>
-        )}
-      </View>
+      </ScrollWhenOverflow>
 
       {activePractice && (
         <PracticeSessionBar
@@ -632,6 +637,22 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         onSave={handleSavePhrase}
       />
     </View>
+  );
+}
+
+/** 1画面に収まらないときだけ中身をスクロールさせる。練習中バーをこの外に置き、下端に固定したまま届くようにする */
+function ScrollWhenOverflow({ enabled, children }: { enabled: boolean; children: ReactNode }) {
+  if (!enabled) return <>{children}</>;
+  return (
+    // ScrollViewは枠外を切り取るため、動画のフルブリード表示が欠けないよう画面の横paddingをScrollView内側へ移す
+    <ScrollView
+      testID="practice-overflow-scroll"
+      style={{ flex: 1, marginHorizontal: -SCREEN_HORIZONTAL_PADDING }}
+      contentContainerStyle={{ paddingHorizontal: SCREEN_HORIZONTAL_PADDING }}
+      showsVerticalScrollIndicator={false}
+    >
+      {children}
+    </ScrollView>
   );
 }
 

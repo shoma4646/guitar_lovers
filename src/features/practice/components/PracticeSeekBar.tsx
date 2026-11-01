@@ -85,6 +85,8 @@ export function PracticeSeekBar({
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
+        // 1画面に収まらずスクロールに切り替わったとき、ドラッグ中の縦ぶれで親のScrollViewに奪われないようにする
+        onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (event) => {
           isDragging.value = true;
           runOnJS(onScrubStart)();

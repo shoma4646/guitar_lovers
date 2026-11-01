@@ -41,3 +41,20 @@ describe("PracticeSeekBar のアクセシビリティ", () => {
     });
   });
 });
+
+describe("PracticeSeekBar のドラッグ", () => {
+  it("ドラッグ中に親のスクロールから譲るよう求められても応じない", () => {
+    render(
+      <PracticeSeekBar
+        currentTimeShared={{ value: 0 } as never}
+        duration={220}
+        abLoop={{ pointA: null, pointB: null, enabled: false }}
+        onScrubStart={jest.fn()}
+        onScrubEnd={jest.fn()}
+        onScrubCancel={jest.fn()}
+      />,
+    );
+    const seekBar = screen.getByRole("adjustable", { name: "再生位置" });
+    expect(seekBar.props.onResponderTerminationRequest({ nativeEvent: {}, touchHistory: {} })).toBe(false);
+  });
+});

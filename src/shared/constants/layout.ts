@@ -27,3 +27,9 @@ export const MIN_ONE_SCREEN_BUDGET = 680;
 
 /** ScreenFrameの左右パディング。フルブリード表示したい要素はこの値ぶん逆マージンで打ち消す */
 export const SCREEN_HORIZONTAL_PADDING = 16;
+
+/** 1画面レイアウトを保てる文字サイズ倍率の上限。これを超える文字サイズ設定ではスクロールへ切り替える */
+export const MAX_ONE_SCREEN_FONT_SCALE = 1.15;
+
+/** 大きな数値表示（BPM・回数・音名）の文字サイズ拡大の上限。これ以上拡大すると1画面の高さ予算を大きく崩す */
+export const NUMERIC_MAX_FONT_SIZE_MULTIPLIER = 1.3;

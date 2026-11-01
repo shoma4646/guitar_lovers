@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import { semantic } from "@/shared/theme/semantic";
+import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import type { PitchDetectorState } from "@/features/tuner/hooks/usePitchDetector";
 import { TunerScreen } from "../TunerScreen";
 
@@ -61,5 +62,13 @@ describe("TunerScreen の音名表示", () => {
     expect(screen.getByText("近い弦が見つかりません")).toBeTruthy();
     expect(noteStyle().fontSize).toBe(88);
     expect(noteStyle().color).toBe(semantic.tunerIdle);
+  });
+});
+
+describe("TunerScreen の文字サイズ拡大", () => {
+  it("検出した音名は文字サイズの拡大に上限を付ける", () => {
+    mockDetector = detector(110);
+    render(<TunerScreen />);
+    expect(screen.getByTestId("tuner-note").props.maxFontSizeMultiplier).toBe(NUMERIC_MAX_FONT_SIZE_MULTIPLIER);
   });
 });

@@ -9,6 +9,7 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { semantic } from "@/shared/theme/semantic";
+import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import type { ActivePhrasePractice } from "@/stores/practice";
 
 type Props = {
@@ -31,7 +32,9 @@ export function PracticeSessionBar({ practice, metronomeBpm, onIncrement, onDecr
     <View style={styles.bar}>
       <View>
         <Text style={styles.label}>{label}</Text>
-        <Text style={styles.count}>{completedReps}回</Text>
+        <Text testID="session-bar-count" style={styles.count} maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}>
+          {completedReps}回
+        </Text>
         <View style={styles.dots} accessible accessibilityLabel={`目安${targetReps}回のうち${completedReps}回`}>
           {Array.from({ length: targetReps }, (_, index) => (
             <View
