@@ -6,26 +6,25 @@
  */
 
 import type { ReactNode } from "react";
-import { ScrollView, useWindowDimensions, View } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScrollView, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/shared/theme";
-import {
-  MIN_ONE_SCREEN_BUDGET,
-  SCREEN_HORIZONTAL_PADDING,
-  TAB_BAR_CONTENT_HEIGHT,
-} from "@/shared/constants/layout";
+import { SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
+import { useFitsOneScreen } from "@/shared/hooks/useFitsOneScreen";
 
 type Props = {
   children: ReactNode;
   /** 画面下端の余白。練習中バーのように自前で下に置く要素があるときに調整する */
   paddingBottom?: number;
+  /**
+   * 収まらないときに画面全体をスクロールへ切り替えるか。下端に固定したい要素を持つ子が
+   * 自前でスクロール領域を分けるときは false にする
+   */
+  scrollWhenOverflow?: boolean;
 };
 
-export function ScreenFrame({ children, paddingBottom = 12 }: Props) {
-  const { height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const budget = height - insets.top - (TAB_BAR_CONTENT_HEIGHT + insets.bottom);
-  const fits = budget >= MIN_ONE_SCREEN_BUDGET;
+export function ScreenFrame({ children, paddingBottom = 12, scrollWhenOverflow = true }: Props) {
+  const fits = useFitsOneScreen();
 
   const content = (
     <View style={{ flex: 1, paddingHorizontal: SCREEN_HORIZONTAL_PADDING, paddingBottom, gap: 12 }}>
@@ -35,7 +34,7 @@ export function ScreenFrame({ children, paddingBottom = 12 }: Props) {
 
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.surface }}>
-      {fits ? (
+      {fits || !scrollWhenOverflow ? (
         content
       ) : (
         <ScrollView contentContainerStyle={{ flexGrow: 1 }}>{content}</ScrollView>

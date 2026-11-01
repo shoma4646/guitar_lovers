@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { BPM_MAX, BPM_MIN } from "@/shared/constants/bpm";
+import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import { MetronomeControls } from "../MetronomeControls";
 
 function setup(bpm = 120) {
@@ -49,5 +50,14 @@ describe("MetronomeControls の読み上げ", () => {
       expect(button.props.accessibilityLabel).not.toContain("長押し");
       expect(button.props.accessibilityHint).toContain("長押し");
     }
+  });
+});
+
+describe("MetronomeControls の文字サイズ拡大", () => {
+  it("BPMの数値は文字サイズの拡大に上限を付ける", () => {
+    setup(120);
+    expect(screen.getByTestId("metronome-bpm-value").props.maxFontSizeMultiplier).toBe(
+      NUMERIC_MAX_FONT_SIZE_MULTIPLIER,
+    );
   });
 });

@@ -17,6 +17,7 @@ import Animated, {
 import { Icon } from "@/shared/components/atoms/Icon";
 import { colors } from "@/shared/theme";
 import { BPM_MAX, BPM_MIN } from "@/shared/constants/bpm";
+import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 import { EASING, ms } from "@/shared/lib/motion";
 
@@ -151,6 +152,8 @@ export function MetronomeControls({
       >
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 4 }}>
           <Animated.Text
+            testID="metronome-bpm-value"
+            maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
             style={[
               { fontSize: 36, fontWeight: "800", color: colors.onSurface, fontVariant: ["tabular-nums"] },
               pulseStyle,

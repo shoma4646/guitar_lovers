@@ -57,7 +57,7 @@ export function PracticeScreen() {
 
   return (
     <ErrorBoundary>
-      <ScreenFrame>
+      <ScreenFrame scrollWhenOverflow={!loadedVideoId}>
         {!loadedVideoId && (
           <>
             <View style={{ height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
