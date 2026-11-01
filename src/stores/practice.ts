@@ -55,10 +55,15 @@ interface PracticeState {
    */
   videoInitialRate: PlaybackRate;
   /**
-   * loadVideo呼び出しのたびにインクリメントされる値
+   * プレイヤーを作り直すloadVideo・reloadVideoのたびにインクリメントされる値
    * WebViewのkeyに渡し、HTML文字列が同一でも強制再マウント（＝再読み込み）させるために使う
    */
   videoLoadNonce: number;
+  /**
+   * 準備済みの同じ動画へloadVideoしたとき、プレイヤーを作り直さない代わりにインクリメントされる値
+   * 画面側はこの変化を受けて、videoStartSeconds・videoInitialRate・区間をプレイヤーへ送り直す
+   */
+  videoRetargetNonce: number;
 
   // --- 練習サブタブ ---
   /** Practice画面のサブタブ選択状態。Presets/Favoritesからの再生後に「練習」へ戻すため画面遷移をまたいで保持する */
@@ -199,6 +204,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   videoStartSeconds: 0,
   videoInitialRate: 1.0,
   videoLoadNonce: 0,
+  videoRetargetNonce: 0,
   practiceSubTab: "practice",
   activePhrasePractice: null,
   pendingAttemptId: null,
@@ -222,21 +228,27 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     const current = get().activePhrasePractice;
     const samePhrase =
       options?.phraseId !== undefined && current?.phrase.id === options.phraseId;
-    set((state) => ({
-      loadedVideoId: id,
-      videoTitle: title,
-      duration: 0,
-      videoStartSeconds: options?.abLoop?.pointA ?? 0,
-      videoInitialRate: nextPlaybackRate,
-      playbackRate: nextPlaybackRate,
-      videoLoadNonce: state.videoLoadNonce + 1,
-      abLoop: options?.abLoop ?? { pointA: null, pointB: null, enabled: false },
-      bookmarks: [],
-      // 別の動画・別のフレーズに切り替えたら、前のフレーズへ結果が記録されないよう練習中状態を解除する
-      activePhrasePractice: samePhrase ? state.activePhrasePractice : null,
-      pendingAttemptId: samePhrase ? state.pendingAttemptId : null,
-      playerError: null,
-    }));
+    set((state) => {
+      // 準備前のプレイヤーへ送った命令は無視されるため、作り直さないのは準備済み（durationが判明）のときだけ
+      const reusePlayer =
+        state.loadedVideoId === id && state.duration > 0 && state.playerError === null;
+      return {
+        loadedVideoId: id,
+        videoTitle: title,
+        duration: reusePlayer ? state.duration : 0,
+        videoStartSeconds: options?.abLoop?.pointA ?? 0,
+        videoInitialRate: nextPlaybackRate,
+        playbackRate: nextPlaybackRate,
+        videoLoadNonce: reusePlayer ? state.videoLoadNonce : state.videoLoadNonce + 1,
+        videoRetargetNonce: reusePlayer ? state.videoRetargetNonce + 1 : state.videoRetargetNonce,
+        abLoop: options?.abLoop ?? { pointA: null, pointB: null, enabled: false },
+        bookmarks: [],
+        // 別の動画・別のフレーズに切り替えたら、前のフレーズへ結果が記録されないよう練習中状態を解除する
+        activePhrasePractice: samePhrase ? state.activePhrasePractice : null,
+        pendingAttemptId: samePhrase ? state.pendingAttemptId : null,
+        playerError: null,
+      };
+    });
   },
 
   startPhrasePractice: (phrase, goalBpm) => {

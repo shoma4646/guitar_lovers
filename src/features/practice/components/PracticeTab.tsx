@@ -95,6 +95,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const videoStartSeconds = usePracticeStore((s) => s.videoStartSeconds);
   const videoInitialRate = usePracticeStore((s) => s.videoInitialRate);
   const videoLoadNonce = usePracticeStore((s) => s.videoLoadNonce);
+  const videoRetargetNonce = usePracticeStore((s) => s.videoRetargetNonce);
   // 「今日の練習メニュー」から開始した練習中フレーズ。サブタブ切替をまたいで保持するためストアで管理する
   const activePractice = usePracticeStore((s) => s.activePhrasePractice);
   const setActivePractice = usePracticeStore((s) => s.setActivePhrasePractice);
@@ -179,9 +180,24 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     (videoDuration: number) => {
       setDuration(videoDuration);
       resendLoopToPlayer();
+      // HTMLへ焼き込む開始位置は秒単位に切り捨てられるため、準備ができた時点で正確なA点へ合わせる
+      if (videoStartSeconds > 0) sendToPlayer({ action: "seek", time: videoStartSeconds });
     },
-    [setDuration, resendLoopToPlayer],
+    [setDuration, resendLoopToPlayer, videoStartSeconds, sendToPlayer],
   );
+
+  // プレイヤーごと画面が外れたら準備済みでなくなるため、次のloadVideoで作り直させる
+  useEffect(() => () => setDuration(0), [setDuration]);
+
+  const initialRetargetNonceRef = useRef(videoRetargetNonce);
+  useEffect(() => {
+    if (videoRetargetNonce === initialRetargetNonceRef.current) return;
+    const { videoStartSeconds: startSeconds, videoInitialRate: rate } = usePracticeStore.getState();
+    resendLoopToPlayer();
+    sendToPlayer({ action: "seek", time: startSeconds });
+    sendToPlayer({ action: "setRate", rate });
+    sendToPlayer({ action: "play" });
+  }, [videoRetargetNonce, resendLoopToPlayer, sendToPlayer]);
 
   const handleScrubStart = useCallback(() => {
     sendToPlayer({ action: "pause" });
