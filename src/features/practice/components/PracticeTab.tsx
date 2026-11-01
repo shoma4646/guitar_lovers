@@ -30,7 +30,7 @@ import { useRunAfterDismiss } from "@/shared/hooks/useRunAfterDismiss";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
 import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progression";
-import { filterOpenMenuEntries, planAfterResult } from "@/features/practice/lib/afterResult";
+import { filterOpenMenuEntries, pickNextMenuEntry, planAfterResult } from "@/features/practice/lib/afterResult";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { formatDuration } from "@/features/practice/lib/formatters";
 import {
@@ -337,7 +337,9 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           setActivePractice(null);
         }
 
-        if (action === "next" && plan.next) {
+        if (!plan.next) {
+          Alert.alert("記録しました", "今日のメニューで次に練習するフレーズはありません");
+        } else if (action === "next") {
           // 直前に保存が成功しており未保存の記録は無いため、確認ダイアログを経由せず開始する
           startPhraseDirectly(plan.next.phrase, plan.next.startBpm);
         }
@@ -438,6 +440,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     : null;
 
   const remainingCount = openMenuEntries.length;
+  const hasNextPhrase = activePractice ? pickNextMenuEntry(todayMenu, activePractice.phrase.id) !== undefined : false;
   const headerTitle = activePractice?.phrase.name ?? (videoTitle || "動画を再生中");
   const headerSubtitle = activePractice ? `今日の1本・残り${remainingCount}本` : null;
 
@@ -598,6 +601,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         phraseElapsedSeconds={phraseElapsedSeconds}
         completedReps={activePractice?.completedReps ?? 0}
         onChangeCompletedReps={(delta) => (delta > 0 ? incrementCompletedReps() : decrementCompletedReps())}
+        hasNextPhrase={hasNextPhrase}
         isSubmitting={isSubmittingResult}
         onClose={() => setShowResultSheet(false)}
         onSubmit={handleSubmitResult}

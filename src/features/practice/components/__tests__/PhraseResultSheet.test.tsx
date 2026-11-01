@@ -1,4 +1,6 @@
+import { StyleSheet } from "react-native";
 import { fireEvent, render, screen, within } from "@testing-library/react-native";
+import { colors } from "@/shared/theme";
 import type { PracticePhrase } from "@/shared/types/models";
 import { PhraseResultSheet } from "../PhraseResultSheet";
 
@@ -27,7 +29,7 @@ function getResultGroup() {
   return group;
 }
 
-function setup(onSubmit = jest.fn(), completedReps = 2) {
+function setup(onSubmit = jest.fn(), completedReps = 2, hasNextPhrase = true) {
   const onChangeCompletedReps = jest.fn();
   render(
     <PhraseResultSheet
@@ -38,6 +40,7 @@ function setup(onSubmit = jest.fn(), completedReps = 2) {
       phraseElapsedSeconds={60}
       completedReps={completedReps}
       onChangeCompletedReps={onChangeCompletedReps}
+      hasNextPhrase={hasNextPhrase}
       isSubmitting={false}
       onClose={jest.fn()}
       onSubmit={onSubmit}
@@ -122,6 +125,7 @@ describe("PhraseResultSheet の見出し", () => {
         phraseElapsedSeconds={60}
         completedReps={0}
         onChangeCompletedReps={jest.fn()}
+        hasNextPhrase
         isSubmitting={false}
         onClose={jest.fn()}
         onSubmit={jest.fn()}
@@ -130,5 +134,28 @@ describe("PhraseResultSheet の見出し", () => {
     const title = screen.getByTestId("bottom-sheet-title");
     expect(title.props.children).toBe(longName);
     expect([1, 2]).toContain(title.props.numberOfLines);
+  });
+});
+
+function backgroundOf(name: string) {
+  return StyleSheet.flatten(screen.getByRole("button", { name }).props.style).backgroundColor;
+}
+
+describe("PhraseResultSheet の記録ボタン", () => {
+  it("次の1本が無いときは「記録して次の1本へ」を出さず、「記録して今日は終わる」を主ボタンにする", () => {
+    const { onSubmit } = setup(jest.fn(), 2, false);
+
+    expect(screen.queryByRole("button", { name: "記録して次の1本へ" })).toBeNull();
+    expect(backgroundOf("記録して今日は終わる")).toBe(colors.primary);
+
+    fireEvent.press(screen.getByRole("button", { name: "記録して今日は終わる" }));
+    expect(onSubmit).toHaveBeenCalledWith({ result: "ok" }, "finish");
+  });
+
+  it("次の1本があるときは「記録して次の1本へ」が主ボタンで、「今日は終わる」は副ボタン", () => {
+    setup(jest.fn(), 2, true);
+
+    expect(backgroundOf("記録して次の1本へ")).toBe(colors.primary);
+    expect(backgroundOf("記録して今日は終わる")).not.toBe(colors.primary);
   });
 });

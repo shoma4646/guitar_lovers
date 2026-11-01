@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import { filterOpenMenuEntries, planAfterResult } from "../afterResult";
+import { filterOpenMenuEntries, pickNextMenuEntry, planAfterResult } from "../afterResult";
 import { buildTodayMenu } from "../progression";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
@@ -167,6 +167,86 @@ describe("planAfterResult: 次の1本", () => {
           expect(result.next?.startBpm).toBe(expected.today.targetBeforeToday);
           expect(expected.today.reached).toBe(false);
           expect(expected.priority).not.toBe("graduated");
+        },
+      ),
+    );
+  });
+});
+
+describe("pickNextMenuEntry: 結果シートのボタン表示と遷移が共有する次の候補", () => {
+  it("フレーズが1本だけなら候補は無い", () => {
+    const self = makePhrase({ id: "self" });
+    expect(pickNextMenuEntry(buildTodayMenu([self], [], NOW), "self")).toBeUndefined();
+  });
+
+  it("ほかのフレーズがすべて今日の目標に到達済みなら候補は無い", () => {
+    const self = makePhrase({ id: "self" });
+    const reached = makePhrase({ id: "reached" });
+    const attempts = [
+      makeAttempt({ id: "r1", phraseId: "reached", bpm: 90, date: sep(19, 20), result: "partial" }),
+      makeAttempt({ id: "r2", phraseId: "reached", bpm: 90, date: sep(20, 19) }),
+    ];
+    const menu = buildTodayMenu([self, reached], attempts, NOW);
+    expect(menu.find((e) => e.phrase.id === "reached")?.today.reached).toBe(true);
+    expect(pickNextMenuEntry(menu, "self")).toBeUndefined();
+  });
+
+  it("2本中1本が残っていれば、その1本を返す", () => {
+    const self = makePhrase({ id: "self" });
+    const open = makePhrase({ id: "open" });
+    expect(pickNextMenuEntry(buildTodayMenu([self, open], [], NOW), "self")?.phrase.id).toBe("open");
+  });
+
+  it("卒業済みのフレーズは候補にしない", () => {
+    const self = makePhrase({ id: "self" });
+    const graduated = makePhrase({ id: "graduated", currentBpm: 120, initialBpm: 120, targetBpm: 120 });
+    expect(pickNextMenuEntry(buildTodayMenu([self, graduated], [], NOW), "self")).toBeUndefined();
+  });
+
+  it("planAfterResultが選ぶ次の1本と常に同じフレーズになる（性質テスト）", () => {
+    const bpm = fc.integer({ min: 40, max: 240 });
+    const recordArb = fc.record({
+      phraseIndex: fc.nat({ max: 3 }),
+      day: fc.integer({ min: 2, max: 20 }),
+      bpm,
+      result: fc.constantFrom<PhraseAttempt["result"]>("ok", "partial", "ng"),
+    });
+    fc.assert(
+      fc.property(
+        fc.array(fc.record({ initialBpm: bpm, targetBpm: bpm }), { minLength: 1, maxLength: 4 }),
+        fc.array(recordArb, { maxLength: 12 }),
+        fc.nat({ max: 3 }),
+        (phraseSpecs, records, selfIndexSeed) => {
+          const phrases = phraseSpecs.map((spec, i) =>
+            makePhrase({
+              id: `p${i}`,
+              currentBpm: spec.initialBpm,
+              initialBpm: spec.initialBpm,
+              targetBpm: spec.targetBpm,
+              updatedAt: sep(1, i),
+            }),
+          );
+          const attempts = records
+            .filter((r) => r.phraseIndex < phrases.length)
+            .map((r, i) =>
+              makeAttempt({
+                id: `a${i}`,
+                phraseId: `p${r.phraseIndex}`,
+                date: sep(r.day, 12),
+                bpm: r.bpm,
+                result: r.result,
+              }),
+            );
+          const self = phrases[selfIndexSeed % phrases.length];
+          const menu = buildTodayMenu(phrases, attempts, NOW);
+          const planned = planAfterResult({
+            phrase: self,
+            attempts,
+            attempt: makeAttempt({ id: "now", phraseId: self.id, date: sep(20, 21) }),
+            todayMenu: menu,
+          });
+
+          expect(planned.next?.phrase.id).toBe(pickNextMenuEntry(menu, self.id)?.phrase.id);
         },
       ),
     );
