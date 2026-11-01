@@ -39,6 +39,8 @@ type Props = {
   phraseElapsedSeconds: number;
   completedReps: number;
   onChangeCompletedReps: (delta: number) => void;
+  /** 「記録して次の1本へ」で進む先があるか。無ければ「記録して今日は終わる」だけを主ボタンで出す */
+  hasNextPhrase: boolean;
   /** 記録の送信中は両ボタンを無効化し、二度押しでの重複記録を防ぐ */
   isSubmitting: boolean;
   onClose: () => void;
@@ -53,6 +55,7 @@ export function PhraseResultSheet({
   phraseElapsedSeconds,
   completedReps,
   onChangeCompletedReps,
+  hasNextPhrase,
   isSubmitting,
   onClose,
   onSubmit,
@@ -190,17 +193,19 @@ export function PhraseResultSheet({
         </View>
 
         <View style={{ gap: 8 }}>
-          <Button
-            label="記録して次の1本へ"
-            onPress={() => onSubmit({ result }, "next")}
-            variant="primary"
-            disabled={isSubmitting}
-            fullWidth
-          />
+          {hasNextPhrase && (
+            <Button
+              label="記録して次の1本へ"
+              onPress={() => onSubmit({ result }, "next")}
+              variant="primary"
+              disabled={isSubmitting}
+              fullWidth
+            />
+          )}
           <Button
             label="記録して今日は終わる"
             onPress={() => onSubmit({ result }, "finish")}
-            variant="outline"
+            variant={hasNextPhrase ? "outline" : "primary"}
             disabled={isSubmitting}
             fullWidth
           />
