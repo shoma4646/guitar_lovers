@@ -1,7 +1,7 @@
 /**
  * プリセットタブ（Stitch modern_6 風）
  *
- * カテゴリ別に大型カードでプリセット動画を表示する。
+ * カテゴリ別にカードでプリセット動画を表示する。
  * - カード: title + category description + 再生ボタン
  * - カテゴリ間にセクションラベルを挟む
  */
@@ -15,7 +15,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors, shadows } from "@/shared/theme";
+import { colors, fontSize, radius, shadows } from "@/shared/theme";
 import type { VideoPreset } from "@/shared/types/models";
 import { usePracticeStore } from "@/stores/practice";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
@@ -62,8 +62,8 @@ export function PresetsTab() {
     >
       {Object.entries(grouped).map(([category, items]) => (
         <View key={category} className="mb-lg">
-          <Text className="text-label-sm text-on-surface-variant mb-sm" style={styles.sectionLabel}>
-            {(CATEGORY_LABELS[category] ?? category).toUpperCase()}
+          <Text className="text-label-sm text-on-surface-variant mb-sm">
+            {CATEGORY_LABELS[category] ?? category}
           </Text>
           <View style={{ gap: 16 }}>
             {items.map((preset) => (
@@ -75,11 +75,12 @@ export function PresetsTab() {
                 accessibilityRole="button"
                 accessibilityLabel={`${preset.title}を再生`}
               >
-                <View className="flex-row items-start justify-between">
-                  <View className="flex-1 pr-md">
+                <View className="flex-row items-center" style={{ gap: 16 }}>
+                  <View className="flex-1">
                     <Text
-                      className="text-headline-lg text-on-surface mb-1"
-                      style={{ fontWeight: "700" }}
+                      testID="preset-title"
+                      className="text-on-surface mb-1"
+                      style={styles.title}
                       numberOfLines={2}
                     >
                       {preset.title}
@@ -89,28 +90,8 @@ export function PresetsTab() {
                     </Text>
                   </View>
                   <View
-                    className="px-sm py-base rounded-full"
-                    style={{ backgroundColor: colors.primary }}
-                  >
-                    <Text
-                      className="text-label-sm"
-                      style={{ color: colors.onPrimary, fontWeight: "600" }}
-                    >
-                      PRESET
-                    </Text>
-                  </View>
-                </View>
-                <View className="flex-row items-center mt-md" style={{ gap: 16 }}>
-                  <Text
-                    className="text-[12px]"
-                    style={{ color: colors.onSurfaceVariant, fontWeight: "500" }}
-                  >
-                    Curated routine
-                  </Text>
-                  <View
                     className="items-center justify-center"
                     style={{
-                      marginLeft: "auto",
                       width: 40,
                       height: 40,
                       borderRadius: 9999,
@@ -140,15 +121,14 @@ const shadowStyle = {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingHorizontal: 20,
     paddingBottom: 32,
   },
-  sectionLabel: {
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
   card: {
-    padding: 20,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: radius.xl,
+  },
+  title: {
+    fontSize: fontSize.headingLg,
+    fontWeight: "800",
   },
 });

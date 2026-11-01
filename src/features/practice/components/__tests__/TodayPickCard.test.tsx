@@ -1,4 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
+import { fontSize } from "@/shared/theme";
 import { TodayPickCard } from "../TodayPickCard";
 
 type QueryStub = { data: unknown[] | undefined; isLoading: boolean; refetch: jest.Mock };
@@ -104,5 +106,10 @@ describe("TodayPickCard（今日の1本の進捗バー）", () => {
     expect(within(progressRow).getByRole("progressbar")).toBeTruthy();
     expect(within(progressRow).getByText("開始 120")).toBeTruthy();
     expect(within(progressRow).getByText("卒業 240")).toBeTruthy();
+  });
+
+  it("フレーズ名はプリセットのタイトルと同じ fontSize.headingLg を使う", () => {
+    const style = StyleSheet.flatten(screen.getByTestId("today-pick-phrase-name").props.style);
+    expect(style.fontSize).toBe(fontSize.headingLg);
   });
 });

@@ -10,7 +10,7 @@ import { View, Text, ActivityIndicator } from "react-native";
 import { Card } from "@/shared/components/molecules/Card";
 import { Button } from "@/shared/components/atoms/Button";
 import { ProgressBar } from "@/shared/components/atoms/ProgressBar";
-import { colors, radius } from "@/shared/theme";
+import { colors, fontSize, radius } from "@/shared/theme";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import {
@@ -113,7 +113,11 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
       </View>
 
       <View>
-        <Text style={{ fontSize: 20, fontWeight: "800", color: colors.onSurface }} numberOfLines={1}>
+        <Text
+          testID="today-pick-phrase-name"
+          style={{ fontSize: fontSize.headingLg, fontWeight: "800", color: colors.onSurface }}
+          numberOfLines={1}
+        >
           {phrase.name}
         </Text>
         <Text style={{ fontSize: 13, color: colors.onSurfaceVariant }} numberOfLines={1}>
