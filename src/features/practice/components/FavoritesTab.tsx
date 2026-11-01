@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { randomUUID } from "expo-crypto";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors, shadows } from "@/shared/theme";
+import { colors, radius, shadows } from "@/shared/theme";
 import type { FavoriteVideo, RecentVideo } from "@/shared/types/models";
 import { usePracticeStore } from "@/stores/practice";
 import { useFavoriteVideos } from "@/features/practice/api/useFavoriteVideos";
@@ -102,9 +102,7 @@ export function FavoritesTab() {
       showsVerticalScrollIndicator={false}
     >
       {/* 最近の動画 */}
-      <Text className="text-label-sm text-on-surface-variant mb-sm" style={styles.sectionLabel}>
-        RECENT
-      </Text>
+      <Text className="text-label-sm text-on-surface-variant mb-sm">最近見た動画</Text>
       <View style={{ gap: 16 }}>
         {recents.length === 0 ? (
           <Text className="text-on-surface-variant text-body-md text-center py-lg">
@@ -142,13 +140,6 @@ export function FavoritesTab() {
                   >
                     {formatRelativeVideoDate(video.lastWatchedAt, today)}
                   </Text>
-                  <View className="flex-row mt-xs" style={{ gap: 8 }}>
-                    <View style={[styles.badge, { backgroundColor: colors.surfaceContainer }]}>
-                      <Text style={[styles.badgeText, { color: colors.onSurfaceVariant }]}>
-                        YOUTUBE
-                      </Text>
-                    </View>
-                  </View>
                 </View>
                 <Pressable
                   onPress={(e) => {
@@ -173,9 +164,7 @@ export function FavoritesTab() {
       </View>
 
       {/* お気に入り */}
-      <Text className="text-label-sm text-on-surface-variant mt-xl mb-sm" style={styles.sectionLabel}>
-        FAVORITES
-      </Text>
+      <Text className="text-label-sm text-on-surface-variant mt-xl mb-sm">お気に入り</Text>
       <View style={{ gap: 16 }}>
         {favorites.length === 0 ? (
           <Text className="text-on-surface-variant text-body-md text-center py-lg">
@@ -240,18 +229,13 @@ const shadowStyle = {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingHorizontal: 20,
     paddingBottom: 32,
-  },
-  sectionLabel: {
-    letterSpacing: 1,
-    textTransform: "uppercase",
   },
   songCard: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
-    borderRadius: 16,
+    borderRadius: radius.xl,
     gap: 16,
     position: "relative",
   },
@@ -259,16 +243,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 12,
-    backgroundColor: "#f6ddda",
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 9999,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: "700",
+    backgroundColor: colors.surfaceContainer,
   },
   starPosition: {
     position: "absolute",
