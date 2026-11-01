@@ -1,17 +1,8 @@
 import { useCallback, useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  TextInput,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, TextInput, StyleSheet } from "react-native";
 import { randomUUID } from "expo-crypto";
+import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
+import { Button } from "@/shared/components/atoms/Button";
 import { colors } from "@/shared/theme/colors";
 import { fontSize, fontWeight, spacing, radius } from "@/shared/theme";
 import type { PracticeSession } from "@/shared/types/models";
@@ -22,15 +13,24 @@ type Props = {
   onSave: (session: PracticeSession) => void;
 };
 
-/** 新規練習セッション追加モーダル */
+const DURATION_ERROR = "練習時間を入力してください（分単位）";
+
+/** 練習記録を手動で追加するシート */
 export function AddSessionModal({ visible, onClose, onSave }: Props) {
   const [durationMinutes, setDurationMinutes] = useState("");
   const [notes, setNotes] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const resetForm = useCallback(() => {
+    setDurationMinutes("");
+    setNotes("");
+    setError(null);
+  }, []);
 
   const handleSave = useCallback(() => {
     const minutes = parseInt(durationMinutes, 10);
     if (isNaN(minutes) || minutes <= 0) {
-      Alert.alert("エラー", "練習時間を入力してください（分単位）");
+      setError(DURATION_ERROR);
       return;
     }
     onSave({
@@ -39,52 +39,40 @@ export function AddSessionModal({ visible, onClose, onSave }: Props) {
       duration: minutes * 60,
       notes: notes.trim() || undefined,
     });
-    setDurationMinutes("");
-    setNotes("");
+    resetForm();
     onClose();
-  }, [durationMinutes, notes, onSave, onClose]);
+  }, [durationMinutes, notes, onSave, onClose, resetForm]);
 
   const handleClose = useCallback(() => {
-    setDurationMinutes("");
-    setNotes("");
+    resetForm();
     onClose();
-  }, [onClose]);
+  }, [onClose, resetForm]);
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={handleClose}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.overlay}
-      >
-        <View style={styles.sheet}>
-          <View style={styles.header}>
-            <Text style={styles.title}>練習を記録</Text>
-            <TouchableOpacity
-              onPress={handleClose}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel="閉じる"
-            >
-              <Ionicons name="close" size={24} color={colors.onSurfaceVariant} />
-            </TouchableOpacity>
-          </View>
-
+    <BottomSheet visible={visible} onClose={handleClose} title="練習を記録">
+      <View style={styles.body}>
+        <View style={styles.field}>
           <Text style={styles.inputLabel}>練習時間（分）</Text>
           <TextInput
             style={styles.input}
             value={durationMinutes}
-            onChangeText={setDurationMinutes}
+            onChangeText={(text) => {
+              setDurationMinutes(text);
+              setError(null);
+            }}
             placeholder="30"
             placeholderTextColor={colors.onSurfaceVariant}
             keyboardType="numeric"
             accessibilityLabel="練習時間入力"
           />
+          {error !== null && (
+            <Text accessibilityRole="alert" style={styles.errorText}>
+              {error}
+            </Text>
+          )}
+        </View>
 
+        <View style={styles.field}>
           <Text style={styles.inputLabel}>メモ（任意）</Text>
           <TextInput
             style={[styles.input, styles.textarea]}
@@ -96,51 +84,27 @@ export function AddSessionModal({ visible, onClose, onSave }: Props) {
             numberOfLines={3}
             accessibilityLabel="メモ入力"
           />
-
-          <TouchableOpacity
-            onPress={handleSave}
-            style={styles.saveButton}
-            accessibilityRole="button"
-          >
-            <Text style={styles.saveButtonText}>記録する</Text>
-          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+
+        <Button label="記録する" onPress={handleSave} size="lg" fullWidth />
+      </View>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "#00000088",
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: spacing.xl,
-    paddingBottom: spacing["4xl"],
+  body: {
     gap: spacing.md,
-    backgroundColor: colors.surfaceContainerLowest,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: spacing.xs,
-  },
-  title: {
-    color: colors.onSurface,
-    fontSize: fontSize.headingMd,
-    fontWeight: fontWeight.bold,
+  field: {
+    gap: spacing.xs,
   },
   inputLabel: {
     color: colors.onSurfaceVariant,
     fontSize: fontSize.bodyXs,
     fontWeight: fontWeight.semibold,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
   },
   input: {
     borderRadius: radius.md,
@@ -155,17 +119,8 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     paddingTop: spacing.md,
   },
-  saveButton: {
-    height: 52,
-    borderRadius: radius.pill,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: spacing.sm,
-    backgroundColor: colors.primary,
-  },
-  saveButtonText: {
-    color: colors.onPrimary,
-    fontSize: fontSize.headingSm,
-    fontWeight: fontWeight.bold,
+  errorText: {
+    color: colors.error,
+    fontSize: fontSize.bodyXs,
   },
 });
