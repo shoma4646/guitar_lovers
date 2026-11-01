@@ -192,3 +192,73 @@ describe("reloadVideo", () => {
     expect(after.pendingAttemptId).toBe(before.pendingAttemptId);
   });
 });
+
+describe("loadVideo のプレイヤー再利用", () => {
+  it("準備済みの同じ動画の別フレーズへ切り替えると、作り直さずに区間と開始位置だけを差し替える", () => {
+    const first = makePhrase({ id: "p1", startSec: 10, endSec: 20 });
+    const second = makePhrase({ id: "p2", startSec: 30.9, endSec: 40, playbackRate: 0.75 });
+    usePracticeStore.getState().startPhrasePractice(first, 85);
+    usePracticeStore.getState().setDuration(200);
+    const before = usePracticeStore.getState();
+
+    usePracticeStore.getState().startPhrasePractice(second, 90);
+
+    const after = usePracticeStore.getState();
+    expect(after.videoLoadNonce).toBe(before.videoLoadNonce);
+    expect(after.videoRetargetNonce).toBe(before.videoRetargetNonce + 1);
+    expect(after.duration).toBe(200);
+    expect(after.videoStartSeconds).toBe(30.9);
+    expect(after.videoInitialRate).toBe(0.75);
+    expect(after.abLoop).toEqual({ pointA: 30.9, pointB: 40, enabled: true });
+    expect(after.activePhrasePractice?.phrase.id).toBe("p2");
+  });
+
+  it("同じ動画でもプレイヤーの準備前（duration 0）なら作り直す", () => {
+    usePracticeStore.getState().startPhrasePractice(makePhrase({ id: "p1" }), 85);
+    const before = usePracticeStore.getState();
+
+    usePracticeStore.getState().startPhrasePractice(makePhrase({ id: "p2" }), 85);
+
+    const after = usePracticeStore.getState();
+    expect(after.videoLoadNonce).toBe(before.videoLoadNonce + 1);
+    expect(after.videoRetargetNonce).toBe(before.videoRetargetNonce);
+  });
+
+  it("別の動画なら準備済みでも作り直し、durationを0に戻す", () => {
+    usePracticeStore.getState().startPhrasePractice(makePhrase({ id: "p1" }), 85);
+    usePracticeStore.getState().setDuration(200);
+    const before = usePracticeStore.getState();
+
+    usePracticeStore.getState().startPhrasePractice(makePhrase({ id: "p2", videoId: "zyx987wvu65" }), 85);
+
+    const after = usePracticeStore.getState();
+    expect(after.videoLoadNonce).toBe(before.videoLoadNonce + 1);
+    expect(after.videoRetargetNonce).toBe(before.videoRetargetNonce);
+    expect(after.duration).toBe(0);
+  });
+
+  it("読み込みエラー中は同じ動画でも作り直す", () => {
+    usePracticeStore.getState().startPhrasePractice(makePhrase({ id: "p1" }), 85);
+    usePracticeStore.getState().setDuration(200);
+    usePracticeStore.getState().setPlayerError(150);
+    const before = usePracticeStore.getState();
+
+    usePracticeStore.getState().startPhrasePractice(makePhrase({ id: "p2" }), 85);
+
+    expect(usePracticeStore.getState().videoLoadNonce).toBe(before.videoLoadNonce + 1);
+    expect(usePracticeStore.getState().playerError).toBeNull();
+  });
+
+  it("reloadVideo は準備済みでも従来どおり作り直す", () => {
+    usePracticeStore.getState().startPhrasePractice(makePhrase({ id: "p1" }), 85);
+    usePracticeStore.getState().setDuration(200);
+    const before = usePracticeStore.getState();
+
+    usePracticeStore.getState().reloadVideo();
+
+    const after = usePracticeStore.getState();
+    expect(after.videoLoadNonce).toBe(before.videoLoadNonce + 1);
+    expect(after.videoRetargetNonce).toBe(before.videoRetargetNonce);
+    expect(after.duration).toBe(0);
+  });
+});

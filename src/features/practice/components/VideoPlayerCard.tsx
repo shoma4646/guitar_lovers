@@ -6,7 +6,7 @@
  * ScreenFrameの左右16pxパディングを打ち消し、画面幅いっぱいのフルブリードで表示する。
  */
 
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 import { View, StyleSheet, useWindowDimensions } from "react-native";
 import WebView from "react-native-webview";
 import {
@@ -20,9 +20,9 @@ import { SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
 
 type Props = {
   videoId: string;
-  /** 初期再生位置（秒）。フレーズ練習の再開時にA点から始めるために使う */
+  /** 初期再生位置（秒）。フレーズ練習の再開時にA点から始めるために使う。マウント時の値だけを使う */
   startSeconds?: number;
-  /** 初期再生速度。フレーズ練習の再開時にそのフレーズの速度から始めるために使う */
+  /** 初期再生速度。フレーズ練習の再開時にそのフレーズの速度から始めるために使う。マウント時の値だけを使う */
   initialRate?: number;
   onTimeUpdate: (time: number) => void;
   onDurationReady: (duration: number) => void;
@@ -36,6 +36,11 @@ export const VideoPlayerCard = forwardRef<WebView, Props>(
     ref,
   ) {
     const { width: screenWidth } = useWindowDimensions();
+    // sourceが変わるとWebViewがページごと読み込み直すため、作り直しはkeyの変更（再マウント）だけに任せる
+    const [source] = useState(() => ({
+      html: buildYouTubeHtml(videoId, startSeconds, initialRate),
+      baseUrl: YOUTUBE_EMBED_ORIGIN,
+    }));
     return (
       <View
         className="bg-surface-container-highest overflow-hidden"
@@ -48,10 +53,7 @@ export const VideoPlayerCard = forwardRef<WebView, Props>(
         <WebView
           ref={ref}
           // baseUrl無しだとWKWebViewのoriginがnullになりYouTubeが埋め込みを拒否する
-          source={{
-            html: buildYouTubeHtml(videoId, startSeconds, initialRate),
-            baseUrl: YOUTUBE_EMBED_ORIGIN,
-          }}
+          source={source}
           style={styles.webView}
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
