@@ -19,7 +19,11 @@ import {
   type TodayMenuEntry,
 } from "@/features/practice/lib/progression";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
-import { buildPhraseRowLabel, PHRASE_ROW_HINT } from "@/features/practice/lib/phraseRowLabel";
+import {
+  buildPhraseRowLabel,
+  PHRASE_ROW_HINT,
+  phraseRowAccessibilityActionProps,
+} from "@/features/practice/lib/phraseRowLabel";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
 /** カード内に表示する行数。それ以上は「すべてのフレーズ」シートへ */
@@ -121,6 +125,7 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
               accessibilityRole="button"
               accessibilityLabel={buildPhraseRowLabel(entry, currentBpm)}
               accessibilityHint={PHRASE_ROW_HINT}
+              {...phraseRowAccessibilityActionProps((action) => handleLongPress(entry.phrase, action))}
             >
               {completed ? (
                 <Icon name="check_circle" size={20} color={colors.primary} />

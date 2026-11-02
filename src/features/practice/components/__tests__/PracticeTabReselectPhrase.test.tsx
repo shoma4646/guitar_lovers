@@ -90,7 +90,7 @@ describe("PracticeTab で練習中のフレーズを選び直す", () => {
 
     render(<PracticeTab onOpenAddVideo={jest.fn()} />);
     fireEvent.press(screen.getByRole("button", { name: "メニューを開く" }));
-    fireEvent.press(screen.getByRole("button", { name: "イントロの練習を開始" }));
+    fireEvent.press(screen.getByRole("button", { name: /^イントロ、前回/ }));
 
     const state = usePracticeStore.getState();
     expect(state.activePhrasePractice?.completedReps).toBe(2);

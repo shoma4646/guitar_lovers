@@ -17,6 +17,11 @@ import { colors, radius } from "@/shared/theme";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progression";
+import {
+  buildPhraseRowLabel,
+  PHRASE_ROW_HINT,
+  phraseRowAccessibilityActionProps,
+} from "@/features/practice/lib/phraseRowLabel";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
 import { formatDuration } from "@/features/practice/lib/formatters";
 import { MetronomeControls } from "./MetronomeControls";
@@ -144,6 +149,7 @@ export function PracticeMenuSheet({
                 const phraseAttempts = allAttempts.filter((a) => a.phraseId === entry.phrase.id);
                 const { targetBeforeToday } = entry.today;
                 const active = entry.phrase.id === activePhraseId;
+                const currentBpm = resolveCurrentBpm(entry.phrase.currentBpm, phraseAttempts);
                 return (
                   <Pressable
                     key={entry.phrase.id}
@@ -165,8 +171,9 @@ export function PracticeMenuSheet({
                       paddingHorizontal: active ? 8 : 0,
                     }}
                     accessibilityRole="button"
-                    accessibilityLabel={`${entry.phrase.name}の練習を開始`}
-                    accessibilityHint="長押しでアーカイブ・削除"
+                    accessibilityLabel={buildPhraseRowLabel(entry, currentBpm)}
+                    accessibilityHint={PHRASE_ROW_HINT}
+                    {...phraseRowAccessibilityActionProps((action) => handleLongPress(entry.phrase, action))}
                   >
                     {active ? <Icon name="check_circle" size={18} color={colors.primary} /> : <View style={{ width: 18 }} />}
                     <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.onSurface }} numberOfLines={1}>
@@ -176,7 +183,7 @@ export function PracticeMenuSheet({
                       {entry.phrase.name}
                     </Text>
                     <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}>
-                      {resolveCurrentBpm(entry.phrase.currentBpm, phraseAttempts)} → {targetBeforeToday}
+                      {currentBpm} → {targetBeforeToday}
                     </Text>
                   </Pressable>
                 );
