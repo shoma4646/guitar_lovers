@@ -1,3 +1,4 @@
+import * as fc from "fast-check";
 import {
   buildTodayMenu,
   computeTodayTargetBpm,
@@ -7,6 +8,7 @@ import {
   resolveCurrentBpm,
   resolveGraduatedAt,
 } from "../progression";
+import { BPM_MAX, BPM_MIN } from "@/shared/constants/bpm";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
 /** どの記録よりも後の日時（記録はすべて「今日より前」になる） */
@@ -331,5 +333,105 @@ describe("resolveGraduatedAt", () => {
     const firstReached = makeAttempt({ id: "first", bpm: 110, date: "2026-08-04T00:00:00.000Z" });
     const today = makeAttempt({ id: "today", bpm: 115, date: "2026-08-20T00:00:00.000Z" });
     expect(resolveGraduatedAt(phrase, [firstReached, today])).toBe("2026-08-04T00:00:00.000Z");
+  });
+});
+
+describe("「あやしい」「弾けなかった」の記録は到達BPMを上げない（性質）", () => {
+  const PHRASE_IDS = ["p1", "p2", "p3"] as const;
+  /** NOWの3日前0時(UTC)から NOW まで。当日・前日の記録が両方生成される */
+  const DATE_FROM_MS = Date.parse("2026-09-27T00:00:00.000Z");
+  const DATE_TO_MS = NOW.getTime();
+
+  const bpmArb = fc.integer({ min: BPM_MIN, max: BPM_MAX });
+  const resultArb = fc.constantFrom<PhraseAttempt["result"]>("ok", "partial", "ng");
+  const notOkResultArb = fc.constantFrom<PhraseAttempt["result"]>("partial", "ng");
+  const dateArb = fc
+    .integer({ min: DATE_FROM_MS, max: DATE_TO_MS })
+    .map((ms) => new Date(ms).toISOString());
+
+  const phraseArb = fc
+    .record({
+      id: fc.constantFrom(...PHRASE_IDS),
+      currentBpm: bpmArb,
+      targetBpm: bpmArb,
+      initialBpm: fc.option(bpmArb, { nil: undefined }),
+    })
+    .map(({ id, currentBpm, targetBpm, initialBpm }) =>
+      makePhrase({ id, currentBpm, targetBpm, initialBpm }),
+    );
+  const phrasesArb = fc.uniqueArray(phraseArb, {
+    minLength: 1,
+    maxLength: PHRASE_IDS.length,
+    selector: (p) => p.id,
+  });
+
+  function attemptsArb(result: fc.Arbitrary<PhraseAttempt["result"]>, idPrefix: string) {
+    return fc
+      .array(
+        fc.record({
+          phraseId: fc.constantFrom(...PHRASE_IDS),
+          date: dateArb,
+          bpm: bpmArb,
+          result,
+        }),
+        { maxLength: 12 },
+      )
+      .map((list) => list.map((a, i) => makeAttempt({ ...a, id: `${idPrefix}${i}` })));
+  }
+
+  function attemptsOf(attempts: PhraseAttempt[], phraseId: string): PhraseAttempt[] {
+    return attempts.filter((a) => a.phraseId === phraseId);
+  }
+
+  function menuSummary(phrases: PracticePhrase[], attempts: PhraseAttempt[]) {
+    return buildTodayMenu(phrases, attempts, NOW).map((e) => ({
+      id: e.phrase.id,
+      priority: e.priority,
+      today: e.today,
+    }));
+  }
+
+  it("弾けた以外の記録をどのBPMで足しても、到達BPM・卒業判定・卒業日時は変わらない", () => {
+    fc.assert(
+      fc.property(
+        phrasesArb,
+        attemptsArb(resultArb, "base-"),
+        attemptsArb(notOkResultArb, "extra-"),
+        (phrases, base, extra) => {
+          const withExtra = [...base, ...extra];
+          for (const phrase of phrases) {
+            const before = attemptsOf(base, phrase.id);
+            const after = attemptsOf(withExtra, phrase.id);
+            const bpmBefore = resolveCurrentBpm(phrase.currentBpm, before);
+            const bpmAfter = resolveCurrentBpm(phrase.currentBpm, after);
+            expect(bpmAfter).toBe(bpmBefore);
+            expect(isGraduated(bpmAfter, phrase.targetBpm)).toBe(
+              isGraduated(bpmBefore, phrase.targetBpm),
+            );
+            expect(resolveGraduatedAt(phrase, after)).toBe(resolveGraduatedAt(phrase, before));
+          }
+        },
+      ),
+    );
+  });
+
+  it("弾けなかったをあやしいに置き換えても、今日の目標・達成状況・メニューの優先度と並びは変わらない", () => {
+    fc.assert(
+      fc.property(phrasesArb, attemptsArb(resultArb, "a-"), (phrases, attempts) => {
+        const asPartial = attempts.map((a) =>
+          a.result === "ng" ? { ...a, result: "partial" as const } : a,
+        );
+        expect(menuSummary(phrases, asPartial)).toEqual(menuSummary(phrases, attempts));
+      }),
+    );
+  });
+
+  it("目標120のフレーズを120で「あやしい」と記録しても卒業しない", () => {
+    const phrase = makePhrase({ currentBpm: 110, targetBpm: 120 });
+    const partial = makeAttempt({ bpm: 120, result: "partial" });
+
+    expect(resolveCurrentBpm(phrase.currentBpm, [partial])).toBe(110);
+    expect(resolveGraduatedAt(phrase, [partial])).toBeUndefined();
+    expect(buildTodayMenu([phrase], [partial], NOW)[0].priority).toBe("retry");
   });
 });

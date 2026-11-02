@@ -385,10 +385,10 @@ describe("recordPhraseResult", () => {
     expect(keys.filter((k) => k.includes("__dropped_") || k.includes("__corrupt_"))).toEqual([]);
   });
 
-  it("あやしい・弾けなかった結果では到達BPMを変えない", async () => {
+  it.each([["partial"], ["ng"]] as const)("%s（あやしい・弾けなかった）の結果では到達BPMを変えない", async (result) => {
     await savePracticePhrase(makePhrase("p"));
 
-    await recordPhraseResult({ ...makeAttempt("a1", "p"), bpm: 120, result: "ng" });
+    await recordPhraseResult({ ...makeAttempt("a1", "p"), bpm: 120, result });
 
     expect((await getPracticePhrases())[0].currentBpm).toBe(80);
     expect(await getPhraseAttempts()).toHaveLength(1);
