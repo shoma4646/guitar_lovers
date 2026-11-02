@@ -3,7 +3,7 @@ import { practicePhrasesSchema } from "../practicePhrase";
 function makePhrase(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     id: "a",
-    videoId: "vid",
+    videoId: "abc123def45",
     videoTitle: "曲",
     name: "速弾きフレーズ1",
     startSec: 10,
@@ -34,6 +34,12 @@ describe("practicePhrasesSchema", () => {
       makePhrase({ initialBpm: 70, graduatedAt: "2026-08-12T00:00:00.000Z" }),
     ];
     expect(practicePhrasesSchema.safeParse(data).success).toBe(true);
+  });
+
+  it("動画IDが11文字の正しい形式でなければ失敗する", () => {
+    expect(practicePhrasesSchema.safeParse([makePhrase({ videoId: "dQw4w9WgX#t" })]).success).toBe(
+      false,
+    );
   });
 
   it("initialBpmが範囲外なら失敗する", () => {

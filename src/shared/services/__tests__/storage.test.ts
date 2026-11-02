@@ -783,6 +783,26 @@ describe("書き込み時の検証", () => {
   });
 });
 
+describe("不正な動画IDの保存データ", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("末尾が欠けた動画IDの最近の動画・お気に入りは読み出しで除外され、新たに保存もできない", async () => {
+    const valid = { videoId: "abc123def45", title: "正常", lastWatchedAt: "2026-09-01T00:00:00.000Z" };
+    const broken = { videoId: "dQw4w9WgX#t", title: "壊れたID", lastWatchedAt: "2026-09-02T00:00:00.000Z" };
+    await AsyncStorage.setItem(STORAGE_KEYS.RECENT_VIDEOS, JSON.stringify([broken, valid]));
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.FAVORITE_VIDEOS,
+      JSON.stringify([{ id: "f1", videoId: "abc#v=dQw4w", title: "壊れたID", addedAt: "2026-09-01T00:00:00.000Z" }]),
+    );
+
+    expect(await getRecentVideos()).toEqual([valid]);
+    expect(await getFavoriteVideos()).toEqual([]);
+    await expect(addRecentVideo(broken)).rejects.toBeInstanceOf(StorageValidationError);
+  });
+});
+
 describe("読み出し失敗時の扱い（上書き消失防止）", () => {
   const VIDEO_ID = "abc123def45";
   const session: PracticeSession = { id: "s-new", date: "2026-09-03T00:00:00.000Z", duration: 60 };

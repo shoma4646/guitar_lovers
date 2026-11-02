@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { youtubeVideoIdSchema } from "./youtubeVideoId";
 import { BPM_MAX, BPM_MIN } from "@/shared/constants/bpm";
 import { PLAYBACK_RATES } from "@/shared/constants/playback";
 
@@ -6,7 +7,7 @@ import { PLAYBACK_RATES } from "@/shared/constants/playback";
 export const practicePhraseSchema = z
   .object({
     id: z.string(),
-    videoId: z.string(),
+    videoId: youtubeVideoIdSchema,
     videoTitle: z.string(),
     /** ユーザーが付ける名前（例: 速弾きフレーズ1） */
     name: z.string(),

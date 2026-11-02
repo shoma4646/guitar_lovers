@@ -58,6 +58,29 @@ describe("extractVideoId", () => {
   it("不正なURLはnullを返す", () => {
     expect(extractVideoId("https://example.com/not-a-video")).toBeNull();
   });
+
+  it("embed URLからIDを抽出する", () => {
+    expect(extractVideoId("https://www.youtube.com/embed/abcdefghijk?start=10")).toBe(
+      "abcdefghijk",
+    );
+  });
+
+  it("スキームを省いたURLや末尾の#付きURLからもIDを抽出する", () => {
+    expect(extractVideoId("youtube.com/watch?v=abcdefghijk")).toBe("abcdefghijk");
+    expect(extractVideoId("https://youtu.be/abcdefghijk#t=30")).toBe("abcdefghijk");
+  });
+
+  it.each([
+    ["YouTube以外のホストのクエリに含まれるURL", "https://evil.example/?next=youtu.be/dQw4w9WgXcQ"],
+    ["末尾が欠けたyoutu.beのURL", "https://youtu.be/dQw4w9WgX#t=30"],
+    ["vが11文字に満たずハッシュに別のvがあるURL", "https://www.youtube.com/watch?v=abc#v=dQw4w9WgXcQ"],
+    ["youtube.comで終わる別ドメイン", "https://notyoutube.com/watch?v=dQw4w9WgXcQ"],
+    ["IDに記号を含むURL", "https://www.youtube.com/watch?v=dQw4w9W%27%3E"],
+    ["ユーザー情報で別ホストに向けたURL", "https://youtube.com@evil.example/watch?v=dQw4w9WgXcQ"],
+    ["動画IDの位置にない11文字", "https://www.youtube.com/channel/dQw4w9WgXcQ"],
+  ])("%sはnullを返す", (_label, input) => {
+    expect(extractVideoId(input)).toBeNull();
+  });
 });
 
 describe("startPhrasePractice", () => {

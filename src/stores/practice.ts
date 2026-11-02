@@ -6,6 +6,7 @@
 import { create } from "zustand";
 import type { ABLoop, Bookmark, PracticePhrase } from "@/shared/types/models";
 import { clampBpm } from "@/shared/constants/bpm";
+import { isYouTubeVideoId } from "@/shared/lib/schemas/youtubeVideoId";
 import type { PlaybackRate } from "@/shared/constants/playback";
 
 /** 練習タブ内のサブタブ */
@@ -168,18 +169,36 @@ interface PracticeState {
   getPracticeMinutes: () => number;
 }
 
-/** URLからYouTube動画IDを抽出する */
-function extractVideoId(url: string): string | null {
-  const patterns = [
-    /youtube\.com\/watch\?(?:[^#\s]*&)?v=([^&?/\s]{11})/,
-    /(?:youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/|youtube\.com\/live\/)([^&?/\s]{11})/,
-    /^([a-zA-Z0-9_-]{11})$/,
-  ];
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
+// RNのURLクラスは正規表現による簡易実装でJest(Node)と解析結果が異なるため、new URL()を使わず自前で分解する
+const YOUTUBE_URL_PATTERN =
+  /^(?:https?:\/\/)?((?:[a-z0-9-]+\.)*(?:youtube\.com|youtu\.be))(?::\d+)?(\/[^?#]*)?(?:\?([^#]*))?(?:#.*)?$/i;
+
+const PATH_ID_PREFIXES = ["embed", "shorts", "live"];
+
+function videoIdCandidate(host: string, path: string, query: string): string | undefined {
+  const segments = path.split("/").filter((s) => s !== "");
+  if (host.toLowerCase().endsWith("youtu.be")) return segments[0];
+  if (segments[0] === "watch") {
+    return query
+      .split("&")
+      .find((param) => param.startsWith("v="))
+      ?.slice("v=".length);
   }
-  return null;
+  if (PATH_ID_PREFIXES.includes(segments[0])) return segments[1];
+  return undefined;
+}
+
+/**
+ * youtube.com / youtu.be（サブドメイン含む）のURL、または動画IDそのものから動画IDを取り出す
+ * ホストが違う・IDが11文字の正しい形式でない場合はnullを返す
+ */
+function extractVideoId(input: string): string | null {
+  if (isYouTubeVideoId(input)) return input;
+  const match = input.match(YOUTUBE_URL_PATTERN);
+  if (!match) return null;
+  const [, host, path = "", query = ""] = match;
+  const candidate = videoIdCandidate(host, path, query);
+  return candidate !== undefined && isYouTubeVideoId(candidate) ? candidate : null;
 }
 
 /** フレーズの区間・再生速度でそのフレーズの動画を読み込むときのオプション */
