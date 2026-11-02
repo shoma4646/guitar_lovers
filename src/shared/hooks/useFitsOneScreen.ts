@@ -6,10 +6,13 @@ import {
   TAB_BAR_CONTENT_HEIGHT,
 } from "@/shared/constants/layout";
 
-/** タブ画面の作業領域の高さと文字サイズ設定から、スクロールなしの1画面に収まるかを返す */
-export function useFitsOneScreen(): boolean {
+/**
+ * タブ画面の作業領域の高さと文字サイズ設定から、スクロールなしの1画面に収まるかを返す
+ * @param minBudget - 1画面に収めるのに必要な作業領域の高さ（既定は MIN_ONE_SCREEN_BUDGET）
+ */
+export function useFitsOneScreen(minBudget: number = MIN_ONE_SCREEN_BUDGET): boolean {
   const { height, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const budget = height - insets.top - (TAB_BAR_CONTENT_HEIGHT + insets.bottom);
-  return budget >= MIN_ONE_SCREEN_BUDGET && fontScale <= MAX_ONE_SCREEN_FONT_SCALE;
+  return budget >= minBudget && fontScale <= MAX_ONE_SCREEN_FONT_SCALE;
 }

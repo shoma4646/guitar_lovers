@@ -48,7 +48,11 @@ import { usePausePlayerOnBlur } from "@/features/practice/hooks/usePausePlayerOn
 import { useSyncPlayerLoop } from "@/features/practice/hooks/useSyncPlayerLoop";
 import { useKeepAwakeWhileFocused } from "@/shared/hooks/useKeepAwakeWhileFocused";
 import { useFitsOneScreen } from "@/shared/hooks/useFitsOneScreen";
-import { SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
+import {
+  MIN_ONE_SCREEN_BUDGET,
+  MIN_ONE_SCREEN_BUDGET_WHILE_PRACTICING,
+  SCREEN_HORIZONTAL_PADDING,
+} from "@/shared/constants/layout";
 import { useLocalDay } from "@/shared/hooks/useLocalDay";
 import { localDayToDate } from "@/shared/lib/localDay";
 import {
@@ -301,7 +305,9 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   }, [activePractice, beginResultEntry]);
 
   const localDay = useLocalDay();
-  const fitsOneScreen = useFitsOneScreen();
+  const fitsOneScreen = useFitsOneScreen(
+    activePractice ? MIN_ONE_SCREEN_BUDGET_WHILE_PRACTICING : MIN_ONE_SCREEN_BUDGET,
+  );
   const todayMenu = useMemo(
     () => buildTodayMenu(allPhrases, allPhraseAttempts, localDayToDate(localDay)),
     [allPhrases, allPhraseAttempts, localDay],
