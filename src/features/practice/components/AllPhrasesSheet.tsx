@@ -13,7 +13,11 @@ import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progression";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
-import { buildPhraseRowLabel, PHRASE_ROW_HINT } from "@/features/practice/lib/phraseRowLabel";
+import {
+  buildPhraseRowLabel,
+  PHRASE_ROW_HINT,
+  phraseRowAccessibilityActionProps,
+} from "@/features/practice/lib/phraseRowLabel";
 import type { PracticePhrase } from "@/shared/types/models";
 
 type Props = {
@@ -62,6 +66,7 @@ export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
                   accessibilityRole="button"
                   accessibilityLabel={buildPhraseRowLabel(entry, currentBpm)}
                   accessibilityHint={PHRASE_ROW_HINT}
+                  {...phraseRowAccessibilityActionProps((action) => handleLongPress(entry.phrase, action))}
                 >
                   <Text
                     style={{ flex: 1, fontSize: 15, fontWeight: "600", color: colors.onSurface }}
