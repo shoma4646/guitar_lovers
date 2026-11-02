@@ -16,6 +16,15 @@ type Props = {
   grow?: boolean;
 };
 
+// 幅320・文字1.3倍で6等分すると「1.25x」は約0.6倍まで縮める必要があり、フォント差の余裕を見た下限
+const GROW_MIN_FONT_SCALE = 0.5;
+
+const growTextFitProps = {
+  numberOfLines: 1,
+  adjustsFontSizeToFit: true,
+  minimumFontScale: GROW_MIN_FONT_SCALE,
+} as const;
+
 export function Chip({ label, selected, onPress, accessibilityLabel, grow = false }: Props) {
   return (
     <Pressable
@@ -27,7 +36,7 @@ export function Chip({ label, selected, onPress, accessibilityLabel, grow = fals
       style={{
         flex: grow ? 1 : undefined,
         height: 44,
-        paddingHorizontal: grow ? 0 : 14,
+        paddingHorizontal: grow ? 2 : 14,
         borderRadius: radius.sm,
         alignItems: "center",
         justifyContent: "center",
@@ -37,6 +46,7 @@ export function Chip({ label, selected, onPress, accessibilityLabel, grow = fals
       }}
     >
       <Text
+        {...(grow ? growTextFitProps : undefined)}
         maxFontSizeMultiplier={1.3}
         style={{
           fontSize: 14,
