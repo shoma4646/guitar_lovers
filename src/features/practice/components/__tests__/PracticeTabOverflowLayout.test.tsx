@@ -89,16 +89,17 @@ describe("PracticeTab の練習中バーの位置", () => {
     render(<PracticeTab onOpenAddVideo={jest.fn()} />);
 
     const scroll = screen.getByTestId("practice-overflow-scroll");
+    expect(scroll.props.scrollEnabled).toBe(true);
     expect(within(scroll).getByRole("button", { name: "メニューを開く" })).toBeTruthy();
     expect(within(scroll).queryByTestId("practice-session-bar")).toBeNull();
     expect(screen.getByTestId("practice-session-bar")).toBeTruthy();
   });
 
-  it("1画面に収まるときはスクロール領域を作らない", () => {
+  it("1画面に収まるときは上側をスクロールさせない", () => {
     mockFitsOneScreen = true;
     render(<PracticeTab onOpenAddVideo={jest.fn()} />);
 
-    expect(screen.queryByTestId("practice-overflow-scroll")).toBeNull();
+    expect(screen.getByTestId("practice-overflow-scroll").props.scrollEnabled).toBe(false);
     expect(screen.getByTestId("practice-session-bar")).toBeTruthy();
   });
 });

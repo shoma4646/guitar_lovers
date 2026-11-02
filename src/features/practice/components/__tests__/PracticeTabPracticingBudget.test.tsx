@@ -68,7 +68,18 @@ jest.mock("@/features/practice/hooks/useMetronomeEngine", () => ({
   useMetronomeEngine: () => ({ bpm: 85, enabled: false, activeBeat: -1, beatsPerBar: 4 }),
 }));
 jest.mock("@/shared/hooks/useKeepAwakeWhileFocused", () => ({ useKeepAwakeWhileFocused: () => {} }));
-jest.mock("../VideoPlayerCard", () => ({ VideoPlayerCard: () => null }));
+let mockPlayerMountCount = 0;
+jest.mock("../VideoPlayerCard", () => {
+  const { useEffect } = jest.requireActual<typeof import("react")>("react");
+  return {
+    VideoPlayerCard: () => {
+      useEffect(() => {
+        mockPlayerMountCount += 1;
+      }, []);
+      return null;
+    },
+  };
+});
 jest.mock("../PracticeControlPanel", () => ({ PracticeControlPanel: () => null }));
 jest.mock("../PracticeSessionBar", () => {
   const { View } = jest.requireActual<typeof import("react-native")>("react-native");
@@ -82,6 +93,7 @@ const initialState = usePracticeStore.getState();
 beforeEach(() => {
   usePracticeStore.setState(initialState, true);
   mockWindow.height = 852;
+  mockPlayerMountCount = 0;
 });
 
 function startPractice() {
@@ -96,28 +108,45 @@ describe("PracticeTab の練習中の高さ予算（標準の文字サイズ）"
     render(<PracticeTab onOpenAddVideo={jest.fn()} />);
 
     const scroll = screen.getByTestId("practice-overflow-scroll");
+    expect(scroll.props.scrollEnabled).toBe(true);
     expect(within(scroll).getByRole("button", { name: "メニューを開く" })).toBeTruthy();
     expect(within(scroll).queryByTestId("practice-session-bar")).toBeNull();
     expect(screen.getByTestId("practice-session-bar")).toBeTruthy();
   });
 
-  it("同じ端末でも練習中でなく動画を開いているだけなら、今までどおりスクロール領域を作らない", () => {
+  it("同じ端末でも練習中でなく動画を開いているだけなら、今までどおり上側をスクロールさせない", () => {
     act(() => {
       usePracticeStore.getState().loadVideo(PHRASE.videoId, PHRASE.videoTitle);
     });
     render(<PracticeTab onOpenAddVideo={jest.fn()} />);
 
     expect(screen.getByRole("button", { name: "メニューを開く" })).toBeTruthy();
-    expect(screen.queryByTestId("practice-overflow-scroll")).toBeNull();
+    expect(screen.getByTestId("practice-overflow-scroll").props.scrollEnabled).toBe(false);
     expect(screen.queryByTestId("practice-session-bar")).toBeNull();
   });
 
-  it("Pro Max 相当（高さ932）の練習中は、今までどおりスクロール領域を作らない", () => {
+  it("Pro Max 相当（高さ932）の練習中は、今までどおり上側をスクロールさせない", () => {
     mockWindow.height = 932;
     startPractice();
     render(<PracticeTab onOpenAddVideo={jest.fn()} />);
 
-    expect(screen.queryByTestId("practice-overflow-scroll")).toBeNull();
+    expect(screen.getByTestId("practice-overflow-scroll").props.scrollEnabled).toBe(false);
     expect(screen.getByTestId("practice-session-bar")).toBeTruthy();
+  });
+
+  it("高さ852で準備済みの動画のまま練習を始めて終えても、動画プレイヤーは作り直されない", () => {
+    act(() => {
+      usePracticeStore.getState().loadVideo(PHRASE.videoId, PHRASE.videoTitle);
+      usePracticeStore.getState().setDuration(120);
+    });
+    render(<PracticeTab onOpenAddVideo={jest.fn()} />);
+    expect(mockPlayerMountCount).toBe(1);
+
+    startPractice();
+    expect(mockPlayerMountCount).toBe(1);
+    act(() => {
+      usePracticeStore.getState().setActivePhrasePractice(null);
+    });
+    expect(mockPlayerMountCount).toBe(1);
   });
 });
