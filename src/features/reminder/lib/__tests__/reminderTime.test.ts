@@ -3,6 +3,7 @@ import {
   clampReminderTime,
   computeNextFireAt,
   formatReminderTime,
+  formatReminderTimeForSpeech,
   resolveReminderTime,
   shiftReminderTime,
 } from "../reminderTime";
@@ -266,5 +267,13 @@ describe("formatReminderTime", () => {
   it("分を2桁で表示する", () => {
     expect(formatReminderTime({ hour: 7, minute: 0 })).toBe("7:00");
     expect(formatReminderTime({ hour: 21, minute: 45 })).toBe("21:45");
+  });
+});
+
+describe("formatReminderTimeForSpeech", () => {
+  it("分があれば「◯時◯分」、ちょうどなら「◯時」にする", () => {
+    expect(formatReminderTimeForSpeech({ hour: 20, minute: 30 })).toBe("20時30分");
+    expect(formatReminderTimeForSpeech({ hour: 7, minute: 0 })).toBe("7時");
+    expect(formatReminderTimeForSpeech({ hour: 21, minute: 15 })).toBe("21時15分");
   });
 });

@@ -167,3 +167,11 @@ export function shiftReminderTime(time: ReminderTime, deltaMinutes: number): Rem
 export function formatReminderTime(time: ReminderTime): string {
   return `${time.hour}:${String(time.minute).padStart(2, "0")}`;
 }
+
+/**
+ * 送信時刻を読み上げ用の「21時30分」形式（ちょうどの時刻は「21時」）の文字列にする
+ * @param time - 読み上げる時刻
+ */
+export function formatReminderTimeForSpeech(time: ReminderTime): string {
+  return time.minute === 0 ? `${time.hour}時` : `${time.hour}時${time.minute}分`;
+}
