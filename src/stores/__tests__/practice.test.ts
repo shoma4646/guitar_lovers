@@ -108,6 +108,75 @@ describe("startPhrasePractice", () => {
   });
 });
 
+describe("startPracticeOnLoadedVideo", () => {
+  function prepareLoadedVideo() {
+    const store = usePracticeStore.getState();
+    store.loadVideo("abc123def45", "テスト動画");
+    store.setDuration(120);
+    store.setABLoop({ pointA: 10, pointB: 20, enabled: true });
+    store.addBookmark({ id: "b1", time: 15, label: "サビ前", createdAt: "2026-09-01T00:00:00.000Z" });
+  }
+
+  it("読み込み済みの動画を作り直さず、ブックマークも残したまま練習中にする", () => {
+    prepareLoadedVideo();
+    const before = usePracticeStore.getState();
+
+    usePracticeStore.getState().startPracticeOnLoadedVideo(makePhrase(), 90);
+
+    const after = usePracticeStore.getState();
+    expect(after.videoLoadNonce).toBe(before.videoLoadNonce);
+    expect(after.videoRetargetNonce).toBe(before.videoRetargetNonce);
+    expect(after.bookmarks).toEqual(before.bookmarks);
+    expect(after.abLoop).toEqual(before.abLoop);
+    expect(after.activePhrasePractice?.phrase.id).toBe("p1");
+  });
+
+  it("目標BPM・目標回数・回数・開始時刻・メトロノームBPMは、選び直して始める経路と同じ値になる", () => {
+    jest.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+    const phrase = makePhrase({ id: "p2" });
+
+    prepareLoadedVideo();
+    usePracticeStore.getState().startPracticeOnLoadedVideo(phrase, 90);
+    const viaSave = usePracticeStore.getState();
+
+    usePracticeStore.setState(initialState, true);
+    usePracticeStore.getState().startPhrasePractice(phrase, 90);
+    const viaReselect = usePracticeStore.getState();
+
+    expect(viaSave.activePhrasePractice).toEqual(viaReselect.activePhrasePractice);
+    expect(viaSave.metronomeBpm).toBe(viaReselect.metronomeBpm);
+    expect(viaSave.pendingAttemptId).toBeNull();
+    jest.restoreAllMocks();
+  });
+
+  it("別のフレーズの練習中でも、新しいフレーズの回数0から始め、前の結果記録用IDを持ち越さない", () => {
+    const store = usePracticeStore.getState();
+    store.startPhrasePractice(makePhrase({ id: "old", videoId: "abc123def45" }), 85);
+    store.setDuration(120);
+    store.incrementCompletedReps();
+    store.beginResultEntry("attempt-old");
+
+    usePracticeStore.getState().startPracticeOnLoadedVideo(makePhrase({ id: "new" }), 90);
+
+    const state = usePracticeStore.getState();
+    expect(state.activePhrasePractice).toMatchObject({ phrase: { id: "new" }, completedReps: 0, goalBpm: 90 });
+    expect(state.pendingAttemptId).toBeNull();
+    expect(state.metronomeBpm).toBe(90);
+  });
+
+  it("読み込み中の動画と別の動画のフレーズなら、そのフレーズの動画を読み込んで始める", () => {
+    prepareLoadedVideo();
+    const before = usePracticeStore.getState();
+
+    usePracticeStore.getState().startPracticeOnLoadedVideo(makePhrase({ videoId: "zyx987wvu65" }), 90);
+
+    const after = usePracticeStore.getState();
+    expect(after.loadedVideoId).toBe("zyx987wvu65");
+    expect(after.videoLoadNonce).toBe(before.videoLoadNonce + 1);
+    expect(after.activePhrasePractice?.completedReps).toBe(0);
+  });
+});
+
 describe("restorePhraseSettings", () => {
   it("区間を解除した後でも、フレーズの開始・終了位置・有効なABループに戻し、回数と開始時刻は保つ", () => {
     const { startPhrasePractice, incrementCompletedReps, clearABLoop, setPlaybackRate, setMetronomeBpm } =

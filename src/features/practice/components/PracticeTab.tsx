@@ -94,6 +94,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const removeBookmark = usePracticeStore((s) => s.removeBookmark);
   const setPlaybackRate = usePracticeStore((s) => s.setPlaybackRate);
   const startPhrasePractice = usePracticeStore((s) => s.startPhrasePractice);
+  const startPracticeOnLoadedVideo = usePracticeStore((s) => s.startPracticeOnLoadedVideo);
   const restorePhraseSettings = usePracticeStore((s) => s.restorePhraseSettings);
   const startPracticeTimer = usePracticeStore((s) => s.startPracticeTimer);
   const stopPracticeTimer = usePracticeStore((s) => s.stopPracticeTimer);
@@ -250,7 +251,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         throw new Error("区間が不正");
       }
       const now = new Date().toISOString();
-      await savePhraseAsync({
+      const phrase: PracticePhrase = {
         id: randomUUID(),
         videoId: loadedVideoId,
         videoTitle: videoTitle || `YouTube動画 (${loadedVideoId})`,
@@ -263,13 +264,28 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         playbackRate,
         createdAt: now,
         updatedAt: now,
-      });
+      };
+      await savePhraseAsync(phrase);
       setShowSavePhrase(false);
-      Alert.alert("保存しました", `「${input.name}」を今日の練習メニューに追加しました`, [
-        { text: "OK", onPress: () => void promptReminderPermission() },
-      ]);
+      const announceSaved = () =>
+        Alert.alert("保存しました", `「${input.name}」を今日の練習メニューに追加しました`, [
+          { text: "OK", onPress: () => void promptReminderPermission() },
+        ]);
+      confirmSwitch(() => {
+        startPracticeOnLoadedVideo(phrase, input.currentBpm);
+        announceSaved();
+      }, announceSaved);
     },
-    [loadedVideoId, videoTitle, abLoop, playbackRate, savePhraseAsync, promptReminderPermission],
+    [
+      loadedVideoId,
+      videoTitle,
+      abLoop,
+      playbackRate,
+      savePhraseAsync,
+      promptReminderPermission,
+      confirmSwitch,
+      startPracticeOnLoadedVideo,
+    ],
   );
 
   // 確認ダイアログを経由せずフレーズ練習を開始する。「記録して次の1本へ」など、直前に
