@@ -5,8 +5,10 @@
  * OSで通知が拒否されている場合は端末の設定への導線を出す
  */
 
-import { View, Text, Pressable, Switch, Linking } from "react-native";
+import { View, Text, Pressable, Switch, Linking, type AccessibilityActionEvent } from "react-native";
 import { colors } from "@/shared/theme";
+import { Icon } from "@/shared/components/atoms/Icon";
+import { useHoldRepeat } from "@/shared/hooks/useHoldRepeat";
 import { useReminderSettings } from "@/features/reminder/api/useReminderSettings";
 import { useReminderPermission } from "@/features/reminder/api/useReminderPermission";
 import { useNextReminderPlan } from "@/features/reminder/api/useNextReminderPlan";
@@ -14,12 +16,14 @@ import { useUpdateReminderSettings } from "@/features/reminder/api/useUpdateRemi
 import { ensureReminderPermission } from "@/features/reminder/services/reminderScheduler";
 import {
   formatReminderTime,
+  formatReminderTimeForSpeech,
   shiftReminderTime,
 } from "@/features/reminder/lib/reminderTime";
 import type { ReminderTime } from "@/shared/lib/schemas/reminderSettings";
 
 const STEP_MINUTES = 30;
 const DEFAULT_MANUAL_TIME: ReminderTime = { hour: 20, minute: 0 };
+const AUTO_TIME_LABEL = "自動（ふだんの練習時刻に合わせる）";
 
 const rowBorder = { borderBottomWidth: 1, borderBottomColor: colors.outlineVariant };
 
@@ -29,26 +33,34 @@ function formatFireAt(date: Date): string {
 }
 
 type StepButtonProps = {
-  label: string;
+  icon: "add" | "remove";
   accessibilityLabel: string;
-  onPress: () => void;
+  disabled: boolean;
+  onStep: () => void;
 };
 
-function StepButton({ label, accessibilityLabel, onPress }: StepButtonProps) {
+function StepButton({ icon, accessibilityLabel, disabled, onStep }: StepButtonProps) {
+  const hold = useHoldRepeat(onStep, disabled);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={hold.onPress}
+      onPressIn={hold.onPressIn}
+      onPressOut={hold.onPressOut}
+      disabled={disabled}
       className="items-center justify-center active:opacity-70"
       style={{
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: colors.surfaceContainerLow,
+        opacity: disabled ? 0.4 : 1,
       }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint="長押しで連続変更"
+      accessibilityState={{ disabled }}
     >
-      <Text style={{ color: colors.onSurface, fontSize: 18, fontWeight: "600" }}>{label}</Text>
+      <Icon name={icon} size={20} color={colors.onSurface} />
     </Pressable>
   );
 }
@@ -84,11 +96,24 @@ export function ReminderSettingsSection() {
     updateSettings({ enabled: true });
   };
 
+  const baseTime = settings.timeOverride ?? (nextPlan?.fireAt
+    ? { hour: nextPlan.fireAt.getHours(), minute: nextPlan.fireAt.getMinutes() as ReminderTime["minute"] }
+    : DEFAULT_MANUAL_TIME);
+  const canShift = (deltaMinutes: number) => {
+    const shifted = shiftReminderTime(baseTime, deltaMinutes);
+    return shifted.hour !== baseTime.hour || shifted.minute !== baseTime.minute;
+  };
+  const canShiftEarlier = canShift(-STEP_MINUTES);
+  const canShiftLater = canShift(STEP_MINUTES);
+
   const handleShift = (deltaMinutes: number) => {
-    const base = settings.timeOverride ?? (nextPlan?.fireAt
-      ? { hour: nextPlan.fireAt.getHours(), minute: nextPlan.fireAt.getMinutes() as ReminderTime["minute"] }
-      : DEFAULT_MANUAL_TIME);
-    updateSettings({ timeOverride: shiftReminderTime(base, deltaMinutes) });
+    if (!canShift(deltaMinutes)) return;
+    updateSettings({ timeOverride: shiftReminderTime(baseTime, deltaMinutes) });
+  };
+
+  const handleTimeAction = (event: AccessibilityActionEvent) => {
+    if (event.nativeEvent.actionName === "increment") handleShift(STEP_MINUTES);
+    if (event.nativeEvent.actionName === "decrement") handleShift(-STEP_MINUTES);
   };
 
   return (
@@ -128,26 +153,39 @@ export function ReminderSettingsSection() {
       )}
 
       <View className="flex-row items-center justify-between px-lg py-md" style={rowBorder}>
-        <View style={{ flex: 1 }}>
+        <View
+          style={{ flex: 1, paddingRight: 12 }}
+          accessible
+          accessibilityRole="adjustable"
+          accessibilityLabel="リマインドの時刻"
+          accessibilityValue={{
+            text: settings.timeOverride ? formatReminderTimeForSpeech(settings.timeOverride) : AUTO_TIME_LABEL,
+          }}
+          accessibilityActions={[
+            { name: "increment", label: "30分遅くする" },
+            { name: "decrement", label: "30分早くする" },
+          ]}
+          onAccessibilityAction={handleTimeAction}
+        >
           <Text className="text-body-md" style={{ color: colors.onSurface }}>
             時刻
           </Text>
           <Text className="text-caption" style={{ color: colors.onSurfaceVariant }}>
-            {settings.timeOverride
-              ? formatReminderTime(settings.timeOverride)
-              : "自動（ふだんの練習時刻に合わせる）"}
+            {settings.timeOverride ? formatReminderTime(settings.timeOverride) : AUTO_TIME_LABEL}
           </Text>
         </View>
         <View className="flex-row items-center" style={{ gap: 8 }}>
           <StepButton
-            label="−"
+            icon="remove"
             accessibilityLabel="時刻を30分早くする"
-            onPress={() => handleShift(-STEP_MINUTES)}
+            disabled={!canShiftEarlier}
+            onStep={() => handleShift(-STEP_MINUTES)}
           />
           <StepButton
-            label="＋"
+            icon="add"
             accessibilityLabel="時刻を30分遅くする"
-            onPress={() => handleShift(STEP_MINUTES)}
+            disabled={!canShiftLater}
+            onStep={() => handleShift(STEP_MINUTES)}
           />
         </View>
       </View>
