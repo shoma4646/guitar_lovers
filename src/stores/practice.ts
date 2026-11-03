@@ -136,6 +136,11 @@ interface PracticeState {
    */
   startPhrasePractice: (phrase: PracticePhrase, goalBpm: number) => void;
   /**
+   * 読み込み済みの動画のまま、練習中のフレーズとメトロノームBPMだけを設定して回数0から始める
+   * 動画・区間・ブックマークは作り直さない。フレーズの動画が読み込み中の動画と違えばstartPhrasePracticeと同じく読み込む
+   */
+  startPracticeOnLoadedVideo: (phrase: PracticePhrase, goalBpm: number) => void;
+  /**
    * 練習中のフレーズの区間・再生速度・メトロノームBPMだけをフレーズの設定に戻す
    * 弾き終えた回数と開始時刻は保つ。練習中のフレーズと別のフレーズを渡したときは何もしない
    */
@@ -210,6 +215,16 @@ function phraseLoadOptions(phrase: PracticePhrase) {
   };
 }
 
+function newActivePhrasePractice(phrase: PracticePhrase, goalBpm: number): ActivePhrasePractice {
+  return {
+    phrase,
+    goalBpm,
+    targetReps: DEFAULT_TARGET_REPS,
+    completedReps: 0,
+    startedAt: Date.now(),
+  };
+}
+
 /**
  * 練習画面グローバルストア
  */
@@ -273,13 +288,19 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   startPhrasePractice: (phrase, goalBpm) => {
     get().loadVideo(phrase.videoId, phrase.videoTitle, phraseLoadOptions(phrase));
     set({
-      activePhrasePractice: {
-        phrase,
-        goalBpm,
-        targetReps: DEFAULT_TARGET_REPS,
-        completedReps: 0,
-        startedAt: Date.now(),
-      },
+      activePhrasePractice: newActivePhrasePractice(phrase, goalBpm),
+      metronomeBpm: clampBpm(goalBpm),
+    });
+  },
+
+  startPracticeOnLoadedVideo: (phrase, goalBpm) => {
+    if (get().loadedVideoId !== phrase.videoId) {
+      get().startPhrasePractice(phrase, goalBpm);
+      return;
+    }
+    set({
+      activePhrasePractice: newActivePhrasePractice(phrase, goalBpm),
+      pendingAttemptId: null,
       metronomeBpm: clampBpm(goalBpm),
     });
   },

@@ -9,11 +9,15 @@ import { useCallback } from "react";
 import { Alert } from "react-native";
 import { usePracticeStore } from "@/stores/practice";
 
-export function useConfirmPhraseSwitch(): (proceed: () => void) => void {
+/**
+ * 未記録の回数があれば確認してから切り替える関数を返す
+ * 返す関数の proceed は切り替えるとき、onCancel は確認で「キャンセル」を選んだときに呼ぶ
+ */
+export function useConfirmPhraseSwitch(): (proceed: () => void, onCancel?: () => void) => void {
   const activePractice = usePracticeStore((s) => s.activePhrasePractice);
 
   return useCallback(
-    (proceed: () => void) => {
+    (proceed: () => void, onCancel?: () => void) => {
       if (!activePractice || activePractice.completedReps === 0) {
         proceed();
         return;
@@ -22,7 +26,7 @@ export function useConfirmPhraseSwitch(): (proceed: () => void) => void {
         "練習中の記録が消えます",
         `「${activePractice.phrase.name}」を${activePractice.completedReps}回弾いた記録はまだ保存されていません。切り替えると失われます。`,
         [
-          { text: "キャンセル", style: "cancel" },
+          { text: "キャンセル", style: "cancel", onPress: onCancel },
           { text: "切り替える", style: "destructive", onPress: proceed },
         ],
       );
