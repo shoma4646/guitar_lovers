@@ -648,10 +648,21 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
 
 /** 1画面に収まらないときだけ中身をスクロールさせる。練習中バーをこの外に置き、下端に固定したまま届くようにする */
 function ScrollWhenOverflow({ enabled, children }: { enabled: boolean; children: ReactNode }) {
+  const scrollRef = useRef<ScrollView>(null);
+  const wasEnabledRef = useRef(enabled);
+  useEffect(() => {
+    // 新アーキテクチャのiOS ScrollViewは中身が縮んでも位置を補正しないため、無効化時に先頭へ戻さないとヘッダーが切れたまま戻せなくなる
+    if (wasEnabledRef.current && !enabled) {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }
+    wasEnabledRef.current = enabled;
+  }, [enabled]);
+
   return (
     // 切り替えでScrollViewの有無を変えると動画プレイヤーが再マウントされるため、常に描画してscrollEnabledだけ切り替える。
     // ScrollViewは枠外を切り取るので、動画のフルブリード表示が欠けないよう画面の横paddingをScrollView内側へ移す
     <ScrollView
+      ref={scrollRef}
       testID="practice-overflow-scroll"
       scrollEnabled={enabled}
       style={{ flex: 1, marginHorizontal: -SCREEN_HORIZONTAL_PADDING }}

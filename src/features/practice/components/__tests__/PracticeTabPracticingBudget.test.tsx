@@ -1,4 +1,5 @@
 import { act, render, screen, within } from "@testing-library/react-native";
+import { ScrollView } from "react-native";
 import { usePracticeStore } from "@/stores/practice";
 import type { PracticePhrase } from "@/shared/types/models";
 import { PracticeTab } from "../PracticeTab";
@@ -148,5 +149,72 @@ describe("PracticeTab の練習中の高さ予算（標準の文字サイズ）"
       usePracticeStore.getState().setActivePhrasePractice(null);
     });
     expect(mockPlayerMountCount).toBe(1);
+  });
+});
+
+describe("PracticeTab の上側スクロールが無効に戻るときの位置", () => {
+  let scrollToSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    scrollToSpy = jest.spyOn(ScrollView.prototype, "scrollTo");
+  });
+
+  afterEach(() => {
+    scrollToSpy.mockRestore();
+  });
+
+  it("高さ852で練習中にスクロールできる状態から練習を終えると、上側を先頭へアニメーションなしで戻す", () => {
+    startPractice();
+    render(<PracticeTab onOpenAddVideo={jest.fn()} />);
+    expect(screen.getByTestId("practice-overflow-scroll").props.scrollEnabled).toBe(true);
+    scrollToSpy.mockClear();
+
+    act(() => {
+      usePracticeStore.getState().setActivePhrasePractice(null);
+    });
+
+    expect(screen.getByTestId("practice-overflow-scroll").props.scrollEnabled).toBe(false);
+    expect(scrollToSpy).toHaveBeenCalledTimes(1);
+    expect(scrollToSpy).toHaveBeenCalledWith({ y: 0, animated: false });
+  });
+
+  it("スクロールできる状態のまま再描画されても、スクロール位置は動かさない", () => {
+    startPractice();
+    render(<PracticeTab onOpenAddVideo={jest.fn()} />);
+    scrollToSpy.mockClear();
+
+    act(() => {
+      usePracticeStore.getState().incrementCompletedReps();
+    });
+
+    expect(screen.getByTestId("practice-overflow-scroll").props.scrollEnabled).toBe(true);
+    expect(scrollToSpy).not.toHaveBeenCalled();
+  });
+
+  it("Pro Max 相当（高さ932）で練習を始めて終えるなど、スクロールできない状態のままならスクロール位置は動かさない", () => {
+    mockWindow.height = 932;
+    startPractice();
+    render(<PracticeTab onOpenAddVideo={jest.fn()} />);
+    scrollToSpy.mockClear();
+
+    act(() => {
+      usePracticeStore.getState().setActivePhrasePractice(null);
+    });
+
+    expect(screen.getByTestId("practice-overflow-scroll").props.scrollEnabled).toBe(false);
+    expect(scrollToSpy).not.toHaveBeenCalled();
+  });
+
+  it("練習を始めてスクロールできる状態になるときは、スクロール位置は動かさない", () => {
+    act(() => {
+      usePracticeStore.getState().loadVideo(PHRASE.videoId, PHRASE.videoTitle);
+    });
+    render(<PracticeTab onOpenAddVideo={jest.fn()} />);
+    scrollToSpy.mockClear();
+
+    startPractice();
+
+    expect(screen.getByTestId("practice-overflow-scroll").props.scrollEnabled).toBe(true);
+    expect(scrollToSpy).not.toHaveBeenCalled();
   });
 });
