@@ -25,6 +25,9 @@ export const TAB_LABEL_MARGIN_TOP = 3;
 /** 1画面に収めるために最低限必要な作業領域の高さ。これを下回る端末ではスクロールへ切り替える */
 export const MIN_ONE_SCREEN_BUDGET = 680;
 
+/** 練習中（練習中バーと「前回・卒業まで」の行が増える）に1画面へ収めるために必要な作業領域の高さ */
+export const MIN_ONE_SCREEN_BUDGET_WHILE_PRACTICING = 740;
+
 /** ScreenFrameの左右パディング。フルブリード表示したい要素はこの値ぶん逆マージンで打ち消す */
 export const SCREEN_HORIZONTAL_PADDING = 16;
 
