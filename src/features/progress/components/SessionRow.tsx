@@ -3,7 +3,7 @@
  *
  * - 左: 角丸アイコンタイル（primary 色アイコン）
  * - 中央: タイトル（日付）+ サブ（notes or 種別）
- * - 右: 練習時間 + 相対日付
+ * - 右: 練習時間 +「今日」「昨日」（それ以外の日は見出しの日付と重なるため出さない）
  * - 長押し、またはスクリーンリーダーの「削除」アクションで削除確認ダイアログ
  */
 
@@ -22,7 +22,6 @@ import type { PracticeSession } from "@/shared/types/models";
 import {
   formatDateShort,
   formatDurationLong,
-  formatDurationShort,
 } from "@/features/progress/lib/formatters";
 import { formatRelativeDay } from "@/features/progress/lib/relativeDay";
 
@@ -30,13 +29,12 @@ const DELETE_ACTION = "delete";
 
 function buildAccessibilityLabel(
   session: PracticeSession,
-  relativeDay: string,
+  namedDay: string | null,
 ): string {
   const date = new Date(session.date);
   const dateLabel = `${date.getMonth() + 1}月${date.getDate()}日`;
-  const isNamedDay = relativeDay !== formatDateShort(session.date);
   return [
-    isNamedDay ? `${dateLabel}（${relativeDay}）` : dateLabel,
+    namedDay ? `${dateLabel}（${namedDay}）` : dateLabel,
     `練習${formatDurationLong(session.duration)}`,
     session.notes ? `メモ ${session.notes}` : null,
   ]
@@ -50,7 +48,9 @@ type Props = {
 };
 
 export function SessionRow({ session, onDelete }: Props) {
+  const dateShort = formatDateShort(session.date);
   const relativeDay = formatRelativeDay(session.date, new Date());
+  const namedDay = relativeDay === dateShort ? null : relativeDay;
 
   const confirmDelete = useCallback(() => {
     Alert.alert("削除確認", "この練習記録を削除しますか？", [
@@ -77,7 +77,7 @@ export function SessionRow({ session, onDelete }: Props) {
       className="bg-surface-container-lowest active:opacity-90"
       style={[styles.row, shadowStyle]}
       accessible
-      accessibilityLabel={buildAccessibilityLabel(session, relativeDay)}
+      accessibilityLabel={buildAccessibilityLabel(session, namedDay)}
       accessibilityActions={[{ name: DELETE_ACTION, label: "削除" }]}
       onAccessibilityAction={handleAccessibilityAction}
     >
@@ -95,7 +95,7 @@ export function SessionRow({ session, onDelete }: Props) {
           style={{ color: colors.onSurface, fontWeight: "700" }}
           numberOfLines={1}
         >
-          {formatDateShort(session.date)}
+          {dateShort}
         </Text>
         {session.notes ? (
           <Text
@@ -123,14 +123,16 @@ export function SessionRow({ session, onDelete }: Props) {
             fontVariant: ["tabular-nums"],
           }}
         >
-          {formatDurationShort(session.duration)}
+          {formatDurationLong(session.duration)}
         </Text>
-        <Text
-          className="text-label-sm"
-          style={{ color: colors.onSurfaceVariant, fontWeight: "600", marginTop: 2 }}
-        >
-          {relativeDay}
-        </Text>
+        {namedDay ? (
+          <Text
+            className="text-label-sm"
+            style={{ color: colors.onSurfaceVariant, fontWeight: "600", marginTop: 2 }}
+          >
+            {namedDay}
+          </Text>
+        ) : null}
       </View>
     </Pressable>
   );

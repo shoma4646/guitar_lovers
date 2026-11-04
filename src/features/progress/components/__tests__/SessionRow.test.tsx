@@ -60,6 +60,31 @@ describe("SessionRow", () => {
     expect(screen.getByLabelText("10月20日、練習45秒")).toBeTruthy();
   });
 
+  it("練習時間は「分」で表示し、時刻に見える「分:秒」の形では出さない", () => {
+    render(<SessionRow session={makeSession({ duration: 840 })} onDelete={jest.fn()} />);
+    expect(screen.getByText("14分")).toBeTruthy();
+    expect(screen.queryByText("14:00")).toBeNull();
+  });
+
+  it("1時間を超える練習時間は「時間」と「分」で表示する", () => {
+    render(<SessionRow session={makeSession({ duration: 5400 })} onDelete={jest.fn()} />);
+    expect(screen.getByText("1時間30分")).toBeTruthy();
+    expect(screen.queryByText("90:00")).toBeNull();
+  });
+
+  it("2暦日以上前の記録は日付を行内に1回だけ表示する", () => {
+    const session = makeSession({ date: new Date(2026, 9, 20, 9).toISOString() });
+    render(<SessionRow session={session} onDelete={jest.fn()} />);
+    expect(screen.getAllByText("10/20")).toHaveLength(1);
+  });
+
+  it("今日の記録は「今日」を表示する", () => {
+    const session = makeSession({ date: new Date(2026, 9, 22, 7).toISOString() });
+    render(<SessionRow session={session} onDelete={jest.fn()} />);
+    expect(screen.getByText("今日")).toBeTruthy();
+    expect(screen.getAllByText("10/22")).toHaveLength(1);
+  });
+
   it("削除アクションで長押しと同じ削除確認を出し、確定で onDelete が呼ばれる", () => {
     const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     const onDelete = jest.fn();
