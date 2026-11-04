@@ -2,6 +2,7 @@
 import mockAsyncStorage from "@react-native-async-storage/async-storage/jest/async-storage-mock";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
+  SCHEMA_VERSION,
   STORAGE_KEYS,
   StorageReadError,
   StorageValidationError,
@@ -403,7 +404,7 @@ describe("migrateIfNeeded", () => {
   it("未設定ならschema_versionに現行バージョンを書く", async () => {
     await migrateIfNeeded();
 
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("4");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe(String(SCHEMA_VERSION));
   });
 
   it("旧ビルドが検証せずに保存した値を新スキーマに収まる形へ補正し、データを失わない", async () => {
@@ -480,7 +481,7 @@ describe("migrateIfNeeded", () => {
     // 次の読み出しで移行を再試行し、旧データが補正されて返る
     const phrases = await getPracticePhrases();
     expect(phrases[0].currentBpm).toBe(240);
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("4");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe(String(SCHEMA_VERSION));
   });
 
   it("起動時の移行が失敗しても例外を外へ出さず、次の読み出しで再試行する", async () => {
@@ -512,7 +513,7 @@ describe("migrateIfNeeded", () => {
     await migrateIfNeeded();
 
     expect((await getPracticePhrases())[0].currentBpm).toBe(240);
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("4");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe(String(SCHEMA_VERSION));
   });
 
   it("練習セッションの日付だけの日時をISO 8601へ移行し、退避しない", async () => {
@@ -557,7 +558,7 @@ describe("migrateIfNeeded", () => {
     const droppedKeys = keys.filter((k) => k.startsWith(`${STORAGE_KEYS.PRACTICE_SESSIONS}__dropped_`));
     expect(droppedKeys).toHaveLength(1);
     expect(JSON.parse((await AsyncStorage.getItem(droppedKeys[0]))!)).toEqual([zero]);
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("4");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe(String(SCHEMA_VERSION));
   });
 
   it("0秒の練習セッションが無ければ退避キーを作らない", async () => {
@@ -575,7 +576,7 @@ describe("migrateIfNeeded", () => {
   });
 
   it("既に現行バージョンなら何もしない", async () => {
-    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "4");
+    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, String(SCHEMA_VERSION));
     // モックのsetItemは元からjest.fnなので、spyOn+mockRestoreで実装を消さないよう呼び出し履歴だけ消す
     const setItem = AsyncStorage.setItem as jest.Mock;
     setItem.mockClear();
@@ -647,7 +648,7 @@ describe("リマインド設定", () => {
   it("設定の保存でスキーマバージョンは変わらない", async () => {
     await updateReminderSettings({ enabled: false });
 
-    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe("4");
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION)).toBe(String(SCHEMA_VERSION));
   });
 
   it("patchにundefinedのキーがあっても既存の値を消さない", async () => {
@@ -835,7 +836,7 @@ describe("読み出し失敗時の扱い（上書き消失防止）", () => {
 
   beforeEach(async () => {
     await AsyncStorage.clear();
-    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, "4");
+    await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, String(SCHEMA_VERSION));
     await AsyncStorage.setItem(STORAGE_KEYS.PRACTICE_PHRASES, JSON.stringify([makePhrase("p1")]));
     await AsyncStorage.setItem(
       STORAGE_KEYS.PHRASE_ATTEMPTS,

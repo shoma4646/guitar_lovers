@@ -22,6 +22,7 @@ import {
   reminderSettingsSchema,
   type ReminderSettings,
 } from "@/shared/lib/schemas/reminderSettings";
+import { isYouTubeVideoId } from "@/shared/lib/schemas/youtubeVideoId";
 import { clampBpm } from "@/shared/constants/bpm";
 import { PLAYBACK_RATES } from "@/shared/constants/playback";
 
@@ -233,8 +234,9 @@ async function writeObject(key: string, value: unknown): Promise<void> {
  * 2: BPMを40〜240の整数、区間をstartSec < endSec、再生速度を選択肢の値、日時をISO 8601に限定した
  * 3: 練習セッションの日時もISO 8601に限定した
  * 4: 練習セッションの練習時間を正の数に限定した
+ * 5: 保存データの動画IDをYouTubeの11文字に限定した
  */
-const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -337,6 +339,54 @@ async function migrateToV4(): Promise<void> {
   );
 }
 
+/** 生JSON配列を読み出す。キーが無い・JSONが壊れている・配列でないときはnull（readListの退避に任せる） */
+async function readRawArray(key: string): Promise<unknown[] | null> {
+  const json = await AsyncStorage.getItem(key);
+  if (!json) return null;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    return null;
+  }
+  return Array.isArray(raw) ? raw : null;
+}
+
+/**
+ * バージョン5への移行: 動画IDが不正なフレーズを、その練習結果ごと退避キーへ移して除く
+ * 練習結果を先に移すため、途中で失敗しても再実行でフレーズを特定し直して完了できる
+ */
+async function migrateToV5(): Promise<void> {
+  const phrases = await readRawArray(STORAGE_KEYS.PRACTICE_PHRASES);
+  if (!phrases) return;
+  const hasBrokenVideoId = (item: unknown) =>
+    isRecord(item) && !(typeof item.videoId === "string" && isYouTubeVideoId(item.videoId));
+  const brokenPhrases = phrases.filter(hasBrokenVideoId);
+  if (brokenPhrases.length === 0) return;
+  const brokenIds = new Set(brokenPhrases.map((p) => (p as Record<string, unknown>).id));
+
+  const attempts = await readRawArray(STORAGE_KEYS.PHRASE_ATTEMPTS);
+  if (attempts) {
+    const isOrphaned = (item: unknown) => isRecord(item) && brokenIds.has(item.phraseId);
+    const orphaned = attempts.filter(isOrphaned);
+    if (orphaned.length > 0) {
+      await quarantine(
+        STORAGE_KEYS.PHRASE_ATTEMPTS,
+        `${STORAGE_KEYS.PHRASE_ATTEMPTS}__dropped_${Date.now()}`,
+        JSON.stringify(orphaned),
+        JSON.stringify(attempts.filter((item) => !isOrphaned(item)))
+      );
+    }
+  }
+
+  await quarantine(
+    STORAGE_KEYS.PRACTICE_PHRASES,
+    `${STORAGE_KEYS.PRACTICE_PHRASES}__dropped_${Date.now()}`,
+    JSON.stringify(brokenPhrases),
+    JSON.stringify(phrases.filter((item) => !hasBrokenVideoId(item)))
+  );
+}
+
 /** スキーマバージョンを確認し、古ければ移行してバージョンを書く。失敗時は例外を伝播する */
 async function ensureMigratedUnlocked(): Promise<void> {
   const stored = await AsyncStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION);
@@ -351,6 +401,9 @@ async function ensureMigratedUnlocked(): Promise<void> {
   }
   if (version < 4) {
     await migrateToV4();
+  }
+  if (version < 5) {
+    await migrateToV5();
   }
   await AsyncStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, String(SCHEMA_VERSION));
 }
