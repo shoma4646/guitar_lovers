@@ -312,13 +312,24 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     [activePractice, confirmSwitch, restorePhraseSettings, startPhraseDirectly],
   );
 
+  const metronomeEnabledBeforeFinishRef = useRef(false);
+
   const handleFinishPractice = useCallback(() => {
     beginResultEntry(randomUUID());
     setPhraseElapsedSeconds(
       activePractice ? Math.max(0, Math.floor((Date.now() - activePractice.startedAt) / 1000)) : 0,
     );
+    metronomeEnabledBeforeFinishRef.current = metronomeEnabled;
+    sendToPlayer({ action: "pause" });
+    setMetronomeEnabled(false);
     setShowResultSheet(true);
-  }, [activePractice, beginResultEntry]);
+  }, [activePractice, beginResultEntry, metronomeEnabled, sendToPlayer, setMetronomeEnabled]);
+
+  const handleCloseResultSheet = useCallback(() => {
+    setShowResultSheet(false);
+    setMetronomeEnabled(metronomeEnabledBeforeFinishRef.current);
+    sendToPlayer({ action: "play" });
+  }, [sendToPlayer, setMetronomeEnabled]);
 
   const localDay = useLocalDay();
   const fitsOneScreen = useFitsOneScreen(
@@ -383,6 +394,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         } else if (action === "next") {
           // 直前に保存が成功しており未保存の記録は無いため、確認ダイアログを経由せず開始する
           startPhraseDirectly(plan.next.phrase, plan.next.startBpm);
+          setMetronomeEnabled(metronomeEnabledBeforeFinishRef.current);
         }
       } finally {
         isSubmittingResultRef.current = false;
@@ -395,6 +407,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       recordResultAsync,
       graduatePhrase,
       setActivePractice,
+      setMetronomeEnabled,
       allPhraseAttempts,
       metronomeBpm,
       todayMenu,
@@ -646,7 +659,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         onChangeCompletedReps={(delta) => (delta > 0 ? incrementCompletedReps() : decrementCompletedReps())}
         hasNextPhrase={hasNextPhrase}
         isSubmitting={isSubmittingResult}
-        onClose={() => setShowResultSheet(false)}
+        onClose={handleCloseResultSheet}
         onSubmit={handleSubmitResult}
       />
 
