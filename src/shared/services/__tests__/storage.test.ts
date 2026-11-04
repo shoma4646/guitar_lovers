@@ -923,3 +923,72 @@ describe("読み出し失敗時の扱い（上書き消失防止）", () => {
     expect((await getPhraseAttempts()).map((a) => a.id)).toEqual(["a2", "a1"]);
   });
 });
+
+describe("複数件ある状態での削除・追加・先頭への移動", () => {
+  const VIDEO_IDS = ["aaaaaaaaaa1", "bbbbbbbbbb2", "cccccccccc3"] as const;
+
+  function makeSession(id: string, day: number): PracticeSession {
+    return { id, date: `2026-09-0${day}T00:00:00.000Z`, duration: 600 };
+  }
+
+  function makeFavorite(index: number): FavoriteVideo {
+    return {
+      id: `f${index + 1}`,
+      videoId: VIDEO_IDS[index],
+      title: `お気に入り${index + 1}`,
+      addedAt: `2026-09-0${index + 1}T00:00:00.000Z`,
+    };
+  }
+
+  function makeRecent(index: number, day: number): RecentVideo {
+    return {
+      videoId: VIDEO_IDS[index],
+      title: `動画${index + 1}`,
+      lastWatchedAt: `2026-09-0${day}T00:00:00.000Z`,
+    };
+  }
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("練習セッションを1件削除すると、そのセッションだけが消え他は残る", async () => {
+    await savePracticeSession(makeSession("s1", 1));
+    await savePracticeSession(makeSession("s2", 2));
+    await savePracticeSession(makeSession("s3", 3));
+
+    await deletePracticeSession("s2");
+
+    expect((await getPracticeSessions()).map((s) => s.id)).toEqual(["s3", "s1"]);
+  });
+
+  it("お気に入りを3本追加でき、真ん中の1本を外すとその1本だけが消える", async () => {
+    await addFavoriteVideo(makeFavorite(0));
+    await addFavoriteVideo(makeFavorite(1));
+    await addFavoriteVideo(makeFavorite(2));
+    expect((await getFavoriteVideos()).map((f) => f.videoId)).toEqual([
+      VIDEO_IDS[2],
+      VIDEO_IDS[1],
+      VIDEO_IDS[0],
+    ]);
+
+    await removeFavoriteVideo(VIDEO_IDS[1]);
+
+    expect((await getFavoriteVideos()).map((f) => f.videoId)).toEqual([
+      VIDEO_IDS[2],
+      VIDEO_IDS[0],
+    ]);
+  });
+
+  it("最近の動画で1本目をもう一度開くと先頭に来て、他の2本は順序を保って残る", async () => {
+    await addRecentVideo(makeRecent(0, 1));
+    await addRecentVideo(makeRecent(1, 2));
+    await addRecentVideo(makeRecent(2, 3));
+
+    await addRecentVideo(makeRecent(0, 4));
+
+    const recents = await getRecentVideos();
+    expect(recents.map((r) => r.videoId)).toEqual([VIDEO_IDS[0], VIDEO_IDS[2], VIDEO_IDS[1]]);
+    expect(recents[0].lastWatchedAt).toBe("2026-09-04T00:00:00.000Z");
+  });
+});
