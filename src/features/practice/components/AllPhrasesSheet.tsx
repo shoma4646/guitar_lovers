@@ -7,6 +7,8 @@
 
 import { ScrollView, View, Text, Pressable } from "react-native";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
+import { ReadErrorCard } from "@/shared/components/molecules/ReadErrorCard";
+import { hasReadFailure, refetchAll } from "@/shared/lib/readFailure";
 import { colors } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
@@ -27,18 +29,30 @@ type Props = {
 };
 
 export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
-  const { data: phrases } = usePracticePhrases();
-  const { data: attempts } = usePhraseAttempts();
+  const phrasesQuery = usePracticePhrases();
+  const attemptsQuery = usePhraseAttempts();
+  const { data: phrases } = phrasesQuery;
+  const { data: attempts } = attemptsQuery;
   const handleLongPress = usePhraseLongPressActions();
+  const readFailed = hasReadFailure(phrasesQuery, attemptsQuery);
 
   const allAttempts = attempts ?? [];
   const menuItems = buildTodayMenu(phrases ?? [], allAttempts, new Date());
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={`すべてのフレーズ（${menuItems.length}本）`}>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={readFailed ? "すべてのフレーズ" : `すべてのフレーズ（${menuItems.length}本）`}
+    >
       <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingBottom: 16 }}>
-          {menuItems.length === 0 ? (
+          {readFailed ? (
+            <ReadErrorCard
+              title="フレーズを読み込めませんでした"
+              onRetry={() => refetchAll(phrasesQuery, attemptsQuery)}
+            />
+          ) : menuItems.length === 0 ? (
             <Text
               style={{ fontSize: 14, color: colors.onSurfaceVariant, paddingVertical: 24 }}
             >

@@ -17,6 +17,8 @@ import {
 } from "react-native";
 import { randomUUID } from "expo-crypto";
 import { Icon } from "@/shared/components/atoms/Icon";
+import { ReadErrorCard } from "@/shared/components/molecules/ReadErrorCard";
+import { hasReadFailure, refetchAll } from "@/shared/lib/readFailure";
 import { colors, radius, shadows } from "@/shared/theme";
 import type { FavoriteVideo, RecentVideo } from "@/shared/types/models";
 import { usePracticeStore } from "@/stores/practice";
@@ -47,8 +49,10 @@ function onFavoriteAction(onToggle: () => void) {
 }
 
 export function FavoritesTab() {
-  const { data: favorites = [] } = useFavoriteVideos();
-  const { data: recents = [] } = useRecentVideos();
+  const favoritesQuery = useFavoriteVideos();
+  const recentsQuery = useRecentVideos();
+  const { data: favorites = [] } = favoritesQuery;
+  const { data: recents = [] } = recentsQuery;
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const setPracticeSubTab = usePracticeStore((s) => s.setPracticeSubTab);
   const { mutateAsync: toggleFavorite } = useToggleFavoriteVideo();
@@ -104,7 +108,9 @@ export function FavoritesTab() {
       {/* 最近の動画 */}
       <Text className="text-label-sm text-on-surface-variant mb-sm">最近見た動画</Text>
       <View style={{ gap: 16 }}>
-        {recents.length === 0 ? (
+        {hasReadFailure(recentsQuery) ? (
+          <ReadErrorCard title="最近見た動画を読み込めませんでした" onRetry={() => refetchAll(recentsQuery)} />
+        ) : recents.length === 0 ? (
           <Text className="text-on-surface-variant text-body-md text-center py-lg">
             最近視聴した動画はありません
           </Text>
@@ -166,7 +172,9 @@ export function FavoritesTab() {
       {/* お気に入り */}
       <Text className="text-label-sm text-on-surface-variant mt-xl mb-sm">お気に入り</Text>
       <View style={{ gap: 16 }}>
-        {favorites.length === 0 ? (
+        {hasReadFailure(favoritesQuery) ? (
+          <ReadErrorCard title="お気に入りを読み込めませんでした" onRetry={() => refetchAll(favoritesQuery)} />
+        ) : favorites.length === 0 ? (
           <Text className="text-on-surface-variant text-body-md text-center py-lg">
             お気に入りはありません
           </Text>
