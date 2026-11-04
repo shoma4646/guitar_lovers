@@ -9,6 +9,8 @@
 
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
+import { ReadErrorCard } from "@/shared/components/molecules/ReadErrorCard";
+import { hasReadFailure, refetchAll } from "@/shared/lib/readFailure";
 import { Button } from "@/shared/components/atoms/Button";
 import { IconButton } from "@/shared/components/atoms/IconButton";
 import { Icon } from "@/shared/components/atoms/Icon";
@@ -82,9 +84,12 @@ export function PracticeMenuSheet({
   onCloseVideo,
   onDismissed,
 }: Props) {
-  const { data: phrases } = usePracticePhrases();
-  const { data: attempts } = usePhraseAttempts();
+  const phrasesQuery = usePracticePhrases();
+  const attemptsQuery = usePhraseAttempts();
+  const { data: phrases } = phrasesQuery;
+  const { data: attempts } = attemptsQuery;
   const handleLongPress = usePhraseLongPressActions();
+  const readFailed = hasReadFailure(phrasesQuery, attemptsQuery);
 
   const allAttempts = attempts ?? [];
   const menuItems = buildTodayMenu(phrases ?? [], allAttempts, new Date());
@@ -140,7 +145,12 @@ export function PracticeMenuSheet({
             <Text style={{ fontSize: 12, fontWeight: "700", color: colors.onSurfaceVariant, marginBottom: 4 }}>
               今日のメニュー
             </Text>
-            {menuItems.length === 0 ? (
+            {readFailed ? (
+              <ReadErrorCard
+                title="フレーズを読み込めませんでした"
+                onRetry={() => refetchAll(phrasesQuery, attemptsQuery)}
+              />
+            ) : menuItems.length === 0 ? (
               <Text style={{ fontSize: 13, color: colors.onSurfaceVariant, paddingVertical: 12 }}>
                 保存したフレーズはまだありません
               </Text>

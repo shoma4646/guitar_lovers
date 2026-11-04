@@ -8,6 +8,8 @@
 import { View, Text, Pressable, Switch, Linking, type AccessibilityActionEvent } from "react-native";
 import { colors } from "@/shared/theme";
 import { Icon } from "@/shared/components/atoms/Icon";
+import { ReadErrorCard } from "@/shared/components/molecules/ReadErrorCard";
+import { hasReadFailure, refetchAll } from "@/shared/lib/readFailure";
 import { useHoldRepeat } from "@/shared/hooks/useHoldRepeat";
 import { useReminderSettings } from "@/features/reminder/api/useReminderSettings";
 import { useReminderPermission } from "@/features/reminder/api/useReminderPermission";
@@ -66,10 +68,19 @@ function StepButton({ icon, accessibilityLabel, disabled, onStep }: StepButtonPr
 }
 
 export function ReminderSettingsSection() {
-  const { data: settings } = useReminderSettings();
+  const settingsQuery = useReminderSettings();
+  const { data: settings } = settingsQuery;
   const { data: permission, refetch: refetchPermission } = useReminderPermission();
   const { data: nextPlan } = useNextReminderPlan();
   const { mutate: updateSettings } = useUpdateReminderSettings();
+
+  if (hasReadFailure(settingsQuery)) {
+    return (
+      <View className="px-lg py-md" style={rowBorder}>
+        <ReadErrorCard title="リマインド設定を読み込めませんでした" onRetry={() => refetchAll(settingsQuery)} />
+      </View>
+    );
+  }
 
   if (!settings || !permission) {
     return null;

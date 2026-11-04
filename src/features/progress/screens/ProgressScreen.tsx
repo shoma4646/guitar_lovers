@@ -5,6 +5,7 @@
  * ヘッダー(最近の記録/シェア/設定) → 今週のカード（練習日数+連続日数+週バー）
  * → 上達中/卒業のセグメント → フレーズ一覧（最大4行） → 今日の1本を開くボタン。
  * 手動記録の追加・全件表示はシートへ逃がす。
+ * 記録の読み出しに失敗したときは、0件の表示ではなく読み込みエラーと再読み込みだけを出す。
  */
 
 import { useCallback, useMemo, useState } from "react";
@@ -16,6 +17,8 @@ import { Button } from "@/shared/components/atoms/Button";
 import { SegmentedControl, type SegmentedItem } from "@/shared/components/atoms/SegmentedControl";
 import { Card } from "@/shared/components/molecules/Card";
 import { ScreenFrame } from "@/shared/components/molecules/ScreenFrame";
+import { ReadErrorCard } from "@/shared/components/molecules/ReadErrorCard";
+import { hasReadFailure, refetchAll } from "@/shared/lib/readFailure";
 import { colors } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
 import type { PracticeSession, PracticeStats } from "@/shared/types/models";
@@ -51,9 +54,12 @@ export function ProgressScreen() {
   const activePractice = usePracticeStore((s) => s.activePhrasePractice);
   const confirmSwitch = useConfirmPhraseSwitch();
 
-  const { data: sessions = [] } = usePracticeSessions();
-  const { data: attempts = [] } = usePhraseAttempts();
-  const { data: phrases = [] } = usePracticePhrases();
+  const sessionsQuery = usePracticeSessions();
+  const attemptsQuery = usePhraseAttempts();
+  const phrasesQuery = usePracticePhrases();
+  const { data: sessions = [] } = sessionsQuery;
+  const { data: attempts = [] } = attemptsQuery;
+  const { data: phrases = [] } = phrasesQuery;
   const { mutateAsync: saveSession } = useSavePracticeSession();
   const { mutateAsync: deleteSession } = useDeletePracticeSession();
   const { inProgress, graduated } = usePhraseProgressSummaries();
@@ -142,6 +148,26 @@ export function ProgressScreen() {
   const activeCount = phraseKind === "active" ? inProgress.length : graduated.length;
   const showMoreCount = activeCount > LIST_MAX_ROWS ? activeCount - (LIST_MAX_ROWS - 1) : 0;
   const listCap = showMoreCount > 0 ? LIST_MAX_ROWS - 1 : LIST_MAX_ROWS;
+
+  if (hasReadFailure(sessionsQuery, attemptsQuery, phrasesQuery)) {
+    return (
+      <ErrorBoundary>
+        <ScreenFrame>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>
+              進捗
+            </Text>
+            <IconButton
+              name="settings"
+              accessibilityLabel="設定を開く"
+              onPress={() => router.push("/settings")}
+            />
+          </View>
+          <ReadErrorCard onRetry={() => refetchAll(sessionsQuery, attemptsQuery, phrasesQuery)} />
+        </ScreenFrame>
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <ErrorBoundary>
