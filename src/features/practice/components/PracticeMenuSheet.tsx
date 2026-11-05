@@ -7,6 +7,7 @@
  * ここで音出しロジックは持たない。
  */
 
+import { useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
 import { ReadErrorCard } from "@/shared/components/molecules/ReadErrorCard";
@@ -26,8 +27,10 @@ import {
 } from "@/features/practice/lib/phraseRowLabel";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
 import { formatDuration } from "@/features/practice/lib/formatters";
+import { useLocalDay } from "@/shared/hooks/useLocalDay";
+import { localDayToDate } from "@/shared/lib/localDay";
 import { MetronomeControls } from "./MetronomeControls";
-import type { Bookmark, PracticePhrase } from "@/shared/types/models";
+import type { Bookmark, PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
 type Props = {
   visible: boolean;
@@ -36,7 +39,6 @@ type Props = {
   onSelectPhrase: (phrase: PracticePhrase, startBpm: number) => void;
   metronomeBpm: number;
   metronomeEnabled: boolean;
-  metronomeActiveBeat: number;
   metronomeBeatsPerBar: number;
   onStepMetronomeBpm: (delta: number) => void;
   onToggleMetronome: () => void;
@@ -66,7 +68,6 @@ export function PracticeMenuSheet({
   onSelectPhrase,
   metronomeBpm,
   metronomeEnabled,
-  metronomeActiveBeat,
   metronomeBeatsPerBar,
   onStepMetronomeBpm,
   onToggleMetronome,
@@ -91,8 +92,20 @@ export function PracticeMenuSheet({
   const handleLongPress = usePhraseLongPressActions();
   const readFailed = hasReadFailure(phrasesQuery, attemptsQuery);
 
-  const allAttempts = attempts ?? [];
-  const menuItems = buildTodayMenu(phrases ?? [], allAttempts, new Date());
+  const localDay = useLocalDay();
+  const menuItems = useMemo(
+    () => (visible ? buildTodayMenu(phrases ?? [], attempts ?? [], localDayToDate(localDay)) : []),
+    [visible, phrases, attempts, localDay],
+  );
+  const attemptsByPhraseId = useMemo(() => {
+    const map = new Map<string, PhraseAttempt[]>();
+    for (const attempt of attempts ?? []) {
+      const list = map.get(attempt.phraseId);
+      if (list) list.push(attempt);
+      else map.set(attempt.phraseId, [attempt]);
+    }
+    return map;
+  }, [attempts]);
 
   return (
     <BottomSheet
@@ -110,7 +123,6 @@ export function PracticeMenuSheet({
             <MetronomeControls
               bpm={metronomeBpm}
               enabled={metronomeEnabled}
-              activeBeat={metronomeActiveBeat}
               beatsPerBar={metronomeBeatsPerBar}
               onStepBpm={onStepMetronomeBpm}
               onToggleEnabled={onToggleMetronome}
@@ -156,7 +168,7 @@ export function PracticeMenuSheet({
               </Text>
             ) : (
               menuItems.map((entry, index) => {
-                const phraseAttempts = allAttempts.filter((a) => a.phraseId === entry.phrase.id);
+                const phraseAttempts = attemptsByPhraseId.get(entry.phrase.id) ?? [];
                 const { targetBeforeToday } = entry.today;
                 const active = entry.phrase.id === activePhraseId;
                 const currentBpm = resolveCurrentBpm(entry.phrase.currentBpm, phraseAttempts);

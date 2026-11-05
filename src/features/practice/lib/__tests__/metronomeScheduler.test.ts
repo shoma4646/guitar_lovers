@@ -1,5 +1,10 @@
 import * as fc from "fast-check";
-import { bpmToIntervalSec, scheduleBeats } from "../metronomeScheduler";
+import {
+  bpmToIntervalSec,
+  METRONOME_LOOKAHEAD_SEC,
+  METRONOME_TICK_INTERVAL_MS,
+  scheduleBeats,
+} from "../metronomeScheduler";
 
 describe("bpmToIntervalSec", () => {
   it("BPM60は1拍1秒になる", () => {
@@ -101,56 +106,79 @@ describe("scheduleBeats", () => {
     expect(result.nextBeatTime).toBe(3.5);
   });
 
-  it("本番の先読み0.1秒とポーリング25msの組では拍が抜けない", () => {
+  it("本番の先読みとポーリング間隔の組では拍が抜けない", () => {
     const intervalSec = 60 / 240;
+    const tickSec = METRONOME_TICK_INTERVAL_MS / 1000;
     let state = { nextBeatTime: 0.05, beatIndex: 0 };
     const scheduled: number[] = [];
     for (let tick = 0; tick < 400; tick += 1) {
       const result = scheduleBeats({
-        now: tick * 0.025,
+        now: tick * tickSec,
         nextBeatTime: state.nextBeatTime,
         intervalSec,
-        lookaheadSec: 0.1,
+        lookaheadSec: METRONOME_LOOKAHEAD_SEC,
         beatIndex: state.beatIndex,
         beatsPerBar: 4,
       });
       scheduled.push(...result.beats.map((b) => b.time));
       state = { nextBeatTime: result.nextBeatTime, beatIndex: result.beatIndex };
     }
-    const expectedCount = Math.floor((400 * 0.025 + 0.1 - 0.05) / intervalSec) + 1;
+    const lastNow = 399 * tickSec;
+    const expectedCount = Math.ceil((lastNow + METRONOME_LOOKAHEAD_SEC - 0.05) / intervalSec);
     expect(scheduled).toHaveLength(expectedCount);
     scheduled.forEach((time, i) => {
       expect(time).toBeCloseTo(0.05 + i * intervalSec, 9);
     });
   });
 
-  it("BPM変更でintervalSecを差し替えると次拍から新しい間隔になる", () => {
-    const first = scheduleBeats({
-      now: 0,
-      nextBeatTime: 0,
+  it.each([0.1, METRONOME_LOOKAHEAD_SEC])(
+    "BPM変更でintervalSecを差し替えると次拍から新しい間隔になる（先読み%s秒）",
+    (lookaheadSec) => {
+      const first = scheduleBeats({
+        now: 0,
+        nextBeatTime: 0,
+        intervalSec: 0.5,
+        lookaheadSec,
+        beatIndex: 0,
+        beatsPerBar: 4,
+      });
+
+      const second = scheduleBeats({
+        now: 0.5,
+        nextBeatTime: first.nextBeatTime,
+        intervalSec: 0.25,
+        lookaheadSec,
+        beatIndex: first.beatIndex,
+        beatsPerBar: 4,
+      });
+
+      expect(second.beats[0].time).toBe(0.5);
+      expect(second.nextBeatTime).toBe(0.75);
+    },
+  );
+
+  it.each([
+    { lateSec: 0.05, now: 10.05 },
+    { lateSec: 0.15, now: 10.15 },
+  ])("120BPMで現在時刻が予定を$lateSec秒過ぎていたら、その拍は鳴らさず次の拍から数え直す", ({ now }) => {
+    const result = scheduleBeats({
+      now,
+      nextBeatTime: 10.0,
       intervalSec: 0.5,
-      lookaheadSec: 0.1,
-      beatIndex: 0,
+      lookaheadSec: METRONOME_LOOKAHEAD_SEC,
+      beatIndex: 1,
       beatsPerBar: 4,
     });
 
-    const second = scheduleBeats({
-      now: 0.5,
-      nextBeatTime: first.nextBeatTime,
-      intervalSec: 0.25,
-      lookaheadSec: 0.1,
-      beatIndex: first.beatIndex,
-      beatsPerBar: 4,
-    });
-
-    expect(second.beats[0].time).toBe(0.5);
-    expect(second.nextBeatTime).toBe(0.75);
+    expect(result.beats).toEqual([]);
+    expect(result.nextBeatTime).toBe(10.5);
+    expect(result.beatIndex).toBe(2);
   });
 });
 
 describe("scheduleBeats: 処理の詰まりを挟んだポーリング", () => {
-  const LOOKAHEAD_SEC = 0.1;
-  const TICK_SEC = 0.025;
+  const LOOKAHEAD_SEC = METRONOME_LOOKAHEAD_SEC;
+  const TICK_SEC = METRONOME_TICK_INTERVAL_MS / 1000;
   const BEATS_PER_BAR = 4;
   const START = 0.05;
 

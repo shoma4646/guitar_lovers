@@ -61,7 +61,6 @@ function renderMenuSheet() {
       onSelectPhrase={jest.fn()}
       metronomeBpm={80}
       metronomeEnabled={false}
-      metronomeActiveBeat={-1}
       metronomeBeatsPerBar={4}
       onStepMetronomeBpm={jest.fn()}
       onToggleMetronome={jest.fn()}

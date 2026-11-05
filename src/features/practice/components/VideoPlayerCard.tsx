@@ -6,7 +6,7 @@
  * ScreenFrameの左右16pxパディングを打ち消し、画面幅いっぱいのフルブリードで表示する。
  */
 
-import { forwardRef, useState } from "react";
+import { forwardRef, memo, useState } from "react";
 import { View, StyleSheet, useWindowDimensions } from "react-native";
 import WebView from "react-native-webview";
 import {
@@ -30,8 +30,8 @@ type Props = {
   onPlayerError: (code: number) => void;
 };
 
-export const VideoPlayerCard = forwardRef<WebView, Props>(
-  function VideoPlayerCard(
+export const VideoPlayerCard = memo(
+  forwardRef<WebView, Props>(function VideoPlayerCard(
     { videoId, startSeconds = 0, initialRate = 1, onTimeUpdate, onDurationReady, onPlayerError },
     ref,
   ) {
@@ -76,7 +76,7 @@ export const VideoPlayerCard = forwardRef<WebView, Props>(
         />
       </View>
     );
-  },
+  }),
 );
 
 const styles = StyleSheet.create({

@@ -38,7 +38,6 @@ function renderPanel({
       hasNoPhrases={hasNoPhrases}
       metronomeBpm={100}
       metronomeEnabled={false}
-      metronomeActiveBeat={0}
       metronomeBeatsPerBar={4}
       onStepMetronomeBpm={jest.fn()}
       onToggleMetronome={jest.fn()}

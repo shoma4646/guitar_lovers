@@ -68,7 +68,7 @@ jest.mock("@/features/practice/hooks/useMetronomeEngine", () => {
     useMetronomeEngine: () => ({
       bpm: store((s) => s.metronomeBpm),
       enabled: store((s) => s.metronomeEnabled),
-      activeBeat: -1,
+     
       beatsPerBar: 4,
     }),
   };
