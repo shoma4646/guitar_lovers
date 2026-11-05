@@ -60,12 +60,18 @@ export function PracticeScreen() {
       <ScreenFrame scrollWhenOverflow={!loadedVideoId}>
         {!loadedVideoId && (
           <>
-            <View style={{ height: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View
+              testID="practice-date-header"
+              style={{ minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+            >
               <View>
-                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.onSurfaceVariant }}>
+                <Text
+                  style={{ fontSize: 12, fontWeight: "600", color: colors.onSurfaceVariant }}
+                  maxFontSizeMultiplier={1.3}
+                >
                   {formatHeaderDate(localDayToDate(localDay))}
                 </Text>
-                <Text style={{ fontSize: 22, fontWeight: "800", color: colors.onSurface }}>
+                <Text style={{ fontSize: 22, fontWeight: "800", color: colors.onSurface }} maxFontSizeMultiplier={1.3}>
                   今日の練習
                 </Text>
               </View>
