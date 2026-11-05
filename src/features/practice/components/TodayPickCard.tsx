@@ -91,7 +91,7 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
   const progress = summarizePhraseProgress(phrase, phraseAttempts);
   const bpmToGoal = Math.max(0, phrase.targetBpm - targetBeforeToday);
   // pickTodayPickはgraduatedを選ばないため、ここでのpriorityは必ずTODAY_PICK_REASONSに存在する
-  const reason = `${TODAY_PICK_REASONS[priority as Exclude<TodayMenuPriority, "graduated">]}。目標まであと${bpmToGoal}BPM`;
+  const reason = TODAY_PICK_REASONS[priority as Exclude<TodayMenuPriority, "graduated">];
 
   return (
     <Card style={{ gap: 8 }}>
@@ -108,9 +108,14 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
             今日の1本
           </Text>
         </View>
-        <Text style={{ flex: 1, fontSize: 12, color: colors.onSurfaceVariant }} numberOfLines={1}>
-          {reason}
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 12, color: colors.onSurfaceVariant }} numberOfLines={2}>
+            {reason}
+          </Text>
+          <Text style={{ fontSize: 12, fontWeight: "700", color: colors.onSurface }}>
+            目標まであと{bpmToGoal}BPM
+          </Text>
+        </View>
       </View>
 
       <View>
@@ -121,9 +126,15 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
         >
           {phrase.name}
         </Text>
-        <Text style={{ fontSize: 13, color: colors.onSurfaceVariant }} numberOfLines={1}>
-          {phrase.videoTitle} ・ {formatDuration(phrase.startSec)}-{formatDuration(phrase.endSec)}
-        </Text>
+        <View style={{ flexDirection: "row", gap: 4 }}>
+          <Text style={{ flexShrink: 1, fontSize: 13, color: colors.onSurfaceVariant }} numberOfLines={1}>
+            {phrase.videoTitle}
+          </Text>
+          <Text style={{ fontSize: 13, color: colors.onSurfaceVariant }}>・</Text>
+          <Text style={{ fontSize: 13, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}>
+            {formatDuration(phrase.startSec)}-{formatDuration(phrase.endSec)}
+          </Text>
+        </View>
       </View>
 
       <View testID="today-pick-bpm-row" style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
