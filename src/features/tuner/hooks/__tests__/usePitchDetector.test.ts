@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { AppState, type AppStateStatus } from "react-native";
 import { usePracticeStore } from "@/stores/practice";
 import { usePitchDetector } from "../usePitchDetector";
 
@@ -97,5 +98,97 @@ describe("usePitchDetector とメトロノーム", () => {
     });
     await waitFor(() => expect(hook.result.current.status).toBe("idle"));
     expect(recorders[0].stop).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("usePitchDetector がマイクを使う条件（前面・背面、フォーカス、一時停止）", () => {
+  let appStateListener: ((state: AppStateStatus) => void) | null;
+  let addEventListenerSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    focusEffect = null;
+    recorders.length = 0;
+    appStateListener = null;
+    addEventListenerSpy = jest
+      .spyOn(AppState, "addEventListener")
+      .mockImplementation((_type, listener) => {
+        appStateListener = listener as (state: AppStateStatus) => void;
+        return { remove: jest.fn() } as ReturnType<typeof AppState.addEventListener>;
+      });
+  });
+
+  afterEach(() => {
+    addEventListenerSpy.mockRestore();
+  });
+
+  async function changeAppState(state: AppStateStatus) {
+    await act(async () => {
+      appStateListener?.(state);
+    });
+  }
+
+  it("録音中に背面へ回るとマイクを解放し、idle に戻る", async () => {
+    const { hook } = await renderFocused();
+    expect(recorders).toHaveLength(1);
+
+    await changeAppState("background");
+    await waitFor(() => expect(hook.result.current.status).toBe("idle"));
+    expect(recorders[0].stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("フォーカスが外れた後に背面から前面へ戻っても、マイクを開始しない", async () => {
+    const { hook, blur } = await renderFocused();
+    await act(async () => {
+      blur();
+    });
+    await waitFor(() => expect(hook.result.current.status).toBe("idle"));
+
+    await changeAppState("background");
+    await changeAppState("active");
+
+    expect(recorders).toHaveLength(1);
+    expect(hook.result.current.status).toBe("idle");
+  });
+
+  it("一時停止中に背面から前面へ戻っても、マイクを開始せず一時停止のまま", async () => {
+    const { hook } = await renderFocused();
+    await act(async () => {
+      hook.result.current.pause();
+    });
+    await waitFor(() => expect(hook.result.current.status).toBe("idle"));
+
+    await changeAppState("background");
+    await changeAppState("active");
+
+    expect(recorders).toHaveLength(1);
+    expect(hook.result.current.status).toBe("idle");
+    expect(hook.result.current.pausedByUser).toBe(true);
+  });
+
+  it("一時停止中にタブを離れて戻っても、マイクを開始せず一時停止のまま", async () => {
+    const { hook, blur } = await renderFocused();
+    await act(async () => {
+      hook.result.current.pause();
+    });
+    await act(async () => {
+      blur();
+    });
+    await act(async () => {
+      focusEffect?.();
+    });
+
+    expect(recorders).toHaveLength(1);
+    expect(hook.result.current.status).toBe("idle");
+    expect(hook.result.current.pausedByUser).toBe(true);
+  });
+
+  it("表示中で一時停止していなければ、前面へ戻ると再び listening になる", async () => {
+    const { hook } = await renderFocused();
+    await changeAppState("background");
+    await waitFor(() => expect(hook.result.current.status).toBe("idle"));
+
+    await changeAppState("active");
+    await waitFor(() => expect(hook.result.current.status).toBe("listening"));
+    expect(recorders).toHaveLength(2);
   });
 });
