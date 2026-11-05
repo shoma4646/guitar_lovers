@@ -6,6 +6,15 @@
  * setIntervalは「lookahead区間に入った拍をまとめて予約する」ためのポーリングにのみ使う。
  */
 
+/**
+ * 先読み予約する秒数。ポーリング間隔より十分長くしないと拍が抜ける。
+ * 描画などでJSスレッドが止まっても予約済みの拍は鳴るよう、BPM変更の反映遅れと引き換えに長めに取る
+ */
+export const METRONOME_LOOKAHEAD_SEC = 0.25;
+
+/** 先読み区間に入った拍を予約するポーリングの間隔（ミリ秒） */
+export const METRONOME_TICK_INTERVAL_MS = 25;
+
 /** 指定BPMの1拍あたりの秒数を返す */
 export function bpmToIntervalSec(bpm: number): number {
   return 60 / bpm;

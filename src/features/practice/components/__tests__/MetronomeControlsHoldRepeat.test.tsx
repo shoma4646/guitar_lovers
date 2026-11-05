@@ -12,7 +12,6 @@ function Host({ initialBpm }: { initialBpm: number }) {
     <MetronomeControls
       bpm={bpm}
       enabled={false}
-      activeBeat={0}
       beatsPerBar={4}
       onStepBpm={handleStep}
       onToggleEnabled={jest.fn()}

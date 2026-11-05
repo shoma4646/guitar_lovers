@@ -2,6 +2,7 @@
  * メトロノームの表示とBPM操作
  *
  * 音出し自体はuseMetronomeEngine（PracticeTab側で保持）が持ち、ここは表示とBPM操作だけを担当する。
+ * 今鳴っている拍は親からpropsで受けず、拍ストアをここで直接購読する（拍ごとに親を描き直さないため）。
  * PracticeControlPanel（動画読み込み後）とPracticeMenuSheet（メトロノーム単体利用）の両方から
  * 同じ道具として使う。
  */
@@ -21,11 +22,11 @@ import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import { useHoldRepeat } from "@/shared/hooks/useHoldRepeat";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 import { EASING, ms } from "@/shared/lib/motion";
+import { useMetronomeBeatStore } from "@/stores/metronomeBeat";
 
 type Props = {
   bpm: number;
   enabled: boolean;
-  activeBeat: number;
   beatsPerBar: number;
   onStepBpm: (delta: number) => void;
   onToggleEnabled: () => void;
@@ -36,12 +37,12 @@ type Props = {
 export function MetronomeControls({
   bpm,
   enabled,
-  activeBeat,
   beatsPerBar,
   onStepBpm,
   onToggleEnabled,
   phraseProgress,
 }: Props) {
+  const activeBeat = useMetronomeBeatStore((s) => s.activeBeat);
   const beatDots = Array.from({ length: beatsPerBar }, (_, i) => i);
 
   const decHold = useHoldRepeat(() => onStepBpm(-1));
@@ -119,6 +120,7 @@ export function MetronomeControls({
           {beatDots.map((i) => (
             <Animated.View
               key={i}
+              testID={`metronome-beat-dot-${i}`}
               style={[
                 {
                   width: 6,

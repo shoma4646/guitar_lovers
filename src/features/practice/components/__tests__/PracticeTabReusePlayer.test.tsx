@@ -60,7 +60,7 @@ jest.mock("@/features/practice/hooks/useSaveTimerSession", () => ({
 jest.mock("@/features/practice/hooks/useCloseVideo", () => ({ useCloseVideo: () => jest.fn() }));
 jest.mock("@/features/practice/hooks/usePausePlayerOnBlur", () => ({ usePausePlayerOnBlur: () => {} }));
 jest.mock("@/features/practice/hooks/useMetronomeEngine", () => ({
-  useMetronomeEngine: () => ({ bpm: 85, enabled: false, activeBeat: -1, beatsPerBar: 4 }),
+  useMetronomeEngine: () => ({ bpm: 85, enabled: false, beatsPerBar: 4 }),
 }));
 jest.mock("@/shared/hooks/useKeepAwakeWhileFocused", () => ({ useKeepAwakeWhileFocused: () => {} }));
 const mockPlayer = {

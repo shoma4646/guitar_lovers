@@ -124,7 +124,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const { data: presets = [] } = useVideoPresets();
   const promptReminderPermission = useReminderPermissionPrompt();
   const confirmSwitch = useConfirmPhraseSwitch();
-  const { bpm: metronomeBpm, enabled: metronomeEnabled, activeBeat, beatsPerBar } = useMetronomeEngine();
+  const { bpm: metronomeBpm, enabled: metronomeEnabled, beatsPerBar } = useMetronomeEngine();
 
   const [showResultSheet, setShowResultSheet] = useState(false);
   const [showSavePhrase, setShowSavePhrase] = useState(false);
@@ -506,7 +506,6 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       onSelectPhrase={handleStartPhrase}
       metronomeBpm={metronomeBpm}
       metronomeEnabled={metronomeEnabled}
-      metronomeActiveBeat={activeBeat}
       metronomeBeatsPerBar={beatsPerBar}
       onStepMetronomeBpm={handleStepMetronomeBpm}
       onToggleMetronome={handleToggleMetronome}
@@ -628,7 +627,6 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
                 hasNoPhrases={allPhrases.length === 0}
                 metronomeBpm={metronomeBpm}
                 metronomeEnabled={metronomeEnabled}
-                metronomeActiveBeat={activeBeat}
                 metronomeBeatsPerBar={beatsPerBar}
                 onStepMetronomeBpm={handleStepMetronomeBpm}
                 onToggleMetronome={handleToggleMetronome}

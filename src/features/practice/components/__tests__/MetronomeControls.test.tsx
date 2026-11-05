@@ -1,4 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { colors } from "@/shared/theme";
+import { useMetronomeBeatStore } from "@/stores/metronomeBeat";
 import { BPM_MAX, BPM_MIN } from "@/shared/constants/bpm";
 import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import { MetronomeControls } from "../MetronomeControls";
@@ -9,7 +11,6 @@ function setup(bpm = 120) {
     <MetronomeControls
       bpm={bpm}
       enabled={false}
-      activeBeat={0}
       beatsPerBar={4}
       onStepBpm={onStepBpm}
       onToggleEnabled={jest.fn()}
@@ -59,5 +60,23 @@ describe("MetronomeControls の文字サイズ拡大", () => {
     expect(screen.getByTestId("metronome-bpm-value").props.maxFontSizeMultiplier).toBe(
       NUMERIC_MAX_FONT_SIZE_MULTIPLIER,
     );
+  });
+});
+
+describe("MetronomeControls の拍インジケータ", () => {
+  it("親を描き直さなくても、拍のストアが進むと点灯する拍が移る", () => {
+    act(() => useMetronomeBeatStore.getState().setActiveBeat(0));
+    render(
+      <MetronomeControls bpm={120} enabled beatsPerBar={4} onStepBpm={jest.fn()} onToggleEnabled={jest.fn()} />,
+    );
+    const litDot = () =>
+      screen.getAllByTestId(/^metronome-beat-dot-/).findIndex((dot) => {
+        const style = Array.isArray(dot.props.style) ? Object.assign({}, ...dot.props.style) : dot.props.style;
+        return style.backgroundColor === colors.primary;
+      });
+    expect(litDot()).toBe(0);
+
+    act(() => useMetronomeBeatStore.getState().setActiveBeat(2));
+    expect(litDot()).toBe(2);
   });
 });

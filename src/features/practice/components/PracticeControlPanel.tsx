@@ -41,7 +41,6 @@ type Props = {
   hasNoPhrases: boolean;
   metronomeBpm: number;
   metronomeEnabled: boolean;
-  metronomeActiveBeat: number;
   metronomeBeatsPerBar: number;
   onStepMetronomeBpm: (delta: number) => void;
   onToggleMetronome: () => void;
@@ -67,7 +66,6 @@ export function PracticeControlPanel({
   hasNoPhrases,
   metronomeBpm,
   metronomeEnabled,
-  metronomeActiveBeat,
   metronomeBeatsPerBar,
   onStepMetronomeBpm,
   onToggleMetronome,
@@ -199,7 +197,6 @@ export function PracticeControlPanel({
       <MetronomeControls
         bpm={metronomeBpm}
         enabled={metronomeEnabled}
-        activeBeat={metronomeActiveBeat}
         beatsPerBar={metronomeBeatsPerBar}
         onStepBpm={onStepMetronomeBpm}
         onToggleEnabled={onToggleMetronome}
