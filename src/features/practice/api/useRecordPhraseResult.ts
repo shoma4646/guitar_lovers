@@ -16,15 +16,13 @@ export function useRecordPhraseResult() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (attempt: PhraseAttempt) => recordPhraseResult(attempt),
-    onSuccess: () => {
+    // 途中で失敗しても結果だけは保存済みのことがあるため、成否によらず取り直す
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: phraseAttemptsQueryKey });
       queryClient.invalidateQueries({ queryKey: practicePhrasesQueryKey });
     },
     onError: (error) => {
-      if (error instanceof PhraseNotFoundError) {
-        queryClient.invalidateQueries({ queryKey: practicePhrasesQueryKey });
-        return;
-      }
+      if (error instanceof PhraseNotFoundError) return;
       showMutationError(error);
     },
   });

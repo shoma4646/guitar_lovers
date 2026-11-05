@@ -5,6 +5,7 @@ import {
 } from "@/shared/services/storage";
 import type { FavoriteVideo } from "@/shared/types/models";
 import { showMutationError } from "@/shared/lib/showMutationError";
+import { SKIP_REMINDER_SYNC_META } from "@/features/reminder/services/reminderSyncSubscription";
 import { favoriteVideosQueryKey } from "./useFavoriteVideos";
 
 type ToggleArgs =
@@ -15,6 +16,7 @@ type ToggleArgs =
 export function useToggleFavoriteVideo() {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: SKIP_REMINDER_SYNC_META,
     mutationFn: async (args: ToggleArgs) => {
       if (args.type === "add") {
         await addFavoriteVideo(args.video);

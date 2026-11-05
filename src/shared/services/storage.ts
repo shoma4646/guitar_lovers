@@ -605,11 +605,11 @@ export function getPracticePhrases(): Promise<PracticePhrase[]> {
   return serialized(loadPracticePhrases);
 }
 
-async function updatePracticePhraseUnlocked(
+async function writePatchedPhrase(
+  phrases: PracticePhrase[],
   id: string,
   patch: Partial<Omit<PracticePhrase, "id">>
 ): Promise<void> {
-  const phrases = await loadPracticePhrases();
   await writeList(
     STORAGE_KEYS.PRACTICE_PHRASES,
     phrases.map((p) =>
@@ -642,7 +642,7 @@ export function updatePracticePhrase(
   id: string,
   patch: Partial<Omit<PracticePhrase, "id">>
 ): Promise<void> {
-  return serialized(() => updatePracticePhraseUnlocked(id, patch));
+  return serialized(async () => writePatchedPhrase(await loadPracticePhrases(), id, patch));
 }
 
 /**
@@ -721,9 +721,10 @@ export function recordPhraseResult(attempt: PhraseAttempt): Promise<void> {
       throw new PhraseNotFoundError();
     }
 
+    // 結果の保存はフレーズ一覧を書き換えないため、先に読んだ一覧を書き戻しに使い回せる
     await savePhraseAttemptUnlocked(attempt);
     if (attempt.result === "ok" && phrase.currentBpm < attempt.bpm) {
-      await updatePracticePhraseUnlocked(phrase.id, {
+      await writePatchedPhrase(phrases, phrase.id, {
         currentBpm: attempt.bpm,
         updatedAt: attempt.date,
       });

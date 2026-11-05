@@ -11,6 +11,8 @@ import {
   getPracticeSessions,
   getReminderSettings,
 } from "@/shared/services/storage";
+import type { PhraseAttempt, PracticePhrase, PracticeSession } from "@/shared/types/models";
+import type { ReminderSettings } from "@/shared/lib/schemas/reminderSettings";
 import { planReminder, type ReminderPlan } from "../lib/planReminder";
 
 /** 予約するリマインド通知のidentifier */
@@ -79,22 +81,43 @@ export async function ensureReminderPermission(): Promise<boolean> {
   return isGranted(requested);
 }
 
+/** 予約を決めるのに使う保存済みの設定と練習データ */
+export type ReminderInputs = {
+  phrases: PracticePhrase[];
+  attempts: PhraseAttempt[];
+  sessions: PracticeSession[];
+  settings: ReminderSettings;
+};
+
+/** 予約を決めるのに使うデータを読み込む関数 */
+export type ReminderInputsLoader = () => Promise<ReminderInputs>;
+
 /**
- * 保存済みの設定と練習データから、次に予約するリマインド通知を求める
+ * 予約を決めるのに使うデータを端末から直接読み込む
  */
-export async function loadNextReminderPlan(): Promise<ReminderPlan | null> {
+export async function loadReminderInputsFromStorage(): Promise<ReminderInputs> {
   const [phrases, attempts, sessions, settings] = await Promise.all([
     getPracticePhrases(),
     getPhraseAttempts(),
     getPracticeSessions(),
     getReminderSettings(),
   ]);
-  return planReminder({ phrases, attempts, sessions, settings, now: new Date() });
+  return { phrases, attempts, sessions, settings };
 }
 
-async function syncOnce(): Promise<void> {
+/**
+ * 保存済みの設定と練習データから、次に予約するリマインド通知を求める
+ * @param loadInputs - データの読み込み方。省略時は端末から直接読む
+ */
+export async function loadNextReminderPlan(
+  loadInputs: ReminderInputsLoader = loadReminderInputsFromStorage,
+): Promise<ReminderPlan | null> {
+  return planReminder({ ...(await loadInputs()), now: new Date() });
+}
+
+async function syncOnce(loadInputs: ReminderInputsLoader): Promise<void> {
   const permission = await Notifications.getPermissionsAsync();
-  const plan = isGranted(permission) ? await loadNextReminderPlan() : null;
+  const plan = isGranted(permission) ? await loadNextReminderPlan(loadInputs) : null;
 
   await Notifications.cancelScheduledNotificationAsync(REMINDER_NOTIFICATION_ID);
   if (!plan) return;
@@ -117,6 +140,7 @@ async function syncOnce(): Promise<void> {
 
 let running: Promise<void> | null = null;
 let rerunRequested = false;
+let latestLoader: ReminderInputsLoader = loadReminderInputsFromStorage;
 let lastSyncError: unknown = null;
 
 /** 直前のsyncReminderの結果。失敗していればその例外、成功していればnull */
@@ -130,8 +154,12 @@ export function getLastSyncError(): unknown {
  * 許可が無い・設定がOFF・対象フレーズが無ければ予約を取り消す。
  * 実行中に呼ばれたら実行中の処理を共有し、終わった後にもう1回だけ作り直す。
  * 失敗はログに残すだけで例外にしないが、getLastSyncErrorで読み出せる
+ * @param loadInputs - データの読み込み方。省略時は端末から直接読む。作り直しが重なったら最後に渡されたものを使う
  */
-export function syncReminder(): Promise<void> {
+export function syncReminder(
+  loadInputs: ReminderInputsLoader = loadReminderInputsFromStorage,
+): Promise<void> {
+  latestLoader = loadInputs;
   if (running) {
     rerunRequested = true;
     return running;
@@ -141,7 +169,7 @@ export function syncReminder(): Promise<void> {
       do {
         rerunRequested = false;
         try {
-          await syncOnce();
+          await syncOnce(latestLoader);
           lastSyncError = null;
         } catch (e) {
           lastSyncError = e;
