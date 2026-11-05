@@ -113,3 +113,49 @@ describe("TodayPickCard（今日の1本の進捗バー）", () => {
     expect(style.fontSize).toBe(fontSize.headingLg);
   });
 });
+
+describe("TodayPickCard（理由の行と区間時刻が切れない）", () => {
+  const LONG_VIDEO_TITLE = "あ".repeat(60);
+
+  beforeEach(() => {
+    mockPhrasesQuery.data = [
+      {
+        id: "p1",
+        videoId: "abc123def45",
+        videoTitle: LONG_VIDEO_TITLE,
+        name: "速弾きのリフ",
+        startSec: 10,
+        endSec: 20,
+        currentBpm: 155,
+        initialBpm: 120,
+        targetBpm: 240,
+        playbackRate: 1,
+        createdAt: "2026-09-01T00:00:00.000Z",
+        updatedAt: "2026-09-01T00:00:00.000Z",
+      },
+    ];
+  });
+
+  it.each([
+    ["retry", "ng" as const, "前回はうまくいかなかったので、無理のないテンポでもう一度"],
+    ["stale", "ok" as const, "前回は弾けたフレーズ"],
+    ["fresh", undefined, "まだ記録がありません"],
+  ])("priority=%sでも「目標まであとNBPM」は独立したTextで、numberOfLinesで切り詰めない", (_priority, result, reason) => {
+    mockAttemptsQuery.data = result
+      ? [{ id: "a1", phraseId: "p1", date: "2026-09-02T00:00:00.000Z", bpm: 155, result }]
+      : [];
+    render(<TodayPickCard onStartPhrase={jest.fn()} onTryPreset={jest.fn()} onOpenAddVideo={jest.fn()} />);
+
+    expect(screen.getByText(reason)).toBeTruthy();
+    const goal = screen.getByText(/^目標まであと\d+BPM$/);
+    expect(goal.props.numberOfLines).toBeUndefined();
+  });
+
+  it("区間時刻は動画名とは別のTextで、切り詰めない", () => {
+    render(<TodayPickCard onStartPhrase={jest.fn()} onTryPreset={jest.fn()} onOpenAddVideo={jest.fn()} />);
+
+    const range = screen.getByText("00:10-00:20");
+    expect(range.props.numberOfLines).toBeUndefined();
+    expect(screen.getByText(LONG_VIDEO_TITLE).props.numberOfLines).toBe(1);
+  });
+});
