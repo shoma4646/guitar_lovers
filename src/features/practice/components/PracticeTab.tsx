@@ -568,19 +568,19 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     <View style={{ flex: 1, justifyContent: "space-between" }}>
       <ScrollWhenOverflow enabled={!fitsOneScreen}>
         <View style={{ gap: 10 }}>
-          <View style={styles.header}>
+          <View testID="practice-video-header" style={styles.header}>
             <IconButton name="menu" accessibilityLabel="メニューを開く" onPress={() => setShowMenu(true)} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.headerTitle} numberOfLines={1}>
+              <Text style={styles.headerTitle} numberOfLines={1} maxFontSizeMultiplier={1.3}>
                 {headerTitle}
               </Text>
               {headerSubtitle && (
-                <Text style={styles.headerSubtitle} numberOfLines={1}>
+                <Text style={styles.headerSubtitle} numberOfLines={1} maxFontSizeMultiplier={1.3}>
                   {headerSubtitle}
                 </Text>
               )}
             </View>
-            <Text style={styles.headerTimer}>{formatDuration(displaySeconds)}</Text>
+            <Text style={styles.headerTimer} maxFontSizeMultiplier={1.3}>{formatDuration(displaySeconds)}</Text>
             <IconButton name="tune" accessibilityLabel="チューナーを開く" onPress={() => router.push("/(tabs)/tuner")} />
             <IconButton name="settings" accessibilityLabel="設定を開く" onPress={() => router.push("/settings")} />
           </View>
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   header: {
-    height: 48,
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
