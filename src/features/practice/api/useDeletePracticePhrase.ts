@@ -9,7 +9,8 @@ export function useDeletePracticePhrase() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deletePracticePhrase(id),
-    onSuccess: () => {
+    // 途中で失敗しても結果だけは削除済みのことがあるため、成否によらず取り直す
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: practicePhrasesQueryKey });
       queryClient.invalidateQueries({ queryKey: phraseAttemptsQueryKey });
     },

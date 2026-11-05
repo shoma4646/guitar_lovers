@@ -7,6 +7,7 @@ import { syncReminder } from "@/features/reminder/services/reminderScheduler";
 import { subscribeReminderSync } from "@/features/reminder/services/reminderSyncSubscription";
 import { isReminderNotificationData } from "@/features/reminder/lib/planReminder";
 import { reminderQueryKeys } from "@/features/reminder/api/useReminderSettings";
+import { createCachedReminderInputsLoader } from "@/features/reminder/api/cachedReminderInputs";
 import { getPhraseAttempts, getPracticePhrases } from "@/shared/services/storage";
 import { buildTodayMenu } from "@/features/practice/lib/progression";
 import { usePracticeStore } from "@/stores/practice";
@@ -29,8 +30,8 @@ export async function startPhrasePracticeFromReminder(phraseId: string): Promise
 /**
  * リマインド通知とアプリの状態をつなぐ（何も描画しない）
  *
- * 起動時・前面復帰時・バックグラウンド移行時と、データを変えるmutationの成功時に
- * 予約を作り直し、リマインド通知のタップで名指しされたフレーズの練習を開始してPracticeタブを開く
+ * 起動時・前面復帰時・バックグラウンド移行時と、予約の入力を変えるmutationの成功時に
+ * 画面と共有するキャッシュを使って予約を作り直し、リマインド通知のタップで名指しされたフレーズの練習を開始してPracticeタブを開く
  */
 export function ReminderBridge() {
   const router = useRouter();
@@ -39,8 +40,9 @@ export function ReminderBridge() {
   const handledResponseKey = useRef<string | null>(null);
 
   useEffect(() => {
+    const loadInputs = createCachedReminderInputsLoader(queryClient);
     const refresh = () => {
-      void syncReminder().then(() =>
+      void syncReminder(loadInputs).then(() =>
         queryClient.invalidateQueries({ queryKey: reminderQueryKeys.all }),
       );
     };
