@@ -9,7 +9,7 @@
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { semantic } from "@/shared/theme/semantic";
-import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
+import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER, SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
 import type { ActivePhrasePractice } from "@/stores/practice";
 
 type Props = {
@@ -29,7 +29,7 @@ export function PracticeSessionBar({ practice, metronomeBpm, onIncrement, onDecr
       : `BPM ${metronomeBpm}（目標${goalBpm}）`;
 
   return (
-    <View style={styles.bar}>
+    <View testID="practice-session-bar" style={styles.bar}>
       <View>
         <Text style={styles.label}>{label}</Text>
         <Text testID="session-bar-count" style={styles.count} maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}>
@@ -81,6 +81,7 @@ export function PracticeSessionBar({ practice, metronomeBpm, onIncrement, onDecr
 const styles = StyleSheet.create({
   bar: {
     backgroundColor: semantic.sessionBarSurface,
+    marginHorizontal: -SCREEN_HORIZONTAL_PADDING,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
