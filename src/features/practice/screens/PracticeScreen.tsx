@@ -43,6 +43,7 @@ export function PracticeScreen() {
   const activeTab = usePracticeStore((s) => s.practiceSubTab);
   const setActiveTab = usePracticeStore((s) => s.setPracticeSubTab);
   const loadedVideoId = usePracticeStore((s) => s.loadedVideoId);
+  const isPracticing = usePracticeStore((s) => s.activePhrasePractice !== null);
   const setToolsSheetOpen = usePracticeStore((s) => s.setToolsSheetOpen);
   const router = useRouter();
   const [addVideoVisible, setAddVideoVisible] = useState(false);
@@ -57,7 +58,7 @@ export function PracticeScreen() {
 
   return (
     <ErrorBoundary>
-      <ScreenFrame scrollWhenOverflow={!loadedVideoId}>
+      <ScreenFrame scrollWhenOverflow={!loadedVideoId} paddingBottom={isPracticing ? 0 : undefined}>
         {!loadedVideoId && (
           <>
             <View
