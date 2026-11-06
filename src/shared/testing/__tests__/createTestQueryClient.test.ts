@@ -1,3 +1,4 @@
+import { createAppQueryClient } from "@/shared/lib/createAppQueryClient";
 import { createTestQueryClient } from "../createTestQueryClient";
 
 describe("createTestQueryClient", () => {
@@ -8,6 +9,13 @@ describe("createTestQueryClient", () => {
     expect(defaults.queries?.gcTime).toBe(Infinity);
     expect(defaults.queries?.retry).toBe(false);
     expect(defaults.mutations?.gcTime).toBe(Infinity);
+  });
+
+  it("staleTimeがアプリのQueryClientと一致し、再表示で読み直さないアプリの挙動を再現する", () => {
+    const appStaleTime = createAppQueryClient().getDefaultOptions().queries?.staleTime;
+
+    expect(appStaleTime).toBeDefined();
+    expect(createTestQueryClient().getDefaultOptions().queries?.staleTime).toBe(appStaleTime);
   });
 
   it("呼ぶたびに別のインスタンスを返し、テスト間でキャッシュを共有しない", () => {
