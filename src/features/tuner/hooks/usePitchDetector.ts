@@ -16,6 +16,8 @@ import { AudioManager, AudioRecorder } from "react-native-audio-api";
 import { PitchDetector } from "pitchy";
 import { createPitchSmoother } from "@/features/tuner/lib/smoothing";
 import { computeRms, rmsToDbfs } from "@/features/tuner/lib/inputLevel";
+import { decimateByAverage, PITCH_DECIMATION_FACTOR } from "@/features/tuner/lib/decimate";
+import { hzDisplayDigits, inputLevelDisplayDigits } from "@/features/tuner/lib/displayDigits";
 import { usePracticeStore } from "@/stores/practice";
 
 export type PitchDetectorStatus =
@@ -27,11 +29,9 @@ export type PitchDetectorStatus =
 
 export interface PitchDetectorState {
   status: PitchDetectorStatus;
-  /** 平滑化済みの検出周波数（無音・未検出ならnull） */
+  /** 平滑化済みの検出周波数（無音・未検出ならnull）。小数1桁が変わったときだけ更新される */
   hz: number | null;
-  /** 直近の検出信頼度（0〜1） */
-  clarity: number;
-  /** 直近フレームのマイク入力レベル（dBFS）。停止中はnull */
+  /** 直近フレームのマイク入力レベル（dBFS）。停止中はnull。整数部が変わったときだけ更新される */
   inputLevelDb: number | null;
   /** ユーザーが明示的に一時停止しているか（未開始とは区別する） */
   pausedByUser: boolean;
@@ -70,7 +70,6 @@ function restorePlaybackSession(): void {
 export function usePitchDetector(): PitchDetectorState {
   const [status, setStatus] = useState<PitchDetectorStatus>("idle");
   const [hz, setHz] = useState<number | null>(null);
-  const [clarity, setClarity] = useState(0);
   const [inputLevelDb, setInputLevelDb] = useState<number | null>(null);
   const [pausedByUser, setPausedByUser] = useState(false);
 
@@ -85,6 +84,8 @@ export function usePitchDetector(): PitchDetectorState {
   } | null>(null);
   const smootherRef = useRef(createPitchSmoother());
   const lastUiUpdateRef = useRef(0);
+  const hzKeyRef = useRef<string | null>(null);
+  const inputLevelKeyRef = useRef<string | null>(null);
   // pause()/resume()と同時に更新する。effect側は再購読を避けるためstateでなくこちらを読む
   const pausedByUserRef = useRef(false);
   const isFocusedRef = useRef(false);
@@ -103,8 +104,9 @@ export function usePitchDetector(): PitchDetectorState {
     smootherRef.current.reset();
     detectorRef.current = null;
     restorePlaybackSession();
+    hzKeyRef.current = null;
+    inputLevelKeyRef.current = null;
     setHz(null);
-    setClarity(0);
     setInputLevelDb(null);
   }, []);
 
@@ -145,23 +147,34 @@ export function usePitchDetector(): PitchDetectorState {
         },
         (event) => {
           const pcm = event.buffer.getChannelData(0);
+          const decimated = decimateByAverage(pcm, PITCH_DECIMATION_FACTOR);
           // 端末によって希望と異なる長さで届くため、実際の長さに合わせて検出器を作り直す
-          if (detectorRef.current?.inputLength !== pcm.length) {
-            const detector = PitchDetector.forFloat32Array(pcm.length);
+          if (detectorRef.current?.inputLength !== decimated.length) {
+            const detector = PitchDetector.forFloat32Array(decimated.length);
             // minVolumeDecibelsはパワー比（10^(dB/10)）で振幅に換算されるため、RMSを直接指定する
             detector.minVolumeAbsolute = MIN_VOLUME_RMS;
-            detectorRef.current = { inputLength: pcm.length, detector };
+            detectorRef.current = { inputLength: decimated.length, detector };
           }
-          const [detectedHz, detectedClarity] =
-            detectorRef.current.detector.findPitch(pcm, event.buffer.sampleRate);
+          const [detectedHz, detectedClarity] = detectorRef.current.detector.findPitch(
+            decimated,
+            event.buffer.sampleRate / PITCH_DECIMATION_FACTOR,
+          );
           const smoothed = smootherRef.current.push(detectedHz, detectedClarity);
 
           const now = Date.now();
           if (now - lastUiUpdateRef.current < UI_UPDATE_INTERVAL_MS) return;
           lastUiUpdateRef.current = now;
-          setHz(smoothed);
-          setClarity(detectedClarity);
-          setInputLevelDb(rmsToDbfs(computeRms(pcm)));
+          const hzKey = hzDisplayDigits(smoothed);
+          if (hzKey !== hzKeyRef.current) {
+            hzKeyRef.current = hzKey;
+            setHz(smoothed);
+          }
+          const inputLevel = rmsToDbfs(computeRms(pcm));
+          const inputLevelKey = inputLevelDisplayDigits(inputLevel);
+          if (inputLevelKey !== inputLevelKeyRef.current) {
+            inputLevelKeyRef.current = inputLevelKey;
+            setInputLevelDb(inputLevel);
+          }
         },
       );
 
@@ -242,5 +255,5 @@ export function usePitchDetector(): PitchDetectorState {
     };
   }, [stop]);
 
-  return { status, hz, clarity, inputLevelDb, pausedByUser, pause, resume };
+  return { status, hz, inputLevelDb, pausedByUser, pause, resume };
 }
