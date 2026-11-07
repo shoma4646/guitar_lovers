@@ -21,6 +21,10 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|pitchy|fft\\.js))",
+      "/node_modules/react-native-reanimated/plugin/"
+    ],
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.js"
     ]
