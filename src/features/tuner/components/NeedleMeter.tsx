@@ -5,8 +5,8 @@
  * ±50centsを±60度の針の傾きに対応させ、中央±5centsを帯で示す。
  */
 
-import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
+import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -33,24 +33,45 @@ type Props = {
 };
 
 const MAX_ANGLE_DEG = 60;
-const RING_DIAMETER = 256;
-const RING_RADIUS = RING_DIAMETER / 2;
+const MAX_RING_DIAMETER = 256;
 const RING_STROKE_WIDTH = 12;
-// 円の中心を枠の下端に置くため、半径より低いと頂点の帯が切り取られる（線の太さ分は上の余白）
-const METER_HEIGHT = RING_RADIUS + RING_STROKE_WIDTH;
 const TICK_GAP_FROM_RING = 4;
-const TICK_OUTER_RADIUS = RING_RADIUS - RING_STROKE_WIDTH - TICK_GAP_FROM_RING;
-const NEEDLE_LENGTH = 80;
+const MAX_NEEDLE_LENGTH = 80;
 const TICK_STEP_CENTS = 10;
 const TICK_VALUES = Array.from(
   { length: (METER_MAX_CENTS * 2) / TICK_STEP_CENTS + 1 },
   (_, i) => -METER_MAX_CENTS + i * TICK_STEP_CENTS,
 );
-// 中央帯の弦幅。半径128の円で±TUNING_THRESHOLD_CENTS分の弧（±60度換算）に対応する弦の長さ
-const IN_TUNE_BAND_WIDTH =
-  2 *
-  RING_RADIUS *
-  Math.sin((TUNING_THRESHOLD_CENTS / METER_MAX_CENTS) * MAX_ANGLE_DEG * (Math.PI / 180));
+const IN_TUNE_HALF_ANGLE_RAD =
+  (TUNING_THRESHOLD_CENTS / METER_MAX_CENTS) * MAX_ANGLE_DEG * (Math.PI / 180);
+
+type MeterGeometry = {
+  diameter: number;
+  radius: number;
+  /** 円の中心を枠の下端に置くため、半径より低いと頂点の帯が切り取られる（線の太さ分は上の余白） */
+  frameHeight: number;
+  tickOuterRadius: number;
+  needleLength: number;
+  /** 中央帯の弦幅。±TUNING_THRESHOLD_CENTS分の弧（±60度換算）に対応する弦の長さ */
+  inTuneBandWidth: number;
+};
+
+/**
+ * 表示枠の幅に収まる円の直径（最大256）と、それに比例させた各部の寸法を返す
+ * @param frameWidth - 表示枠の幅。未計測ならundefined
+ */
+function meterGeometry(frameWidth: number | undefined): MeterGeometry {
+  const diameter = Math.min(MAX_RING_DIAMETER, frameWidth ?? MAX_RING_DIAMETER);
+  const radius = diameter / 2;
+  return {
+    diameter,
+    radius,
+    frameHeight: radius + RING_STROKE_WIDTH,
+    tickOuterRadius: radius - RING_STROKE_WIDTH - TICK_GAP_FROM_RING,
+    needleLength: MAX_NEEDLE_LENGTH * (diameter / MAX_RING_DIAMETER),
+    inTuneBandWidth: 2 * radius * Math.sin(IN_TUNE_HALF_ANGLE_RAD),
+  };
+}
 
 /** セント値（範囲外含む）を針の回転角度（度）に変換する */
 function centsToAngleDeg(cents: number): number {
@@ -68,6 +89,12 @@ export function NeedleMeter({ cents, hasSignal, state }: Props) {
       : withSpring(target, { damping: 14, stiffness: 120 });
   }, [angle, cents, hasSignal, reduced]);
 
+  const [frameWidth, setFrameWidth] = useState<number | undefined>(undefined);
+  const geometry = meterGeometry(frameWidth);
+  const handleLayout = (event: LayoutChangeEvent) => {
+    setFrameWidth(event.nativeEvent.layout.width);
+  };
+
   const needleColor = tuningColor(state, hasSignal);
 
   const needleStyle = useAnimatedStyle(() => ({
@@ -75,25 +102,57 @@ export function NeedleMeter({ cents, hasSignal, state }: Props) {
   }));
 
   return (
-    <View testID="needle-meter" style={styles.wrap} accessible={false}>
-      <View testID="needle-meter-ring" style={styles.ringTrack} />
+    <View
+      testID="needle-meter"
+      style={[styles.wrap, { height: geometry.frameHeight }]}
+      accessible={false}
+      onLayout={handleLayout}
+    >
+      <View
+        testID="needle-meter-ring"
+        style={[
+          styles.ringTrack,
+          {
+            width: geometry.diameter,
+            height: geometry.diameter,
+            bottom: -geometry.radius,
+            borderRadius: geometry.radius,
+          },
+        ]}
+      />
       <View
         testID="needle-meter-in-tune-band"
         style={[
           styles.inTuneBand,
-          { width: IN_TUNE_BAND_WIDTH, marginLeft: -IN_TUNE_BAND_WIDTH / 2 },
+          {
+            width: geometry.inTuneBandWidth,
+            marginLeft: -geometry.inTuneBandWidth / 2,
+            height: geometry.diameter,
+            bottom: -geometry.radius,
+          },
         ]}
       />
       {TICK_VALUES.map((value) => (
         <View
           key={value}
-          style={[styles.tickPivot, { transform: [{ rotate: `${centsToAngleDeg(value)}deg` }] }]}
+          style={[
+            styles.tickPivot,
+            {
+              height: geometry.tickOuterRadius,
+              transform: [{ rotate: `${centsToAngleDeg(value)}deg` }],
+            },
+          ]}
         >
           <View style={styles.tick} />
         </View>
       ))}
-      <Animated.View style={[styles.needlePivot, needleStyle]}>
-        <View style={[styles.needle, { backgroundColor: needleColor }]} />
+      <Animated.View
+        testID="needle-meter-needle"
+        style={[styles.needlePivot, { height: geometry.needleLength }, needleStyle]}
+      >
+        <View
+          style={[styles.needle, { height: geometry.needleLength, backgroundColor: needleColor }]}
+        />
         <View
           style={[
             styles.needleHead,
@@ -108,24 +167,17 @@ export function NeedleMeter({ cents, hasSignal, state }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     width: "100%",
-    height: METER_HEIGHT,
     alignItems: "center",
     justifyContent: "flex-end",
     overflow: "hidden",
   },
   ringTrack: {
     position: "absolute",
-    width: RING_DIAMETER,
-    height: RING_DIAMETER,
-    bottom: -RING_RADIUS,
     borderWidth: RING_STROKE_WIDTH,
     borderColor: colors.surfaceContainerHigh,
-    borderRadius: RING_RADIUS,
   },
   inTuneBand: {
     position: "absolute",
-    height: RING_DIAMETER,
-    bottom: -RING_RADIUS,
     left: "50%",
     borderTopWidth: RING_STROKE_WIDTH,
     borderColor: colors.primaryContainer,
@@ -134,7 +186,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     width: 2,
-    height: TICK_OUTER_RADIUS,
     alignItems: "center",
     transformOrigin: "bottom",
   },
@@ -148,13 +199,11 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     width: 4,
-    height: NEEDLE_LENGTH,
     alignItems: "center",
     transformOrigin: "bottom",
   },
   needle: {
     width: 3,
-    height: NEEDLE_LENGTH,
     borderRadius: 2,
   },
   needleHead: {
