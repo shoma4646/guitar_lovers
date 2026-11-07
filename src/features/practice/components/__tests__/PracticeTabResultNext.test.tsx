@@ -1,5 +1,5 @@
 import { act, render } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { AccessibilityInfo, Alert } from "react-native";
 import { usePracticeStore } from "@/stores/practice";
 import type { PracticePhrase } from "@/shared/types/models";
 import { PracticeTab } from "../PracticeTab";
@@ -101,9 +101,12 @@ function startAndRender() {
 }
 
 describe("PracticeTab の結果記録後の「次の1本」", () => {
-  it("フレーズが1本だけなら次の1本は無いと結果シートへ伝え、記録すると完了を知らせる", async () => {
+  it("フレーズが1本だけなら次の1本は無いと結果シートへ伝え、記録するとモーダルを出さずに完了を読み上げる", async () => {
     mockPhrases = [PHRASE];
     const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const announceSpy = jest
+      .spyOn(AccessibilityInfo, "announceForAccessibility")
+      .mockImplementation(() => {});
     const props = startAndRender();
 
     expect(props.hasNextPhrase).toBe(false);
@@ -111,9 +114,13 @@ describe("PracticeTab の結果記録後の「次の1本」", () => {
       await props.onSubmit({ result: "partial" }, "finish");
     });
 
-    expect(alertSpy).toHaveBeenCalledWith("記録しました", "今日のメニューで次に練習するフレーズはありません");
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(announceSpy).toHaveBeenCalledWith(
+      "記録しました。今日のメニューで次に練習するフレーズはありません",
+    );
     expect(usePracticeStore.getState().activePhrasePractice).toBeNull();
     alertSpy.mockRestore();
+    announceSpy.mockRestore();
   });
 
   it("次の1本があれば、記録して次へで次のフレーズの練習が始まり、完了の案内は出さない", async () => {
@@ -131,7 +138,7 @@ describe("PracticeTab の結果記録後の「次の1本」", () => {
     alertSpy.mockRestore();
   });
 
-  it("次の1本があるときに「今日は終わる」を選んでも、完了の案内は出さない", async () => {
+  it("次の1本があるときに「今日は終わる」を選んでも、モーダルの案内は出さない", async () => {
     mockPhrases = [PHRASE, SECOND];
     const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
     const props = startAndRender();

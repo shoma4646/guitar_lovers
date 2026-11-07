@@ -10,13 +10,13 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { View, Text, ScrollView, Alert, StyleSheet } from "react-native";
+import { View, Text, ScrollView, Alert, StyleSheet, AccessibilityInfo } from "react-native";
 import WebView from "react-native-webview";
 import { useSharedValue } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { randomUUID } from "expo-crypto";
 import { usePracticeStore, type PlaybackRate } from "@/stores/practice";
-import { colors } from "@/shared/theme";
+import { colors, radius } from "@/shared/theme";
 import { IconButton } from "@/shared/components/atoms/IconButton";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
@@ -70,6 +70,10 @@ import { PhraseResultSheet } from "./PhraseResultSheet";
 import { PracticeSessionBar } from "./PracticeSessionBar";
 import { PracticeMenuSheet } from "./PracticeMenuSheet";
 import { VideoErrorCard } from "./VideoErrorCard";
+
+const FINISH_NOTICE = "記録しました";
+const NO_NEXT_PHRASE_MESSAGE = "今日のメニューで次に練習するフレーズはありません";
+const FINISH_NOTICE_VISIBLE_MS = 4000;
 
 type Props = {
   /** ヘッダーメニューの「別の動画を開く」から呼ぶ。AddVideoSheetの開閉はPracticeScreen側で持つ */
@@ -313,6 +317,13 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   );
 
   const metronomeEnabledBeforeFinishRef = useRef(false);
+  const clearVideo = usePracticeStore((s) => s.clearVideo);
+  const [finishNotice, setFinishNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (finishNotice === null) return;
+    const timer = setTimeout(() => setFinishNotice(null), FINISH_NOTICE_VISIBLE_MS);
+    return () => clearTimeout(timer);
+  }, [finishNotice]);
 
   const handleFinishPractice = useCallback(() => {
     beginResultEntry(randomUUID());
@@ -385,13 +396,24 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         // 遷移がconfirmSwitchの「未保存の記録」として誤検知したり、再送時に同じattempt IDを
         // 使い回して今回の記録を上書きしてしまう。
         // 記録した本人が今も練習中のときだけ消す（この後に別フレーズが始まっていたら消さない）
-        if (usePracticeStore.getState().activePhrasePractice?.phrase.id === phrase.id) {
+        const isStillRecordedPractice =
+          usePracticeStore.getState().activePhrasePractice?.phrase.id === phrase.id;
+        if (isStillRecordedPractice) {
           setActivePractice(null);
         }
 
-        if (!plan.next) {
-          Alert.alert("記録しました", "今日のメニューで次に練習するフレーズはありません");
-        } else if (action === "next") {
+        if (action === "finish") {
+          if (isStillRecordedPractice) {
+            clearVideo();
+          }
+          const notice = plan.next
+            ? FINISH_NOTICE
+            : `${FINISH_NOTICE}。${NO_NEXT_PHRASE_MESSAGE}`;
+          setFinishNotice(notice);
+          AccessibilityInfo.announceForAccessibility(notice);
+        } else if (!plan.next) {
+          Alert.alert(FINISH_NOTICE, NO_NEXT_PHRASE_MESSAGE);
+        } else {
           // 直前に保存が成功しており未保存の記録は無いため、確認ダイアログを経由せず開始する
           startPhraseDirectly(plan.next.phrase, plan.next.startBpm);
           setMetronomeEnabled(metronomeEnabledBeforeFinishRef.current);
@@ -412,6 +434,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       metronomeBpm,
       todayMenu,
       startPhraseDirectly,
+      clearVideo,
     ],
   );
 
@@ -537,6 +560,11 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           showsVerticalScrollIndicator={false}
         >
           <View style={{ gap: 12 }}>
+            {finishNotice !== null && (
+              <View testID="practice-finish-notice" style={styles.finishNotice}>
+                <Text style={styles.finishNoticeText}>{finishNotice}</Text>
+              </View>
+            )}
             <TodayPickCard
               onStartPhrase={handleStartPhrase}
               onTryPreset={handleTryPreset}
@@ -708,6 +736,17 @@ const styles = StyleSheet.create({
   scrollContent: {
     // 画面の横paddingはPracticeScreenのScreenFrameが担うため、ここでは付けない
     paddingBottom: 32,
+  },
+  finishNotice: {
+    borderRadius: radius.md,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.primaryContainer,
+  },
+  finishNoticeText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: colors.onPrimaryContainer,
   },
   header: {
     minHeight: 48,
