@@ -162,8 +162,8 @@ interface PracticeState {
   setActivePhrasePractice: (value: ActivePhrasePractice | null) => void;
   /** 練習中フレーズの弾き終えた回数を1増やし、増やした後の回数を返す（練習中でなければ何もせず0を返す） */
   incrementCompletedReps: () => number;
-  /** 練習中フレーズの弾き終えた回数を1減らす（0未満にはしない。練習中でなければ何もしない） */
-  decrementCompletedReps: () => void;
+  /** 練習中フレーズの弾き終えた回数を1減らし、減らした後の回数を返す（0未満にはしない。練習中でなければ何もせず0を返す） */
+  decrementCompletedReps: () => number;
   /** 結果記録を開始し、未発番なら新しいattempt IDを発番して返す（再送時は同じIDを返す） */
   beginResultEntry: (newId: string) => string;
   setPlayerError: (code: number | null) => void;
@@ -404,9 +404,10 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   },
   decrementCompletedReps: () => {
     const active = get().activePhrasePractice;
-    if (!active) return;
+    if (!active) return 0;
     const completedReps = Math.max(0, active.completedReps - 1);
     set({ activePhrasePractice: { ...active, completedReps } });
+    return completedReps;
   },
   setPlayerError: (code) => set({ playerError: code }),
 

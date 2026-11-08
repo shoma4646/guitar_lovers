@@ -241,6 +241,23 @@ describe("incrementCompletedReps", () => {
   });
 });
 
+describe("decrementCompletedReps", () => {
+  it("減らした後の回数を返し、0未満にはしない", () => {
+    const { startPhrasePractice, incrementCompletedReps, decrementCompletedReps } = usePracticeStore.getState();
+    startPhrasePractice(makePhrase(), 85);
+    incrementCompletedReps();
+    incrementCompletedReps();
+
+    expect([1, 2, 3].map(() => decrementCompletedReps())).toEqual([1, 0, 0]);
+    expect(usePracticeStore.getState().activePhrasePractice?.completedReps).toBe(0);
+  });
+
+  it("練習中でなければ0を返し状態を変えない", () => {
+    expect(usePracticeStore.getState().decrementCompletedReps()).toBe(0);
+    expect(usePracticeStore.getState().activePhrasePractice).toBeNull();
+  });
+});
+
 describe("pendingAttemptIdの寿命", () => {
   it("同じフレーズを開始し直しても保存失敗後のpendingAttemptIdは保持される", () => {
     const { startPhrasePractice, beginResultEntry } = usePracticeStore.getState();
