@@ -3,10 +3,13 @@
  *
  * 「BPM NNでN回」の目標と弾き終えた回数を表示し、回数の増減と結果記録への導線を置く。
  * 目安回数に達しても自動では記録シートを開かず、「終了」を押したときだけ開く。
+ * 指板を見たまま数えられるよう、回数の増減は振動と読み上げでも伝える。
  * BPMは記録される値であるmetronomeBpmをそのまま出す（今日の目標と異なるときだけ目標も添える）。
  */
 
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useRef } from "react";
+import { AccessibilityInfo, View, Text, Pressable, StyleSheet } from "react-native";
+import * as Haptics from "expo-haptics";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { semantic } from "@/shared/theme/semantic";
 import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER, SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
@@ -16,13 +19,38 @@ type Props = {
   practice: ActivePhrasePractice;
   /** 実際に記録されるBPM（メトロノームの現在値） */
   metronomeBpm: number;
-  onIncrement: () => void;
-  onDecrement: () => void;
+  /** 回数を1増やし、増やした後の回数を返す */
+  onIncrement: () => number;
+  /** 回数を1減らし、減らした後の回数を返す */
+  onDecrement: () => number;
   onFinish: () => void;
 };
 
 export function PracticeSessionBar({ practice, metronomeBpm, onIncrement, onDecrement, onFinish }: Props) {
-  const { goalBpm, targetReps, completedReps } = practice;
+  const { goalBpm, targetReps, completedReps, startedAt } = practice;
+  const reachedStartedAtRef = useRef<number | null>(null);
+
+  const handleIncrement = () => {
+    const nextReps = onIncrement();
+    if (nextReps === 0) return;
+    void Haptics.selectionAsync();
+    const isFirstReach = nextReps === targetReps && reachedStartedAtRef.current !== startedAt;
+    if (!isFirstReach) {
+      AccessibilityInfo.announceForAccessibility(`${nextReps}回`);
+      return;
+    }
+    reachedStartedAtRef.current = startedAt;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    // 続けて2回読み上げると iOS では後の読み上げが前を打ち切るため、1回にまとめる
+    AccessibilityInfo.announceForAccessibility(
+      `${nextReps}回。目安の${targetReps}回に達しました。終了で記録できます`,
+    );
+  };
+
+  const handleDecrement = () => {
+    if (completedReps === 0) return;
+    AccessibilityInfo.announceForAccessibility(`${onDecrement()}回`);
+  };
   const label =
     metronomeBpm === goalBpm
       ? `BPM ${metronomeBpm}で`
@@ -47,7 +75,7 @@ export function PracticeSessionBar({ practice, metronomeBpm, onIncrement, onDecr
 
       <View style={styles.actions}>
         <Pressable
-          onPress={onDecrement}
+          onPress={handleDecrement}
           disabled={completedReps === 0}
           style={[styles.iconButton, { opacity: completedReps === 0 ? 0.4 : 1 }]}
           accessibilityRole="button"
@@ -57,7 +85,7 @@ export function PracticeSessionBar({ practice, metronomeBpm, onIncrement, onDecr
         </Pressable>
 
         <Pressable
-          onPress={onIncrement}
+          onPress={handleIncrement}
           style={styles.incrementButton}
           accessibilityRole="button"
           accessibilityLabel={`1回弾いた、現在${completedReps}/${targetReps}回`}
