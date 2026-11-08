@@ -71,7 +71,15 @@ export function MetronomeControls({
     : `${bpm} BPM`;
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+    <View
+      testID="metronome-row"
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+      }}
+    >
       <Pressable
         onPress={decHold.onPress}
         onPressIn={decHold.onPressIn}
@@ -92,7 +100,9 @@ export function MetronomeControls({
       </Pressable>
 
       <View
-        style={{ alignItems: "center" }}
+        testID="metronome-tempo-column"
+        // 伸ばすと幅375以上で＋とメトロノームの間隔が詰まるため、縮むだけにする
+        style={{ alignItems: "center", flexShrink: 1, minWidth: 0 }}
         accessible
         accessibilityRole="adjustable"
         accessibilityLabel="メトロノームのテンポ"
@@ -134,7 +144,19 @@ export function MetronomeControls({
           ))}
         </View>
         {phraseProgress && (
-          <Text style={{ fontSize: 11, color: colors.onSurfaceVariant, marginTop: 2 }}>
+          <Text
+            testID="metronome-phrase-progress"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+            style={{
+              fontSize: 11,
+              color: colors.onSurfaceVariant,
+              marginTop: 2,
+              alignSelf: "stretch",
+              textAlign: "center",
+            }}
+          >
             前回 {phraseProgress.lastReachedBpm} ・ 卒業まであと{phraseProgress.bpmToGraduate}
           </Text>
         )}
