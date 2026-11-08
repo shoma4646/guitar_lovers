@@ -80,3 +80,39 @@ describe("MetronomeControls の拍インジケータ", () => {
     expect(litDot()).toBe(2);
   });
 });
+
+describe("MetronomeControls の幅320対応", () => {
+  function renderWithProgress() {
+    render(
+      <MetronomeControls
+        bpm={115}
+        enabled={false}
+        beatsPerBar={4}
+        onStepBpm={jest.fn()}
+        onToggleEnabled={jest.fn()}
+        phraseProgress={{ lastReachedBpm: 110, bpmToGraduate: 105 }}
+      />,
+    );
+  }
+
+  it("ボタンとBPM表示の間を8pt以上あける", () => {
+    renderWithProgress();
+    expect(screen.getByTestId("metronome-row").props.style.gap).toBeGreaterThanOrEqual(8);
+  });
+
+  it("BPM表示の列は縮められるが、伸びて両隣のボタンを押し寄せない", () => {
+    renderWithProgress();
+    const style = screen.getByTestId("metronome-tempo-column").props.style;
+    expect(style.flexShrink).toBe(1);
+    expect(style.flex).toBeUndefined();
+    expect(style.flexGrow).toBeUndefined();
+  });
+
+  it("「前回・卒業まで」の補足は1行に収め、収まらなければ文字を縮める", () => {
+    renderWithProgress();
+    const progress = screen.getByTestId("metronome-phrase-progress");
+    expect(progress.props.numberOfLines).toBe(1);
+    expect(progress.props.adjustsFontSizeToFit).toBe(true);
+    expect(progress).toHaveTextContent("前回 110 ・ 卒業まであと105");
+  });
+});
