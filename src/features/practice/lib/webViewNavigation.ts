@@ -19,37 +19,66 @@ export function isEmbedOriginUrl(url: string | undefined): boolean {
  */
 export const PLAYER_ORIGIN_WHITELIST: string[] = ["*"];
 
-/** プレイヤーの外へ出る遷移のうち、外部で開いてよいホスト（その配下のサブドメインも含む） */
-export const EXTERNAL_LINK_HOSTS = ["youtube.com", "youtu.be", "google.com"] as const;
+/** プレイヤーの外へ出る遷移のうち、外部で開いてよいホスト（完全一致。サブドメインは含まない） */
+export const EXTERNAL_LINK_HOSTS = [
+  "youtube.com",
+  "www.youtube.com",
+  "m.youtube.com",
+  "youtu.be",
+  "policies.google.com",
+  "support.google.com",
+] as const;
 
-/** https URLのホスト名を小文字で取り出す。ユーザー情報・ポートは除き、取り出せなければnull */
-function extractHttpsHost(url: string): string | null {
-  const match = /^https:\/\/([^/?#\\]*)/i.exec(url);
+/** 許可ホスト上でも、行き先を自由に指定できる転送用のパス（先頭セグメント、小文字） */
+const REDIRECT_PATH_SEGMENTS = ["redirect", "url"] as const;
+
+/** https URLをホスト名（小文字）とパス部分に分ける。ユーザー情報・ポートは除き、ホストが取り出せなければnull */
+function splitHttpsUrl(url: string): { host: string; path: string } | null {
+  const match = /^https:\/\/([^/?#\\]*)([^?#]*)/i.exec(url);
   if (!match) return null;
   const authority = match[1];
   const host = authority.slice(authority.lastIndexOf("@") + 1).replace(/:\d*$/, "");
-  return host === "" ? null : host.toLowerCase();
+  return host === "" ? null : { host: host.toLowerCase(), path: match[2] };
+}
+
+/** パスを%復号し、「/」「\」で区切って空・「.」「..」を解決した先頭セグメントを小文字で返す。復号できなければnull */
+function firstPathSegment(path: string): string | null {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    return null;
+  }
+  const resolved: string[] = [];
+  for (const segment of decoded.split(/[/\\]/)) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === "..") resolved.pop();
+    else resolved.push(segment);
+  }
+  return (resolved[0] ?? "").toLowerCase();
 }
 
 /**
  * プレイヤーの外へ出るURLを外部で開いてよいか
- * httpsで、ホストがEXTERNAL_LINK_HOSTSのいずれかかその配下のときだけ許可する
+ * httpsで、ホストがEXTERNAL_LINK_HOSTSのいずれかと完全一致し、パスが転送用（/redirect・/url）でないときだけ許可する
  * @param url - 開こうとしているURL
  */
 export function isAllowedExternalUrl(url: string): boolean {
-  const host = extractHttpsHost(url);
-  if (host === null) return false;
-  return EXTERNAL_LINK_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+  const parts = splitHttpsUrl(url);
+  if (parts === null) return false;
+  if (!(EXTERNAL_LINK_HOSTS as readonly string[]).includes(parts.host)) return false;
+  const segment = firstPathSegment(parts.path);
+  return segment !== null && !(REDIRECT_PATH_SEGMENTS as readonly string[]).includes(segment);
 }
 
 /**
  * プレイヤーWebView内での読み込みを許可するか
- * about:blank・プレイヤーHTMLのorigin配下と、iframe内（isTopFrame:false）のhttp(s)・about:の読み込みだけを許可する
+ * about:blank・プレイヤーHTMLのorigin配下と、iframe内（isTopFrame:false）のhttps・about:の読み込みだけを許可する
  * @param req.url - 読み込み先のURL
  * @param req.isTopFrame - トップフレームの遷移か（iOSのみ。未指定ならトップフレームとみなす）
  */
 export function shouldAllowPlayerNavigation(req: { url: string; isTopFrame?: boolean }): boolean {
-  if (req.isTopFrame === false) return /^(https?:|about:)/i.test(req.url);
+  if (req.isTopFrame === false) return /^(https:|about:)/i.test(req.url);
   return req.url === "about:blank" || isEmbedOriginUrl(req.url);
 }
 
