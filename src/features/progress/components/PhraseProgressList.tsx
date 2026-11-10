@@ -1,7 +1,7 @@
 /**
  * フレーズ別BPM推移リスト（練習中）
  *
- * 「開始BPM → 現在BPM / 目標BPM」と進捗バーを1行56pt以内で表示する。
+ * 1段目にフレーズ名、2段目に進捗バーと「開始BPM → 現在BPM / 目標BPM」を並べ、標準の文字サイズで1行56ptに収める。
  * データ取得は呼び出し側（画面・シート）が `usePhraseProgressSummaries` で行い、本体は表示に専念する。
  */
 
@@ -51,16 +51,16 @@ function PhraseProgressRow({
       accessible
       accessibilityLabel={`${phrase.name}、開始${startBpm}から目標${targetBpm}のうち現在${currentBpm}`}
     >
-      <View style={styles.topRow}>
-        <Text style={styles.name} numberOfLines={1}>
-          {phrase.name}
-        </Text>
-        <Text style={styles.range} maxFontSizeMultiplier={1.3}>
+      <Text style={styles.name} numberOfLines={1}>
+        {phrase.name}
+      </Text>
+      <View testID="phrase-progress-meter" style={styles.meterRow}>
+        <ProgressBar ratio={progressRatio} delay={delay} style={styles.bar} />
+        <Text testID="phrase-progress-range" style={styles.range} maxFontSizeMultiplier={1.3}>
           {startBpm} →{" "}
           <Text style={styles.current}>{currentBpm}</Text> / 目標{targetBpm}
         </Text>
       </View>
-      <ProgressBar ratio={progressRatio} delay={delay} />
     </View>
   );
 }
@@ -71,18 +71,19 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
   },
   row: {
-    height: 56,
+    minHeight: 56,
     justifyContent: "center",
-    gap: 8,
+    gap: 4,
   },
-  topRow: {
+  meterRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: 8,
   },
-  name: {
+  bar: {
     flex: 1,
+  },
+  name: {
     fontSize: 15,
     fontWeight: "700",
     color: colors.onSurface,
