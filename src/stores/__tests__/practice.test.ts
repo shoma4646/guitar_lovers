@@ -259,6 +259,15 @@ describe("decrementCompletedReps", () => {
 });
 
 describe("pendingAttemptIdの寿命", () => {
+  it("記録の入力を2回始めても、1回目に払い出したIDを返す", () => {
+    const { startPhrasePractice, beginResultEntry } = usePracticeStore.getState();
+    startPhrasePractice(makePhrase(), 85);
+    const first = beginResultEntry("id-1");
+
+    expect(beginResultEntry("id-2")).toBe(first);
+    expect(usePracticeStore.getState().pendingAttemptId).toBe("id-1");
+  });
+
   it("同じフレーズを開始し直しても保存失敗後のpendingAttemptIdは保持される", () => {
     const { startPhrasePractice, beginResultEntry } = usePracticeStore.getState();
     const phrase = makePhrase();
