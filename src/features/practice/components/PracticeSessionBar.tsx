@@ -58,9 +58,22 @@ export function PracticeSessionBar({ practice, metronomeBpm, onIncrement, onDecr
 
   return (
     <View testID="practice-session-bar" style={styles.bar}>
-      <View>
-        <Text style={styles.label}>{label}</Text>
-        <Text testID="session-bar-count" style={styles.count} maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}>
+      <View testID="session-bar-summary" style={styles.summary}>
+        <Text
+          testID="session-bar-label"
+          style={styles.label}
+          numberOfLines={1}
+          maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
+        >
+          {label}
+        </Text>
+        <Text
+          testID="session-bar-count"
+          style={styles.count}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
+        >
           {completedReps}回
         </Text>
         <View style={styles.dots} accessible accessibilityLabel={`目安${targetReps}回のうち${completedReps}回`}>
@@ -73,7 +86,7 @@ export function PracticeSessionBar({ practice, metronomeBpm, onIncrement, onDecr
         </View>
       </View>
 
-      <View style={styles.actions}>
+      <View testID="session-bar-actions" style={styles.actions}>
         <Pressable
           onPress={handleDecrement}
           disabled={completedReps === 0}
@@ -90,16 +103,21 @@ export function PracticeSessionBar({ practice, metronomeBpm, onIncrement, onDecr
           accessibilityRole="button"
           accessibilityLabel={`1回弾いた、現在${completedReps}/${targetReps}回`}
         >
-          <Text style={styles.incrementLabel}>+1回</Text>
+          <Text style={styles.incrementLabel} maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}>
+            +1回
+          </Text>
         </Pressable>
 
         <Pressable
+          testID="session-bar-finish"
           onPress={onFinish}
           style={styles.finishButton}
           accessibilityRole="button"
           accessibilityLabel="練習を終えて結果を記録"
         >
-          <Text style={styles.finishLabel}>終了</Text>
+          <Text style={styles.finishLabel} maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}>
+            終了
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -117,6 +135,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 12,
+  },
+  summary: {
+    flex: 1,
+    minWidth: 0,
   },
   label: {
     fontSize: 12,
@@ -143,6 +166,7 @@ const styles = StyleSheet.create({
     backgroundColor: semantic.sessionBarAccent,
   },
   actions: {
+    flexShrink: 0,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -169,6 +193,7 @@ const styles = StyleSheet.create({
   },
   finishButton: {
     height: 44,
+    minWidth: 44,
     paddingHorizontal: 16,
     borderRadius: 22,
     alignItems: "center",
