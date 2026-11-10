@@ -83,6 +83,14 @@ Steps to create a practice phrase:
 
 ## (g) 提出前の最終確認
 
+### ローカルビルドの出力先
+
+`xcodebuild` に `-derivedDataPath` を渡すときは `ios/build/` 配下かリポジトリ外を指定する。
+`ios/build-sim` のような別名にすると、その後の `pod install` が必ず失敗する。
+React Native の post-install フックがプロジェクト配下の `Info.plist` を総なめしてテキストとして読む一方、
+除外対象が `build/` `Pods` `.bundle` 等に限られており、ビルド成果物のバイナリ plist に当たって
+`invalid byte sequence in UTF-8` で落ちるため。踏んでしまった場合は該当ディレクトリを削除すれば直る。
+
 - [ ] 注意: 旧ビルドへ戻すとフレーズの初期BPM・卒業日・回数が失われる（`SCHEMA_VERSION`据え置きのため）
 - [ ] `mise exec -- npx tsc --noEmit` が通ることを確認する
 - [ ] `mise exec -- npx expo lint` が通ることを確認する
