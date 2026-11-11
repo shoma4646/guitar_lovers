@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 import type { Bookmark } from "@/shared/types/models";
 import { PracticeMenuSheet } from "../PracticeMenuSheet";
 
@@ -97,5 +98,14 @@ describe("PracticeMenuSheet のブックマーク", () => {
     setupBookmarks();
     const row = screen.getByRole("button", { name: /1:23へ移動/ });
     expect(row).toHaveStyle({ height: 44 });
+  });
+});
+
+describe("PracticeMenuSheet のスクロール領域", () => {
+  it("固定の高さ上限を持たず、シートの残りの高さに合わせて縮む", () => {
+    renderSheet(false);
+    const scroll = StyleSheet.flatten(screen.getByTestId("practice-menu-scroll").props.style);
+    expect(scroll.maxHeight).toBeUndefined();
+    expect(scroll.flexShrink).toBe(1);
   });
 });

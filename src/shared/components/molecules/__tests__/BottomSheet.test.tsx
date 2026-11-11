@@ -2,6 +2,11 @@ import { render, fireEvent, screen, act } from "@testing-library/react-native";
 import { Modal, Platform, StyleSheet, Text } from "react-native";
 import { BottomSheet } from "../BottomSheet";
 
+const mockWindow = { width: 320, height: 568, scale: 2, fontScale: 1 };
+jest.mock("react-native/Libraries/Utilities/useWindowDimensions", () => ({
+  __esModule: true,
+  default: () => mockWindow,
+}));
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
 }));
@@ -104,6 +109,26 @@ describe("BottomSheet", () => {
 
       expect(onDismissed).toHaveBeenCalledTimes(1);
       expect(screen.UNSAFE_getByType(Modal).props.onDismiss).toBeUndefined();
+    });
+  });
+
+  describe("シートの高さの上限", () => {
+    it("ウィンドウの高さ×既定の割合（0.9）の数値で上限を持つ", () => {
+      setup(true);
+      const sheet = StyleSheet.flatten(screen.getByTestId("bottom-sheet").props.style);
+      expect(typeof sheet.maxHeight).toBe("number");
+      expect(sheet.maxHeight).toBeLessThanOrEqual(568 * 0.9);
+      expect(sheet.maxHeight).toBeCloseTo(568 * 0.9);
+    });
+
+    it("maxHeightRatioを渡すとウィンドウの高さ×その割合を上限にする", () => {
+      render(
+        <BottomSheet visible onClose={jest.fn()} title="t" maxHeightRatio={0.5}>
+          <Text>中身</Text>
+        </BottomSheet>,
+      );
+      const sheet = StyleSheet.flatten(screen.getByTestId("bottom-sheet").props.style);
+      expect(sheet.maxHeight).toBeCloseTo(568 * 0.5);
     });
   });
 });

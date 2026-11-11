@@ -12,6 +12,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -26,7 +27,7 @@ type Props = {
   onClose: () => void;
   title: string;
   children: ReactNode;
-  /** シートの最大高さ（画面高に対する割合） */
+  /** シートの最大高さ（ウィンドウの高さに対する割合） */
   maxHeightRatio?: number;
   /** 見出しの最大行数。超えた分は省略記号で切る */
   titleNumberOfLines?: number;
@@ -50,6 +51,7 @@ export function BottomSheet({
   onDismissed,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const reduced = useReducedMotion();
   const progress = useSharedValue(0);
   const onDismissedRef = useRef(onDismissed);
@@ -103,10 +105,12 @@ export function BottomSheet({
 
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <Animated.View
+            testID="bottom-sheet"
             accessibilityViewIsModal
             style={[
               {
-                maxHeight: `${maxHeightRatio * 100}%`,
+                // 割合で書くと高さが中身で決まる親を基準に計算され、シートが中身より縮むため数値で渡す
+                maxHeight: windowHeight * maxHeightRatio,
                 backgroundColor: colors.surface,
                 borderTopLeftRadius: radius.xl,
                 borderTopRightRadius: radius.xl,
