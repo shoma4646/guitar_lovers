@@ -137,6 +137,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const [phraseElapsedSeconds, setPhraseElapsedSeconds] = useState(0);
   const playerError = usePracticeStore((s) => s.playerError);
   const setPlayerError = usePracticeStore((s) => s.setPlayerError);
+  const reloadVideo = usePracticeStore((s) => s.reloadVideo);
   const pendingAttemptId = usePracticeStore((s) => s.pendingAttemptId);
   const beginResultEntry = usePracticeStore((s) => s.beginResultEntry);
 
@@ -625,6 +626,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
                 onTimeUpdate={handleTimeUpdate}
                 onDurationReady={handlePlayerReady}
                 onPlayerError={setPlayerError}
+                onUnexpectedNavigation={reloadVideo}
               />
 
               <PlaybackRateChips

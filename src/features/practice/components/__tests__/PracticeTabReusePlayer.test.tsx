@@ -67,12 +67,13 @@ const mockPlayer = {
   mounts: 0,
   posted: [] as Record<string, unknown>[],
   onDurationReady: null as ((duration: number) => void) | null,
+  onUnexpectedNavigation: null as (() => void) | null,
 };
 jest.mock("../VideoPlayerCard", () => {
   const React = jest.requireActual<typeof import("react")>("react");
   return {
     VideoPlayerCard: React.forwardRef(function MockPlayer(
-      props: { onDurationReady: (duration: number) => void },
+      props: { onDurationReady: (duration: number) => void; onUnexpectedNavigation: () => void },
       ref: React.Ref<unknown>,
     ) {
       React.useImperativeHandle(ref, () => ({
@@ -82,6 +83,7 @@ jest.mock("../VideoPlayerCard", () => {
         mockPlayer.mounts += 1;
       }, []);
       mockPlayer.onDurationReady = props.onDurationReady;
+      mockPlayer.onUnexpectedNavigation = props.onUnexpectedNavigation;
       return null;
     }),
   };
@@ -101,6 +103,7 @@ beforeEach(() => {
   mockPlayer.mounts = 0;
   mockPlayer.posted = [];
   mockPlayer.onDurationReady = null;
+  mockPlayer.onUnexpectedNavigation = null;
 });
 
 function renderReadyPlayer(phrase: PracticePhrase) {
@@ -162,5 +165,28 @@ describe("PracticeTab のプレイヤー再利用", () => {
     unmount();
 
     expect(usePracticeStore.getState().duration).toBe(0);
+  });
+
+  it("プレイヤー枠が別のページへ置き換わり始めたら、練習中のフレーズ・速度を保ったままプレイヤーを作り直す", () => {
+    renderReadyPlayer(PHRASE);
+    act(() => {
+      usePracticeStore.getState().setPlaybackRate(0.75);
+    });
+    mockPlayer.posted = [];
+
+    act(() => {
+      mockPlayer.onUnexpectedNavigation?.();
+    });
+
+    expect(mockPlayer.mounts).toBe(2);
+    expect(usePracticeStore.getState().videoInitialRate).toBe(0.75);
+    expect(usePracticeStore.getState().activePhrasePractice?.phrase.id).toBe("p1");
+
+    act(() => {
+      mockPlayer.onDurationReady?.(200);
+    });
+
+    expect(mockPlayer.posted).toContainEqual({ action: "setLoop", enabled: true, pointA: 10, pointB: 20 });
+    expect(mockPlayer.posted).toContainEqual({ action: "seek", time: 10 });
   });
 });

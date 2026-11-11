@@ -82,6 +82,15 @@ export function shouldAllowPlayerNavigation(req: { url: string; isTopFrame?: boo
   return req.url === "about:blank" || isEmbedOriginUrl(req.url);
 }
 
+/**
+ * 読み込みが始まったトップフレームのURLが、プレイヤーが居てはいけないページか
+ * 遷移判定（shouldAllowPlayerNavigation）を通らなかったトップフレームの遷移ならtrue
+ * @param url - 読み込みが始まったURL
+ */
+export function isUnexpectedTopNavigation(url: string): boolean {
+  return !shouldAllowPlayerNavigation({ url, isTopFrame: true });
+}
+
 /** 外部で開いてよいURL（isAllowedExternalUrl）だけをYouTubeアプリかブラウザで開き、それ以外は開かない */
 export function openExternally(url: string): void {
   if (!isAllowedExternalUrl(url)) {
