@@ -33,7 +33,7 @@ type Props = {
   onUnexpectedNavigation: () => void;
 };
 
-/** 呼び出し側から渡されたrefと内部のrefの両方へ同じWebViewを渡す */
+/** forwardRefで受け取ったref（関数・オブジェクトのどちらでも）へWebViewを渡す */
 function assignRef(ref: ForwardedRef<WebView>, value: WebView | null): void {
   if (typeof ref === "function") ref(value);
   else if (ref) ref.current = value;
