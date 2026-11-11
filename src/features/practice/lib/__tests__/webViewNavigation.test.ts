@@ -5,6 +5,7 @@ import {
   handlePlayerNavigationRequest,
   isAllowedExternalUrl,
   isEmbedOriginUrl,
+  isUnexpectedTopNavigation,
   openExternally,
   parsePlayerMessage,
   shouldAllowPlayerNavigation,
@@ -160,6 +161,38 @@ describe("isAllowedExternalUrl", () => {
         fc.pre(!/redirect|url|\.\.|%/i.test(path));
         expect(isAllowedExternalUrl(`https://${h}${path}`)).toBe(true);
       }),
+    );
+  });
+});
+
+describe("isUnexpectedTopNavigation", () => {
+  it("YouTubeサイトや外部サイトのページはプレイヤーが居てはいけないページとみなす", () => {
+    expect(isUnexpectedTopNavigation("https://www.youtube.com/watch?v=x")).toBe(true);
+    expect(isUnexpectedTopNavigation("https://example.com")).toBe(true);
+  });
+
+  it("about:blankとプレイヤーHTMLのorigin配下はプレイヤーのページとみなす", () => {
+    expect(isUnexpectedTopNavigation("about:blank")).toBe(false);
+    expect(isUnexpectedTopNavigation(YOUTUBE_EMBED_ORIGIN)).toBe(false);
+    expect(isUnexpectedTopNavigation(`${YOUTUBE_EMBED_ORIGIN}/`)).toBe(false);
+    expect(isUnexpectedTopNavigation(`${YOUTUBE_EMBED_ORIGIN}/?v=1#x`)).toBe(false);
+  });
+
+  it("トップフレームの遷移判定で許可されるURLとちょうど逆になる", () => {
+    fc.assert(
+      fc.property(
+        fc.oneof(
+          fc.webUrl(),
+          fc.webPath().map((path) => `${YOUTUBE_EMBED_ORIGIN}${path}`),
+          fc.constant("about:blank"),
+          fc.string(),
+        ),
+        (url) => {
+          expect(isUnexpectedTopNavigation(url)).toBe(
+            !shouldAllowPlayerNavigation({ url, isTopFrame: true }),
+          );
+        },
+      ),
     );
   });
 });

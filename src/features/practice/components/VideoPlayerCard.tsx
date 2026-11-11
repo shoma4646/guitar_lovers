@@ -2,15 +2,16 @@
  * YouTube動画プレイヤーカード
  *
  * WebViewのrefはPracticeTab側で所有し（sendToPlayerで使うため）、
- * このコンポーネントはforwardRefで受け渡すだけに留める。
+ * このコンポーネントはforwardRefで受け渡し、内部では想定外の遷移を止めるためだけに参照する。
  * ScreenFrameの左右16pxパディングを打ち消し、画面幅いっぱいのフルブリードで表示する。
  */
 
-import { forwardRef, memo, useState } from "react";
+import { forwardRef, memo, useCallback, useRef, useState, type ForwardedRef } from "react";
 import { View, StyleSheet, useWindowDimensions } from "react-native";
 import WebView from "react-native-webview";
 import {
   handlePlayerNavigationRequest,
+  isUnexpectedTopNavigation,
   openExternally,
   parsePlayerMessage,
   PLAYER_ORIGIN_WHITELIST,
@@ -28,11 +29,27 @@ type Props = {
   onDurationReady: (duration: number) => void;
   /** YouTube IFrame APIのエラーコード、またはWebView自体の読み込み失敗時は-1を渡す */
   onPlayerError: (code: number) => void;
+  /** プレイヤー枠がプレイヤーHTML以外のページへ置き換わり始めたとき。読み込みは止めてあり、呼び出し側でプレイヤーを作り直す */
+  onUnexpectedNavigation: () => void;
 };
+
+/** forwardRefで受け取ったref（関数・オブジェクトのどちらでも）へWebViewを渡す */
+function assignRef(ref: ForwardedRef<WebView>, value: WebView | null): void {
+  if (typeof ref === "function") ref(value);
+  else if (ref) ref.current = value;
+}
 
 export const VideoPlayerCard = memo(
   forwardRef<WebView, Props>(function VideoPlayerCard(
-    { videoId, startSeconds = 0, initialRate = 1, onTimeUpdate, onDurationReady, onPlayerError },
+    {
+      videoId,
+      startSeconds = 0,
+      initialRate = 1,
+      onTimeUpdate,
+      onDurationReady,
+      onPlayerError,
+      onUnexpectedNavigation,
+    },
     ref,
   ) {
     const { width: screenWidth } = useWindowDimensions();
@@ -41,6 +58,14 @@ export const VideoPlayerCard = memo(
       html: buildYouTubeHtml(videoId, startSeconds, initialRate),
       baseUrl: YOUTUBE_EMBED_ORIGIN,
     }));
+    const webViewRef = useRef<WebView | null>(null);
+    const setWebViewRef = useCallback(
+      (webView: WebView | null) => {
+        webViewRef.current = webView;
+        assignRef(ref, webView);
+      },
+      [ref],
+    );
     return (
       <View
         className="bg-surface-container-highest overflow-hidden"
@@ -51,7 +76,7 @@ export const VideoPlayerCard = memo(
         }}
       >
         <WebView
-          ref={ref}
+          ref={setWebViewRef}
           // baseUrl無しだとWKWebViewのoriginがnullになりYouTubeが埋め込みを拒否する
           source={source}
           style={styles.webView}
@@ -61,6 +86,12 @@ export const VideoPlayerCard = memo(
           domStorageEnabled
           originWhitelist={PLAYER_ORIGIN_WHITELIST}
           onShouldStartLoadWithRequest={handlePlayerNavigationRequest}
+          // AndroidのWebViewは遷移判定の返事を250msしか待たず、間に合わなければ許可して進むため事後にも止める
+          onLoadStart={(event) => {
+            if (!isUnexpectedTopNavigation(event.nativeEvent.url)) return;
+            webViewRef.current?.stopLoading();
+            onUnexpectedNavigation();
+          }}
           onOpenWindow={(event) => openExternally(event.nativeEvent.targetUrl)}
           onMessage={(event) => {
             const message = parsePlayerMessage(event.nativeEvent);
