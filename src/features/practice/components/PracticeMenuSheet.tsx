@@ -114,7 +114,11 @@ export function PracticeMenuSheet({
       title="メニューと道具"
       onDismissed={onDismissed}
     >
-      <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 520 }}>
+      <ScrollView
+        testID="practice-menu-scroll"
+        showsVerticalScrollIndicator={false}
+        style={{ flexShrink: 1 }}
+      >
         <View style={{ paddingBottom: 8, gap: 12 }}>
           <View style={{ gap: 4 }}>
             <Text style={{ fontSize: 12, fontWeight: "700", color: colors.onSurfaceVariant }}>
