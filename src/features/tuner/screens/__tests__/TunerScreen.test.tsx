@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import { semantic } from "@/shared/theme/semantic";
 import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
@@ -70,5 +70,49 @@ describe("TunerScreen の文字サイズ拡大", () => {
     mockDetector = detector(110);
     render(<TunerScreen />);
     expect(screen.getByTestId("tuner-note").props.maxFontSizeMultiplier).toBe(NUMERIC_MAX_FONT_SIZE_MULTIPLIER);
+  });
+});
+
+describe("TunerScreen の一時停止・エラーからの再開", () => {
+  it("一時停止中は「再開する」ボタンを出し、押すと resume を呼ぶ", () => {
+    mockDetector = { ...detector(null), status: "idle", pausedByUser: true };
+    render(<TunerScreen />);
+
+    fireEvent.press(screen.getByRole("button", { name: "再開する" }));
+
+    expect(mockDetector.resume).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "もう一度試す" })).toBeNull();
+  });
+
+  it("マイクエラーのときは「もう一度試す」ボタンを出し、押すと resume を呼ぶ", () => {
+    mockDetector = { ...detector(null), status: "error" };
+    render(<TunerScreen />);
+
+    fireEvent.press(screen.getByRole("button", { name: "もう一度試す" }));
+
+    expect(mockDetector.resume).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "再開する" })).toBeNull();
+  });
+
+  it.each(["listening", "requesting", "denied"] as const)(
+    "%s のときはどちらのボタンも出さない",
+    (status) => {
+      mockDetector = { ...detector(110), status };
+      render(<TunerScreen />);
+
+      expect(screen.queryByRole("button", { name: "再開する" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "もう一度試す" })).toBeNull();
+    },
+  );
+
+  it.each([
+    [{ status: "listening", pausedByUser: false }, "マイク入力中", "タップで一時停止"],
+    [{ status: "idle", pausedByUser: true }, "一時停止中", "タップで再開"],
+    [{ status: "error", pausedByUser: false }, "マイクエラー", "タップで再試行"],
+  ] as const)("マイク状態チップは %o のとき「%s」に「%s」のヒントを付ける", (state, label, hint) => {
+    mockDetector = { ...detector(null), ...state };
+    render(<TunerScreen />);
+
+    expect(screen.getByRole("button", { name: label }).props.accessibilityHint).toBe(hint);
   });
 });
