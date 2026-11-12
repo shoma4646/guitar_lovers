@@ -1,4 +1,4 @@
-import { describePlayerError } from "../playerError";
+import { describePlayerError, isPermanentPlayerError } from "../playerError";
 
 describe("describePlayerError", () => {
   it.each([
@@ -17,5 +17,15 @@ describe("describePlayerError", () => {
     expect(describePlayerError(999)).toBe(
       "動画を読み込めませんでした。URLと通信状況を確認してください",
     );
+  });
+});
+
+describe("isPermanentPlayerError", () => {
+  it.each([100, 101, 150])("削除・非公開・埋め込み禁止（%i）は読み込み直しても再生できないエラーとみなす", (code) => {
+    expect(isPermanentPlayerError(code)).toBe(true);
+  });
+
+  it.each([-1, 2, 5, 153, 999])("それ以外（%i）は恒久的なエラーとみなさない", (code) => {
+    expect(isPermanentPlayerError(code)).toBe(false);
   });
 });
