@@ -76,10 +76,13 @@ function MicStatusChip({
   label,
   tone,
   onPress,
+  hint,
 }: {
   label: string;
   tone: MicChipTone;
   onPress?: () => void;
+  /** 押すと何が起きるかの読み上げ（押せない状態では無し） */
+  hint?: string;
 }) {
   return (
     <Pressable
@@ -88,6 +91,7 @@ function MicStatusChip({
       hitSlop={6}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityHint={hint}
       accessibilityState={{ disabled: !onPress }}
       className={onPress ? "active:opacity-80" : undefined}
       style={[styles.micChip, { opacity: onPress ? 1 : 0.7 }]}
@@ -104,11 +108,13 @@ function getMicChipConfig(
   pausedByUser: boolean,
   pause: () => void,
   resume: () => void,
-): { label: string; tone: MicChipTone; onPress?: () => void } {
-  if (pausedByUser) return { label: "一時停止中", tone: "paused", onPress: resume };
-  if (status === "listening") return { label: "マイク入力中", tone: "active", onPress: pause };
+): { label: string; tone: MicChipTone; onPress?: () => void; hint?: string } {
+  if (pausedByUser) return { label: "一時停止中", tone: "paused", onPress: resume, hint: "タップで再開" };
+  if (status === "listening") {
+    return { label: "マイク入力中", tone: "active", onPress: pause, hint: "タップで一時停止" };
+  }
   if (status === "denied") return { label: "マイク未許可", tone: "warning" };
-  if (status === "error") return { label: "マイクエラー", tone: "warning", onPress: resume };
+  if (status === "error") return { label: "マイクエラー", tone: "warning", onPress: resume, hint: "タップで再試行" };
   return { label: "準備中…", tone: "paused" };
 }
 
@@ -250,6 +256,7 @@ export function TunerScreen() {
 
   const badgeStyle = BADGE_STYLE[badgeTone];
   const micChipConfig = getMicChipConfig(status, pausedByUser, pause, resume);
+  const resumeActionLabel = pausedByUser ? "再開する" : status === "error" ? "もう一度試す" : null;
 
   const noteAnimatedStyle = useAnimatedStyle(() => ({ opacity: noteOpacity.value }));
 
@@ -334,6 +341,18 @@ export function TunerScreen() {
                 accessibilityLabel="端末の設定を開く"
               >
                 <Text style={styles.openSettingsLabel}>設定を開く</Text>
+              </Pressable>
+            )}
+
+            {resumeActionLabel !== null && (
+              <Pressable
+                onPress={resume}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={styles.openSettingsLink}
+                accessibilityRole="button"
+                accessibilityLabel={resumeActionLabel}
+              >
+                <Text style={styles.openSettingsLabel}>{resumeActionLabel}</Text>
               </Pressable>
             )}
           </View>
