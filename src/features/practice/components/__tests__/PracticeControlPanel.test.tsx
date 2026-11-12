@@ -28,6 +28,7 @@ function renderPanel({
       onClearLoop={jest.fn()}
       isAtActivePhraseRange={isAtActivePhraseRange}
       onTapPoint={jest.fn()}
+      onPressInPoint={jest.fn()}
       onSetPoint={jest.fn()}
       onScrubStart={jest.fn()}
       onScrubEnd={jest.fn()}
