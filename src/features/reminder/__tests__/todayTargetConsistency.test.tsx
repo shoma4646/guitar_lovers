@@ -39,6 +39,12 @@ jest.mock("@/features/practice/api/usePracticePhrases", () => ({
 jest.mock("@/features/practice/api/usePhraseAttempts", () => ({
   usePhraseAttempts: () => ({ data: mockAttempts, isLoading: false }),
 }));
+jest.mock("@/features/practice/api/useArchivePracticePhrase", () => ({
+  useArchivePracticePhrase: () => ({ mutate: jest.fn() }),
+}));
+jest.mock("@/features/practice/api/useDeletePracticePhrase", () => ({
+  useDeletePracticePhrase: () => ({ mutate: jest.fn() }),
+}));
 jest.mock("expo-notifications", () => ({}));
 jest.mock("expo-router", () => ({ useRouter: () => ({ navigate: jest.fn() }) }));
 jest.mock("@/features/reminder/services/reminderScheduler", () => ({ syncReminder: jest.fn() }));

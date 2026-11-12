@@ -4,9 +4,10 @@
  * 練習タブの主役。今日の練習メニューの先頭（今日の1本）を大きく見せ、
  * 前回BPM → 今日の目標BPMと進捗バー、開始ボタンをまとめる。
  * フレーズが0本のときは、動画の追加からフレーズ保存までの流れを案内する「はじめに」カードになる。
+ * 長押しと読み上げ用の操作で、他のフレーズ行と同じ整理（アーカイブ・削除）ができる。
  */
 
-import { View, Text, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator, Pressable } from "react-native";
 import { Card } from "@/shared/components/molecules/Card";
 import { ReadErrorCard } from "@/shared/components/molecules/ReadErrorCard";
 import { Button } from "@/shared/components/atoms/Button";
@@ -21,6 +22,11 @@ import {
 } from "@/features/practice/lib/progression";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { formatDuration } from "@/features/practice/lib/formatters";
+import {
+  PHRASE_ROW_HINT,
+  phraseRowAccessibilityActionProps,
+} from "@/features/practice/lib/phraseRowLabel";
+import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
 import type { PracticePhrase } from "@/shared/types/models";
 
 const FIRST_STEPS = ["YouTubeのURLを貼る", "A・Bで区間を囲んで保存", "翌日からワンタップで練習"];
@@ -44,6 +50,7 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
   const attemptsQuery = usePhraseAttempts();
   const { data: phrases } = phrasesQuery;
   const { data: attempts } = attemptsQuery;
+  const organizePhrase = usePhraseLongPressActions();
   const isLoading = phrasesQuery.isLoading || attemptsQuery.isLoading;
 
   if (isLoading) {
@@ -94,102 +101,108 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
   const reason = TODAY_PICK_REASONS[priority as Exclude<TodayMenuPriority, "graduated">];
 
   return (
-    <Card style={{ gap: 8 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <View
-          style={{
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-            borderRadius: radius.pill,
-            backgroundColor: colors.primaryFixed,
-          }}
-        >
-          <Text style={{ fontSize: 12, fontWeight: "800", color: colors.onPrimaryFixedVariant }}>
-            今日の1本
-          </Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 12, color: colors.onSurfaceVariant }} numberOfLines={2}>
-            {reason}
-          </Text>
-          <Text style={{ fontSize: 12, fontWeight: "700", color: colors.onSurface }}>
-            目標まであと{bpmToGoal}BPM
-          </Text>
-        </View>
-      </View>
-
-      <View>
-        <Text
-          testID="today-pick-phrase-name"
-          style={{ fontSize: fontSize.headingLg, fontWeight: "800", color: colors.onSurface }}
-          numberOfLines={1}
-        >
-          {phrase.name}
-        </Text>
-        <View style={{ flexDirection: "row", gap: 4 }}>
-          <Text style={{ flexShrink: 1, fontSize: 13, color: colors.onSurfaceVariant }} numberOfLines={1}>
-            {phrase.videoTitle}
-          </Text>
-          <Text style={{ fontSize: 13, color: colors.onSurfaceVariant }}>・</Text>
-          <Text style={{ fontSize: 13, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}>
-            {formatDuration(phrase.startSec)}-{formatDuration(phrase.endSec)}
-          </Text>
-        </View>
-      </View>
-
-      <View testID="today-pick-bpm-row" style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <View>
-          <Text style={{ fontSize: 11, color: colors.onSurfaceVariant }}>前回</Text>
-          <Text
+    // 子のボタンを読み上げで個別に辿れるよう、カード全体はまとめず長押しだけを受ける
+    <Pressable testID="today-pick-card" accessible={false} onLongPress={() => organizePhrase(phrase)}>
+      <Card style={{ gap: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View
             style={{
-              fontSize: 24,
-              fontWeight: "800",
-              color: colors.onSurface,
-              fontVariant: ["tabular-nums"],
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: radius.pill,
+              backgroundColor: colors.primaryFixed,
             }}
           >
-            {progress.currentBpm}
-          </Text>
+            <Text style={{ fontSize: 12, fontWeight: "800", color: colors.onPrimaryFixedVariant }}>
+              今日の1本
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 12, color: colors.onSurfaceVariant }} numberOfLines={2}>
+              {reason}
+            </Text>
+            <Text style={{ fontSize: 12, fontWeight: "700", color: colors.onSurface }}>
+              目標まであと{bpmToGoal}BPM
+            </Text>
+          </View>
         </View>
-        <Text style={{ fontSize: 18, color: colors.onSurfaceVariant }}>→</Text>
-        <View>
-          <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>今日の目標</Text>
-          <Text
-            style={{
-              fontSize: 32,
-              fontWeight: "800",
-              color: colors.primary,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {targetBeforeToday} BPM
-          </Text>
-        </View>
-      </View>
 
-      <View testID="today-pick-progress-row" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }} numberOfLines={1}>
-          開始 {progress.startBpm}
-        </Text>
-        <ProgressBar
-          ratio={progress.progressRatio}
-          accessibilityLabel={`${phrase.name}の進捗、開始${progress.startBpm}から目標${progress.targetBpm}のうち現在${progress.currentBpm}`}
-          style={{ flex: 1 }}
+        <View>
+          <Text
+            testID="today-pick-phrase-name"
+            style={{ fontSize: fontSize.headingLg, fontWeight: "800", color: colors.onSurface }}
+            numberOfLines={1}
+          >
+            {phrase.name}
+          </Text>
+          <View style={{ flexDirection: "row", gap: 4 }}>
+            <Text style={{ flexShrink: 1, fontSize: 13, color: colors.onSurfaceVariant }} numberOfLines={1}>
+              {phrase.videoTitle}
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.onSurfaceVariant }}>・</Text>
+            <Text style={{ fontSize: 13, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}>
+              {formatDuration(phrase.startSec)}-{formatDuration(phrase.endSec)}
+            </Text>
+          </View>
+        </View>
+
+        <View testID="today-pick-bpm-row" style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <View>
+            <Text style={{ fontSize: 11, color: colors.onSurfaceVariant }}>前回</Text>
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "800",
+                color: colors.onSurface,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              {progress.currentBpm}
+            </Text>
+          </View>
+          <Text style={{ fontSize: 18, color: colors.onSurfaceVariant }}>→</Text>
+          <View>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>今日の目標</Text>
+            <Text
+              style={{
+                fontSize: 32,
+                fontWeight: "800",
+                color: colors.primary,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
+              {targetBeforeToday} BPM
+            </Text>
+          </View>
+        </View>
+
+        <View testID="today-pick-progress-row" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }} numberOfLines={1}>
+            開始 {progress.startBpm}
+          </Text>
+          <ProgressBar
+            ratio={progress.progressRatio}
+            accessibilityLabel={`${phrase.name}の進捗、開始${progress.startBpm}から目標${progress.targetBpm}のうち現在${progress.currentBpm}`}
+            style={{ flex: 1 }}
+          />
+          <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }} numberOfLines={1}>
+            卒業 {progress.targetBpm}
+          </Text>
+        </View>
+
+        <Button
+          label="この1本から始める"
+          onPress={() => onStartPhrase(phrase, targetBeforeToday)}
+          onLongPress={() => organizePhrase(phrase)}
+          accessibilityHint={PHRASE_ROW_HINT}
+          {...phraseRowAccessibilityActionProps((action) => organizePhrase(phrase, action))}
+          variant="primary"
+          size="lg"
+          icon="play_arrow"
+          fullWidth
         />
-        <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }} numberOfLines={1}>
-          卒業 {progress.targetBpm}
-        </Text>
-      </View>
-
-      <Button
-        label="この1本から始める"
-        onPress={() => onStartPhrase(phrase, targetBeforeToday)}
-        variant="primary"
-        size="lg"
-        icon="play_arrow"
-        fullWidth
-      />
-    </Card>
+      </Card>
+    </Pressable>
   );
 }
 

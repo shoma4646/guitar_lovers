@@ -4,7 +4,15 @@
  * 最小タップ領域44ptとアクセシビリティ属性をここで担保し、画面側は variant を選ぶだけにする。
  */
 
-import { Pressable, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import {
+  Pressable,
+  Text,
+  View,
+  type AccessibilityActionEvent,
+  type AccessibilityActionInfo,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import { Icon, type IconName } from "./Icon";
 import { colors, radius } from "@/shared/theme";
 
@@ -14,6 +22,7 @@ export type ButtonSize = "sm" | "md" | "lg";
 type Props = {
   label: string;
   onPress: () => void;
+  onLongPress?: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
   /** ラベル左に置くアイコン */
@@ -23,6 +32,8 @@ type Props = {
   fullWidth?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  accessibilityActions?: AccessibilityActionInfo[];
+  onAccessibilityAction?: (event: AccessibilityActionEvent) => void;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -44,6 +55,7 @@ const SURFACE: Record<ButtonVariant, { background: string; border?: string; fore
 export function Button({
   label,
   onPress,
+  onLongPress,
   variant = "primary",
   size = "md",
   icon,
@@ -51,6 +63,8 @@ export function Button({
   fullWidth = false,
   accessibilityLabel,
   accessibilityHint,
+  accessibilityActions,
+  onAccessibilityAction,
   style,
 }: Props) {
   const surface = SURFACE[variant];
@@ -58,10 +72,13 @@ export function Button({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
+      accessibilityActions={accessibilityActions}
+      onAccessibilityAction={onAccessibilityAction}
       accessibilityState={{ disabled }}
       className={disabled ? undefined : "active:opacity-80"}
       style={[

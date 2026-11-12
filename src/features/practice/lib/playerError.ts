@@ -38,3 +38,11 @@ export function describePlayerErrorTitle(code: number): string {
       return "この動画は再生できません";
   }
 }
+
+/**
+ * 動画が削除・非公開・埋め込み禁止になっていて、読み込み直しても二度と再生できないエラーか
+ * @param code - YouTube IFrame Player APIが返すエラーコード
+ */
+export function isPermanentPlayerError(code: number): boolean {
+  return code === 100 || code === 101 || code === 150;
+}

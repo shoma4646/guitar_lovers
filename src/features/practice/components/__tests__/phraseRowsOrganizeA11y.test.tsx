@@ -4,6 +4,7 @@ import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import { TodayPhraseRows } from "../TodayPhraseRows";
 import { AllPhrasesSheet } from "../AllPhrasesSheet";
 import { PracticeMenuSheet } from "../PracticeMenuSheet";
+import { TodayPickCard } from "../TodayPickCard";
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -152,5 +153,46 @@ describe("メニュー集の行の読み上げ", () => {
     expect(screen.getByRole("button", { name: /^一本目、/ }).props.accessibilityHint).toContain(
       "練習を開始",
     );
+  });
+});
+
+describe("今日の1本カードの整理", () => {
+  function renderTodayPick() {
+    render(<TodayPickCard onStartPhrase={jest.fn()} onTryPreset={jest.fn()} onOpenAddVideo={jest.fn()} />);
+  }
+  function startButton() {
+    return screen.getByRole("button", { name: "この1本から始める" });
+  }
+
+  it("カードを長押しすると整理メニューが出て、選ぶと確認ダイアログに進む", () => {
+    renderTodayPick();
+    fireEvent(screen.getByTestId("today-pick-card"), "longPress");
+
+    expect(alertSpy).toHaveBeenCalledTimes(1);
+    expect(alertSpy.mock.calls[0][0]).toBe("今日の1本");
+    const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+    buttons.find((b) => b.text === "アーカイブ")?.onPress?.();
+    expect(alertSpy.mock.calls[1][0]).toBe("アーカイブの確認");
+  });
+
+  it("開始ボタンの長押しでも整理メニューが出る", () => {
+    renderTodayPick();
+    fireEvent(startButton(), "longPress");
+
+    expect(alertSpy).toHaveBeenCalledTimes(1);
+    expect(alertSpy.mock.calls[0][0]).toBe("今日の1本");
+  });
+
+  it("開始ボタンはアーカイブと削除の読み上げ用アクションを持ち、それぞれの確認が出る", () => {
+    renderTodayPick();
+    expect(startButton().props.accessibilityActions).toEqual([
+      { name: "archive", label: "アーカイブ" },
+      { name: "delete", label: "削除" },
+    ]);
+
+    fireEvent(startButton(), "accessibilityAction", { nativeEvent: { actionName: "archive" } });
+    fireEvent(startButton(), "accessibilityAction", { nativeEvent: { actionName: "delete" } });
+
+    expect(alertSpy.mock.calls.map((call) => call[0])).toEqual(["アーカイブの確認", "削除の確認"]);
   });
 });

@@ -15,6 +15,13 @@ jest.mock("@/features/practice/api/usePhraseAttempts", () => ({
   usePhraseAttempts: () => mockAttemptsQuery,
 }));
 
+jest.mock("@/features/practice/api/useArchivePracticePhrase", () => ({
+  useArchivePracticePhrase: () => ({ mutate: jest.fn() }),
+}));
+jest.mock("@/features/practice/api/useDeletePracticePhrase", () => ({
+  useDeletePracticePhrase: () => ({ mutate: jest.fn() }),
+}));
+
 beforeEach(() => {
   mockPhrasesQuery.data = [];
   mockAttemptsQuery.data = [];

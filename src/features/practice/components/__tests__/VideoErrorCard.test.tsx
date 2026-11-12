@@ -18,6 +18,13 @@ const phrase: PracticePhrase = {
   updatedAt: "2026-09-01T00:00:00.000Z",
 };
 
+jest.mock("@/features/practice/api/useArchivePracticePhrase", () => ({
+  useArchivePracticePhrase: () => ({ mutate: jest.fn() }),
+}));
+jest.mock("@/features/practice/api/useDeletePracticePhrase", () => ({
+  useDeletePracticePhrase: () => ({ mutate: jest.fn() }),
+}));
+
 const initialState = usePracticeStore.getState();
 
 describe("VideoErrorCard", () => {
@@ -89,5 +96,53 @@ describe("VideoErrorCard", () => {
     expect(announceSpy).toHaveBeenCalledWith(
       expect.stringContaining("読み込みに失敗しました。通信状況を確認してください"),
     );
+  });
+
+  describe("二度と再生できない動画（削除・非公開・埋め込み禁止）", () => {
+    it.each([100, 101, 150])("練習中のフレーズがありコード %i のとき「このフレーズを整理」でアーカイブ・削除の選択を出す", (code) => {
+      startPracticeWithError(code, 0);
+      render(<VideoErrorCard code={code} />);
+
+      fireEvent.press(screen.getByRole("button", { name: "このフレーズを整理" }));
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(alertSpy.mock.calls[0][0]).toBe("イントロ");
+      const buttons = alertSpy.mock.calls[0][2] as { text: string }[];
+      expect(buttons.map((b) => b.text)).toEqual(["アーカイブ", "削除", "キャンセル"]);
+    });
+
+    it("通信エラー（-1）など一時的なエラーでは「このフレーズを整理」も「次の1本へ」も出さない", () => {
+      startPracticeWithError(-1, 0);
+      render(<VideoErrorCard code={-1} onStartNextPhrase={jest.fn()} />);
+
+      expect(screen.queryByRole("button", { name: "このフレーズを整理" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "次の1本へ" })).toBeNull();
+    });
+
+    it("練習中のフレーズが無ければ「このフレーズを整理」も「次の1本へ」も出さない", () => {
+      usePracticeStore.getState().loadVideo("abc123def45", "動画");
+      usePracticeStore.getState().setPlayerError(150);
+      render(<VideoErrorCard code={150} onStartNextPhrase={jest.fn()} />);
+
+      expect(screen.queryByRole("button", { name: "このフレーズを整理" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "次の1本へ" })).toBeNull();
+    });
+
+    it("次の1本があるときだけ「次の1本へ」を出し、押すと次の1本を始める", () => {
+      startPracticeWithError(150, 0);
+      const onStartNextPhrase = jest.fn();
+      render(<VideoErrorCard code={150} onStartNextPhrase={onStartNextPhrase} />);
+
+      fireEvent.press(screen.getByRole("button", { name: "次の1本へ" }));
+
+      expect(onStartNextPhrase).toHaveBeenCalledTimes(1);
+    });
+
+    it("次の1本が無ければ「次の1本へ」を出さない", () => {
+      startPracticeWithError(150, 0);
+      render(<VideoErrorCard code={150} />);
+
+      expect(screen.queryByRole("button", { name: "次の1本へ" })).toBeNull();
+    });
   });
 });

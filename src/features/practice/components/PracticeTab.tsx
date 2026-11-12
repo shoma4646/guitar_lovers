@@ -530,7 +530,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     : null;
 
   const remainingCount = openMenuEntries.length;
-  const hasNextPhrase = activePractice ? pickNextMenuEntry(todayMenu, activePractice.phrase.id) !== undefined : false;
+  const nextMenuEntry = activePractice ? pickNextMenuEntry(todayMenu, activePractice.phrase.id) : undefined;
   const headerTitle = activePractice?.phrase.name ?? (videoTitle || "動画を再生中");
   const headerSubtitle = activePractice ? `今日の1本・残り${remainingCount}本` : null;
 
@@ -626,7 +626,14 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           </View>
 
           {playerError !== null ? (
-            <VideoErrorCard code={playerError} />
+            <VideoErrorCard
+              code={playerError}
+              onStartNextPhrase={
+                nextMenuEntry
+                  ? () => handleStartPhrase(nextMenuEntry.phrase, nextMenuEntry.today.targetBeforeToday)
+                  : undefined
+              }
+            />
           ) : (
             <>
               <VideoPlayerCard
@@ -698,7 +705,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         phraseElapsedSeconds={phraseElapsedSeconds}
         completedReps={activePractice?.completedReps ?? 0}
         onChangeCompletedReps={(delta) => (delta > 0 ? incrementCompletedReps() : decrementCompletedReps())}
-        hasNextPhrase={hasNextPhrase}
+        hasNextPhrase={nextMenuEntry !== undefined}
         isSubmitting={isSubmittingResult}
         onClose={handleCloseResultSheet}
         onSubmit={handleSubmitResult}
