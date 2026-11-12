@@ -19,6 +19,9 @@ import { PracticeSeekBar } from "./PracticeSeekBar";
 import { MetronomeControls } from "./MetronomeControls";
 import type { ABLoop } from "@/shared/types/models";
 
+/** A点/B点として設定する再生位置をいつの時点で読むか */
+export type PointTimeSource = "pressIn" | "now";
+
 type Props = {
   abLoop: ABLoop;
   currentTimeShared: SharedValue<number>;
@@ -29,8 +32,13 @@ type Props = {
   isAtActivePhraseRange: boolean;
   /** A点/B点ボタンのタップ = 設定済みのその位置へ非破壊で移動（未設定なら何もしない） */
   onTapPoint: (point: "A" | "B") => void;
-  /** A点/B点ボタンの長押し（未設定時はタップでも呼ぶ） = 現在位置をその点として設定 */
-  onSetPoint: (point: "A" | "B") => void;
+  /** A点/B点ボタンに指が触れた瞬間。長押しで設定するときは、この時点の再生位置を使う */
+  onPressInPoint: () => void;
+  /**
+   * A点/B点ボタンの長押し（未設定時はタップ・読み上げ用の操作でも呼ぶ） = 再生位置をその点として設定
+   * `at` が "pressIn" なら指が触れた時点、"now" なら呼んだ時点の再生位置を使う
+   */
+  onSetPoint: (point: "A" | "B", at: PointTimeSource) => void;
   onScrubStart: () => void;
   onScrubEnd: (time: number) => void;
   onScrubCancel: () => void;
@@ -56,6 +64,7 @@ export function PracticeControlPanel({
   onClearLoop,
   isAtActivePhraseRange,
   onTapPoint,
+  onPressInPoint,
   onSetPoint,
   onScrubStart,
   onScrubEnd,
@@ -127,13 +136,15 @@ export function PracticeControlPanel({
           label="A"
           time={abLoop.pointA}
           onTap={() => onTapPoint("A")}
-          onSetPoint={() => onSetPoint("A")}
+          onPressIn={onPressInPoint}
+          onSetPoint={(at) => onSetPoint("A", at)}
         />
         <PointButton
           label="B"
           time={abLoop.pointB}
           onTap={() => onTapPoint("B")}
-          onSetPoint={() => onSetPoint("B")}
+          onPressIn={onPressInPoint}
+          onSetPoint={(at) => onSetPoint("B", at)}
         />
         <Pressable
           onPress={onAddBookmark}
@@ -211,21 +222,23 @@ type PointButtonProps = {
   time: number | null;
   /** タップ（設定済みのみ）: 位置へ移動 */
   onTap: () => void;
-  /** 長押し、および未設定時のタップ: 現在位置を設定 */
-  onSetPoint: () => void;
+  onPressIn: () => void;
+  /** 長押し（指が触れた時点の位置）、および未設定時のタップ・読み上げ用の操作（呼んだ時点の位置）: 再生位置を設定 */
+  onSetPoint: (at: PointTimeSource) => void;
 };
 
-function PointButton({ label, time, onTap, onSetPoint }: PointButtonProps) {
+function PointButton({ label, time, onTap, onPressIn, onSetPoint }: PointButtonProps) {
   const set = time !== null;
 
   const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
-    if (event.nativeEvent.actionName === "longpress") onSetPoint();
+    if (event.nativeEvent.actionName === "longpress") onSetPoint("now");
   };
 
   return (
     <Pressable
-      onPress={set ? onTap : onSetPoint}
-      onLongPress={onSetPoint}
+      onPress={set ? onTap : () => onSetPoint("now")}
+      onPressIn={onPressIn}
+      onLongPress={() => onSetPoint("pressIn")}
       style={{
         flex: 1,
         height: 44,

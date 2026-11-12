@@ -15,6 +15,7 @@ import WebView from "react-native-webview";
 import { useSharedValue } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { randomUUID } from "expo-crypto";
+import * as Haptics from "expo-haptics";
 import { usePracticeStore, type PlaybackRate } from "@/stores/practice";
 import { colors, radius } from "@/shared/theme";
 import { IconButton } from "@/shared/components/atoms/IconButton";
@@ -32,7 +33,7 @@ import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useRemind
 import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progression";
 import { filterOpenMenuEntries, pickNextMenuEntry, planAfterResult } from "@/features/practice/lib/afterResult";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
-import { formatDuration } from "@/features/practice/lib/formatters";
+import { formatDuration, formatSpokenDuration } from "@/features/practice/lib/formatters";
 import {
   applyPoint,
   isAtPhraseRange,
@@ -61,7 +62,7 @@ import {
 } from "@/features/practice/lib/keepAwake";
 import { VideoPlayerCard } from "./VideoPlayerCard";
 import { PlaybackRateChips } from "./PlaybackRateChips";
-import { PracticeControlPanel } from "./PracticeControlPanel";
+import { PracticeControlPanel, type PointTimeSource } from "./PracticeControlPanel";
 import { SavePhraseSheet, type SavePhraseInput } from "./SavePhraseSheet";
 import { TodayPickCard } from "./TodayPickCard";
 import { TodayPhraseRows } from "./TodayPhraseRows";
@@ -475,9 +476,20 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     [currentTimeShared, sendToPlayer],
   );
 
+  // 長押しは指が触れてから約0.5秒後に成立するため、触れた瞬間の再生位置を控えておく
+  const pointPressInTimeRef = useRef<number | null>(null);
+  const handlePressInPoint = useCallback(() => {
+    pointPressInTimeRef.current = currentTimeRef.current;
+  }, []);
+
   const handleSetPoint = useCallback(
-    (point: "A" | "B") => {
-      setABLoop(applyPoint(abLoop, point, resolvePointTime(point, currentTimeRef.current, duration)));
+    (point: "A" | "B", at: PointTimeSource) => {
+      const playbackTime =
+        at === "pressIn" ? (pointPressInTimeRef.current ?? currentTimeRef.current) : currentTimeRef.current;
+      const time = resolvePointTime(point, playbackTime, duration);
+      setABLoop(applyPoint(abLoop, point, time));
+      void Haptics.selectionAsync();
+      AccessibilityInfo.announceForAccessibility(`${point}点を${formatSpokenDuration(time)}に設定`);
     },
     [abLoop, duration, setABLoop],
   );
@@ -647,6 +659,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
                   activePractice !== null && isAtPhraseRange(abLoop, activePractice.phrase)
                 }
                 onTapPoint={handleTapPoint}
+                onPressInPoint={handlePressInPoint}
                 onSetPoint={handleSetPoint}
                 onScrubStart={handleScrubStart}
                 onScrubEnd={handleScrubEnd}
