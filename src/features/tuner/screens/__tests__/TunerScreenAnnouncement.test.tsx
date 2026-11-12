@@ -20,7 +20,6 @@ function detector(hz: number | null): PitchDetectorState {
   return {
     status: "listening",
     hz,
-    clarity: hz === null ? 0 : 0.99,
     inputLevelDb: -30,
     pausedByUser: false,
     pause: jest.fn(),
