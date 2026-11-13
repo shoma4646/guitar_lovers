@@ -87,6 +87,21 @@ describe("pickReminderPhrase", () => {
 
     expect(pickReminderPhrase(phrases, [])?.id).toBe("b");
   });
+
+  it("全て卒業済みなら、アーカイブ済みのほうが作成日時が新しくてもアーカイブしていないフレーズを選ぶ", () => {
+    const phrases = [
+      makePhrase({ id: "active", currentBpm: 120, targetBpm: 120, createdAt: sep(10, 9) }),
+      makePhrase({
+        id: "archived",
+        currentBpm: 120,
+        targetBpm: 120,
+        createdAt: sep(12, 9),
+        archivedAt: sep(13, 9),
+      }),
+    ];
+
+    expect(pickReminderPhrase(phrases, [])?.id).toBe("active");
+  });
 });
 
 describe("buildReminderMessage", () => {
