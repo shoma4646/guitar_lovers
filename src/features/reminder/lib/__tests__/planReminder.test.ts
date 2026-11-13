@@ -1,6 +1,6 @@
 import { planReminder } from "../planReminder";
 import { DEFAULT_REMINDER_SETTINGS } from "@/shared/lib/schemas/reminderSettings";
-import type { PracticePhrase, PracticeSession } from "@/shared/types/models";
+import type { PhraseAttempt, PracticePhrase, PracticeSession } from "@/shared/types/models";
 
 const now = new Date(2026, 8, 16, 10);
 
@@ -82,5 +82,68 @@ describe("planReminder", () => {
     expect(plan!.data).toEqual({ type: "practice-reminder", phraseId: "p1" });
     expect(plan!.fireAt).toEqual(new Date(2026, 8, 17, 20));
     expect(plan!.body).toContain("『イントロのリフ』");
+  });
+});
+
+describe("planReminder の手動指定時刻", () => {
+  const settings = {
+    ...DEFAULT_REMINDER_SETTINGS,
+    enabled: true,
+    timeOverride: { hour: 21, minute: 30 as const },
+  };
+
+  /** 9/2〜9/15の毎日19時台に記録がある（傾向だけなら18時台に送る） */
+  function eveningAttempts(): PhraseAttempt[] {
+    return Array.from({ length: 14 }, (_, i) => ({
+      id: `a${i}`,
+      phraseId: "p1",
+      date: new Date(2026, 8, 2 + i, 19, 15 + (i % 3) * 10).toISOString(),
+      bpm: 92,
+      result: "ok" as const,
+    }));
+  }
+
+  it("過去の記録が19時台に集中していても、今日の21:30に予約する", () => {
+    const plan = planReminder({
+      phrases: [makePhrase("p1")],
+      attempts: eveningAttempts(),
+      sessions: [],
+      settings,
+      now,
+    });
+
+    expect(plan!.fireAt).toEqual(new Date(2026, 8, 16, 21, 30));
+  });
+
+  it("今日すでに練習済みなら、翌日の21:30に予約する", () => {
+    const practicedToday: PhraseAttempt = {
+      id: "today",
+      phraseId: "p1",
+      date: new Date(2026, 8, 16, 8).toISOString(),
+      bpm: 92,
+      result: "ok",
+    };
+
+    const plan = planReminder({
+      phrases: [makePhrase("p1")],
+      attempts: [...eveningAttempts(), practicedToday],
+      sessions: [],
+      settings,
+      now,
+    });
+
+    expect(plan!.fireAt).toEqual(new Date(2026, 8, 17, 21, 30));
+  });
+
+  it("21:30を過ぎた後なら、翌日の21:30に予約する", () => {
+    const plan = planReminder({
+      phrases: [makePhrase("p1")],
+      attempts: eveningAttempts(),
+      sessions: [],
+      settings,
+      now: new Date(2026, 8, 16, 21, 45),
+    });
+
+    expect(plan!.fireAt).toEqual(new Date(2026, 8, 17, 21, 30));
   });
 });
