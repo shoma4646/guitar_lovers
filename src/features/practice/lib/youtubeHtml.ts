@@ -115,7 +115,11 @@ export function buildYouTubeHtml(
       });
     }
     document.addEventListener('message', function(e) { handleMsg(e.data); });
-    window.addEventListener('message', function(e) { handleMsg(e.data); });
+    window.addEventListener('message', function(e) {
+      // アプリからの命令は source が null で届く。YouTube の iframe や広告の枠から届いたものは捨てる
+      if (e.source !== null) return;
+      handleMsg(e.data);
+    });
     function handleMsg(data) {
       try {
         var cmd = JSON.parse(data);
@@ -125,8 +129,14 @@ export function buildYouTubeHtml(
         }
         if (cmd.action === 'play') player.playVideo();
         if (cmd.action === 'pause') player.pauseVideo();
-        if (cmd.action === 'seek') player.seekTo(cmd.time, true);
-        if (cmd.action === 'setRate') player.setPlaybackRate(cmd.rate);
+        if (cmd.action === 'seek') {
+          var time = toPoint(cmd.time);
+          if (time !== null && time >= 0) player.seekTo(time, true);
+        }
+        if (cmd.action === 'setRate') {
+          var rate = toPoint(cmd.rate);
+          if (rate !== null && rate > 0) player.setPlaybackRate(rate);
+        }
       } catch(e) {}
     }
   </script>

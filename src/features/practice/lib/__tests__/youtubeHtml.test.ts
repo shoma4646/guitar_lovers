@@ -92,7 +92,19 @@ function bootPlayerScript() {
     if (events === null) throw new Error("YT.Player が生成されていない");
     return events;
   };
-  return { script, player, posted, fire };
+  const listenerOf = (target: { addEventListener: jest.Mock }) => {
+    const call = target.addEventListener.mock.calls.find(([type]) => type === "message");
+    if (!call) throw new Error("message リスナーが登録されていない");
+    return call[1] as (e: { source: unknown; origin: string; data: string }) => void;
+  };
+  return {
+    script,
+    player,
+    posted,
+    fire,
+    windowListener: listenerOf(fakeWindow),
+    documentListener: listenerOf(fakeDocument),
+  };
 }
 
 function timeMessages(posted: Record<string, unknown>[]) {
@@ -194,4 +206,116 @@ describe("プレイヤーHTML内のABループ判定", () => {
     jest.advanceTimersByTime(50);
     expect(player.seekTo).toHaveBeenCalledWith(1, true);
   });
+});
+
+describe("プレイヤーHTMLの命令受信", () => {
+  const COMMANDS = {
+    pause: { action: "pause" },
+    play: { action: "play" },
+    setLoop: { action: "setLoop", enabled: false, pointA: null, pointB: null },
+    seek: { action: "seek", time: 30 },
+    setRate: { action: "setRate", rate: 2 },
+  };
+
+  function fromFrame(cmd: Record<string, unknown>) {
+    return { source: {}, origin: "https://example.com", data: JSON.stringify(cmd) };
+  }
+
+  function fromApp(cmd: Record<string, unknown>) {
+    return { source: null, origin: "", data: JSON.stringify(cmd) };
+  }
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("windowに別の枠から届いた命令は実行しない", () => {
+    const { player, windowListener } = bootPlayerScript();
+    windowListener(fromFrame(COMMANDS.pause));
+    windowListener(fromFrame(COMMANDS.play));
+    windowListener(fromFrame(COMMANDS.seek));
+    windowListener(fromFrame(COMMANDS.setRate));
+
+    expect(player.pauseVideo).not.toHaveBeenCalled();
+    expect(player.playVideo).not.toHaveBeenCalled();
+    expect(player.seekTo).not.toHaveBeenCalled();
+    expect(player.setPlaybackRate).not.toHaveBeenCalled();
+  });
+
+  it("windowに別の枠から届いたsetLoopではABループが外れない", () => {
+    const { script, player, fire, windowListener } = bootPlayerScript();
+    script.handleMsg(JSON.stringify({ action: "setLoop", enabled: true, pointA: 10, pointB: 12 }));
+    windowListener(fromFrame(COMMANDS.setLoop));
+    fire().onStateChange({ data: PLAYER_STATE.PLAYING });
+
+    player.currentTime = 12.5;
+    jest.advanceTimersByTime(50);
+    expect(player.seekTo).toHaveBeenCalledWith(10, true);
+  });
+
+  it("windowにアプリから届いた命令（sourceがnull）は実行する", () => {
+    const { player, windowListener } = bootPlayerScript();
+    windowListener(fromApp(COMMANDS.pause));
+    windowListener(fromApp(COMMANDS.seek));
+    windowListener(fromApp(COMMANDS.setRate));
+
+    expect(player.pauseVideo).toHaveBeenCalledTimes(1);
+    expect(player.seekTo).toHaveBeenCalledWith(30, true);
+    expect(player.setPlaybackRate).toHaveBeenCalledWith(2);
+  });
+
+  it("windowにアプリから届いたsetLoopでABループを外せる", () => {
+    const { script, player, fire, windowListener } = bootPlayerScript();
+    script.handleMsg(JSON.stringify({ action: "setLoop", enabled: true, pointA: 10, pointB: 12 }));
+    windowListener(fromApp(COMMANDS.setLoop));
+    fire().onStateChange({ data: PLAYER_STATE.PLAYING });
+
+    player.currentTime = 12.5;
+    jest.advanceTimersByTime(50);
+    expect(player.seekTo).not.toHaveBeenCalled();
+  });
+
+  it("documentに届いた命令（Androidのアプリからの経路）は従来どおり実行する", () => {
+    const { player, documentListener } = bootPlayerScript();
+    documentListener(fromApp(COMMANDS.pause));
+    documentListener(fromApp(COMMANDS.play));
+    documentListener(fromApp(COMMANDS.seek));
+    documentListener(fromApp(COMMANDS.setRate));
+
+    expect(player.pauseVideo).toHaveBeenCalledTimes(1);
+    expect(player.playVideo).toHaveBeenCalledTimes(1);
+    expect(player.seekTo).toHaveBeenCalledWith(30, true);
+    expect(player.setPlaybackRate).toHaveBeenCalledWith(2);
+  });
+
+  it.each([["abc"], [-1], [null], [Number.POSITIVE_INFINITY], ["30"]])(
+    "seekの位置が有限の0以上の数でない（%p）なら実行しない",
+    (time) => {
+      const { script, player } = bootPlayerScript();
+      script.handleMsg(JSON.stringify({ action: "seek", time }));
+
+      expect(player.seekTo).not.toHaveBeenCalled();
+    },
+  );
+
+  it("seekの位置0は実行する", () => {
+    const { script, player } = bootPlayerScript();
+    script.handleMsg(JSON.stringify({ action: "seek", time: 0 }));
+
+    expect(player.seekTo).toHaveBeenCalledWith(0, true);
+  });
+
+  it.each([[0], [-1], [Number.NaN], ["2"], [null]])(
+    "setRateの速度が有限の正の数でない（%p）なら実行しない",
+    (rate) => {
+      const { script, player } = bootPlayerScript();
+      script.handleMsg(JSON.stringify({ action: "setRate", rate }));
+
+      expect(player.setPlaybackRate).not.toHaveBeenCalled();
+    },
+  );
 });
