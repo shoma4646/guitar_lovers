@@ -48,11 +48,13 @@ function GraduatedPhraseRow({ summary }: { summary: GraduatedPhraseSummary }) {
       accessibilityLabel={`${phrase.name}、${formatMonthDay(graduatedAt)}に卒業、${startBpm}から${currentBpm}、目標${targetBpm}BPM`}
     >
       <View style={styles.topRow}>
-        <View style={styles.badge}>
+        <View testID="graduated-badge" style={styles.badge}>
           <Icon name="trophy" size={12} color={semantic.graduated} />
-          <Text style={styles.badgeText}>卒業</Text>
+          <Text style={styles.badgeText} maxFontSizeMultiplier={1.3}>
+            卒業
+          </Text>
         </View>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text style={styles.name} numberOfLines={1} maxFontSizeMultiplier={1.3}>
           {phrase.name}
         </Text>
       </View>
@@ -74,7 +76,7 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
   },
   row: {
-    height: 56,
+    minHeight: 56,
     justifyContent: "center",
     gap: 4,
   },
@@ -87,8 +89,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    height: 18,
+    minHeight: 18,
     paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 9999,
     backgroundColor: semantic.graduatedContainer,
   },
@@ -107,8 +110,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 8,
   },
   range: {
+    flexShrink: 1,
     fontSize: 13,
     color: colors.onSurfaceVariant,
     fontVariant: ["tabular-nums"],
