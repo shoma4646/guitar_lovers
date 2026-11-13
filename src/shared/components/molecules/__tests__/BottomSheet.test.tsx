@@ -1,5 +1,5 @@
 import { render, fireEvent, screen, act } from "@testing-library/react-native";
-import { Modal, Platform, StyleSheet, Text } from "react-native";
+import { Keyboard, Modal, Platform, StyleSheet, Text } from "react-native";
 import { BottomSheet } from "../BottomSheet";
 
 const mockWindow = { width: 320, height: 568, scale: 2, fontScale: 1 };
@@ -36,6 +36,60 @@ describe("BottomSheet", () => {
     const { onClose } = setup(true);
     fireEvent.press(screen.getAllByLabelText("閉じる")[0]);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  describe("キーボード表示中の背景タップ", () => {
+    let isVisibleSpy: jest.SpyInstance;
+    let dismissSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      isVisibleSpy = jest.spyOn(Keyboard, "isVisible");
+      dismissSpy = jest.spyOn(Keyboard, "dismiss").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      isVisibleSpy.mockRestore();
+      dismissSpy.mockRestore();
+    });
+
+    it("キーボードが出ていれば、キーボードを閉じるだけでonCloseは呼ばない", () => {
+      isVisibleSpy.mockReturnValue(true);
+      const { onClose } = setup(true);
+
+      fireEvent.press(screen.getByTestId("bottom-sheet-backdrop"));
+
+      expect(dismissSpy).toHaveBeenCalledTimes(1);
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("キーボードが出ていなければ、今まで通りonCloseを呼ぶ", () => {
+      isVisibleSpy.mockReturnValue(false);
+      const { onClose } = setup(true);
+
+      fireEvent.press(screen.getByTestId("bottom-sheet-backdrop"));
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(dismissSpy).not.toHaveBeenCalled();
+    });
+
+    it("右上の閉じるボタンは、キーボード表示中でもonCloseを呼ぶ", () => {
+      isVisibleSpy.mockReturnValue(true);
+      const { onClose } = setup(true);
+      const closers = screen.getAllByLabelText("閉じる");
+
+      fireEvent.press(closers[closers.length - 1]);
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("Androidの戻るキー（onRequestClose）は、キーボード表示中でもonCloseを呼ぶ", () => {
+      isVisibleSpy.mockReturnValue(true);
+      const { onClose } = setup(true);
+
+      act(() => screen.UNSAFE_getByType(Modal).props.onRequestClose());
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("閉じるボタンからもonCloseを呼べる", () => {

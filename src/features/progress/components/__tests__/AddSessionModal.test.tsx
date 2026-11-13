@@ -1,4 +1,4 @@
-import { Alert } from "react-native";
+import { Alert, Keyboard } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { AddSessionModal } from "../AddSessionModal";
 
@@ -29,6 +29,20 @@ describe("AddSessionModal", () => {
     closeButtons.forEach((button) => fireEvent.press(button));
 
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("メモ入力中（キーボード表示中）に背景を押しても、閉じずにメモが残る", () => {
+    const isVisibleSpy = jest.spyOn(Keyboard, "isVisible").mockReturnValue(true);
+    const dismissSpy = jest.spyOn(Keyboard, "dismiss").mockImplementation(() => {});
+    const { onClose } = renderSheet();
+    fireEvent.changeText(screen.getByLabelText("メモ入力"), "Aメロのカッティング");
+
+    fireEvent.press(screen.getByTestId("bottom-sheet-backdrop"));
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("メモ入力").props.value).toBe("Aメロのカッティング");
+    isVisibleSpy.mockRestore();
+    dismissSpy.mockRestore();
   });
 
   it.each([
