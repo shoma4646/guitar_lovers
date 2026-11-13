@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -83,6 +84,15 @@ export function BottomSheet({
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: progress.value * 0.55 }));
 
+  // iOSの数字キーボードには閉じるキーが無く、背景タップがキーボードを閉じる唯一の手段になるため
+  const handleBackdropPress = () => {
+    if (Keyboard.isVisible()) {
+      Keyboard.dismiss();
+      return;
+    }
+    onClose();
+  };
+
   return (
     <Modal
       visible={visible}
@@ -96,9 +106,10 @@ export function BottomSheet({
           style={[StyleSheet.absoluteFill, { backgroundColor: colors.inverseSurface }, backdropStyle]}
         >
           <Pressable
+            testID="bottom-sheet-backdrop"
             accessibilityRole="button"
             accessibilityLabel="閉じる"
-            onPress={onClose}
+            onPress={handleBackdropPress}
             style={{ flex: 1 }}
           />
         </Animated.View>

@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { Alert, Keyboard } from "react-native";
 import { SavePhraseSheet } from "../SavePhraseSheet";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -78,6 +79,46 @@ describe("SavePhraseSheet", () => {
 
     await act(async () => {
       resolveSave();
+    });
+  });
+
+  describe("キーボード表示中の背景タップ", () => {
+    let isVisibleSpy: jest.SpyInstance;
+    let dismissSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      isVisibleSpy = jest.spyOn(Keyboard, "isVisible").mockReturnValue(true);
+      dismissSpy = jest.spyOn(Keyboard, "dismiss").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      isVisibleSpy.mockRestore();
+      dismissSpy.mockRestore();
+    });
+
+    /** onCloseで実際にシートを閉じる親（閉じると次に開いたとき入力が初期化される） */
+    function SheetHost() {
+      const [visible, setVisible] = useState(true);
+      return (
+        <SavePhraseSheet
+          visible={visible}
+          onClose={() => setVisible(false)}
+          defaultBpm={80}
+          onSave={jest.fn()}
+        />
+      );
+    }
+
+    it("名前と目標BPMを入力した後に背景を押しても、シートは閉じず入力が残る", () => {
+      render(<SheetHost />);
+      fireEvent.changeText(screen.getByLabelText("フレーズ名入力"), "サビのソロ");
+      fireEvent.changeText(screen.getByLabelText("目標BPM入力"), "140");
+
+      fireEvent.press(screen.getByTestId("bottom-sheet-backdrop"));
+
+      expect(dismissSpy).toHaveBeenCalledTimes(1);
+      expect(screen.getByLabelText("フレーズ名入力").props.value).toBe("サビのソロ");
+      expect(screen.getByLabelText("目標BPM入力").props.value).toBe("140");
     });
   });
 });
