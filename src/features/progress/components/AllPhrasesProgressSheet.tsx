@@ -13,8 +13,8 @@ import { PhraseProgressList } from "@/features/progress/components/PhraseProgres
 import { GraduatedPhraseList } from "@/features/progress/components/GraduatedPhraseList";
 import type {
   GraduatedPhraseSummary,
-} from "@/features/progress/hooks/usePhraseProgressSummaries";
-import type { PhraseProgressSummary } from "@/features/progress/lib/phraseProgress";
+  PhraseProgressSummary,
+} from "@/features/progress/lib/phraseProgress";
 
 type PhraseKind = "active" | "graduated";
 

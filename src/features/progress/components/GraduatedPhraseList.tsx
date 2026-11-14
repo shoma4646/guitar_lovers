@@ -9,7 +9,7 @@ import { View, Text, StyleSheet } from "react-native";
 import { colors } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
 import { Icon } from "@/shared/components/atoms/Icon";
-import type { GraduatedPhraseSummary } from "@/features/progress/hooks/usePhraseProgressSummaries";
+import type { GraduatedPhraseSummary } from "@/features/progress/lib/phraseProgress";
 
 type Props = {
   items: GraduatedPhraseSummary[];
