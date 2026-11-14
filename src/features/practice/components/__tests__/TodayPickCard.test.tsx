@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import { fontSize } from "@/shared/theme";
+import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import { TodayPickCard } from "../TodayPickCard";
 
 type QueryStub = { data: unknown[] | undefined; isLoading: boolean; refetch: jest.Mock };
@@ -118,6 +119,47 @@ describe("TodayPickCard（今日の1本の進捗バー）", () => {
   it("フレーズ名はプリセットのタイトルと同じ fontSize.headingLg を使う", () => {
     const style = StyleSheet.flatten(screen.getByTestId("today-pick-phrase-name").props.style);
     expect(style.fontSize).toBe(fontSize.headingLg);
+  });
+});
+
+describe("TodayPickCard（前回BPM → 今日の目標が文字サイズを大きくしてもはみ出さない）", () => {
+  beforeEach(() => {
+    mockPhrasesQuery.data = [
+      {
+        id: "p1",
+        videoId: "abc123def45",
+        videoTitle: "動画",
+        name: "速弾きのリフ",
+        startSec: 0,
+        endSec: 10,
+        currentBpm: 150,
+        initialBpm: 120,
+        targetBpm: 180,
+        playbackRate: 1,
+        createdAt: "2026-09-01T00:00:00.000Z",
+        updatedAt: "2026-09-01T00:00:00.000Z",
+      },
+    ];
+    render(<TodayPickCard onStartPhrase={jest.fn()} onTryPreset={jest.fn()} onOpenAddVideo={jest.fn()} />);
+  });
+
+  it("前回・矢印・目標の数値Text 3つすべてに数字用の文字サイズ上限が付いている", () => {
+    const bpmRow = screen.getByTestId("today-pick-bpm-row");
+    const numerics = [
+      within(bpmRow).getByText("150"),
+      within(bpmRow).getByText("→"),
+      within(bpmRow).getByText(/^\d+ BPM$/),
+    ];
+
+    for (const text of numerics) {
+      expect(text.props.maxFontSizeMultiplier).toBe(NUMERIC_MAX_FONT_SIZE_MULTIPLIER);
+    }
+  });
+
+  it("目標側のコンテナは縮められ、「BPM」を次の行へ回せる", () => {
+    const target = screen.getByTestId("today-pick-target-bpm");
+    expect(StyleSheet.flatten(target.props.style).flexShrink).toBe(1);
+    expect(within(target).getByText(/^\d+ BPM$/).props.numberOfLines).toBeUndefined();
   });
 });
 
