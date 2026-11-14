@@ -61,6 +61,7 @@ const ICON_MAP: Record<
   more_vert: { set: "material", name: "more-vert" },
   menu: { set: "material", name: "menu" },
   content_cut: { set: "material", name: "content-cut" },
+  content_paste: { set: "material", name: "content-paste" },
   metronome: { set: "community", name: "metronome" },
   circle: { set: "community", name: "circle-outline" },
   change_history: { set: "community", name: "triangle-outline" },

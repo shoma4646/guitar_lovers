@@ -21,6 +21,7 @@ Guitar Loversをストア公開するための作業一覧。上から順に進�
 - [ ] `eas init` を実行し、EASプロジェクトを紐付ける
 - [ ] `eas.json` の `submit.production.ios.ascAppId` を、App Store ConnectのアプリIDへ差し替える（`REPLACE_WITH_APP_STORE_CONNECT_APP_ID`）
 - [ ] `eas build --profile preview --platform ios` を実行し、内部配布ビルドで動作確認する
+  - [ ] YouTubeの動画URLをコピーして「動画を追加」シートを開き、貼り付けボタンを1回押すと動画が読み込まれることを確認する（iOS 16以上はOS標準の「ペースト」ボタンで許可ダイアログが出ないこと。Androidの代わりのボタンも同様に確認する）
 - [ ] 本番ビルド（`eas build --profile production --platform ios` / `--platform android`）を実行する
 - [ ] expo-notificationsのconfig pluginが`aps-environment`を追加するため、App IDでPush Notificationsのcapabilityが有効か確認する（EAS Buildは自動同期、ローカルのXcode署名では手動で有効化）
 - [ ] Androidの通知用小アイコン（96x96の白い透過PNG）を用意し、`app.json`の`expo-notifications`プラグインの`icon`に設定する

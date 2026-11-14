@@ -2,11 +2,13 @@
  * 動画追加シート
  *
  * ヘッダーの「＋」から開き、YouTube URLを貼り付けて動画を読み込む。
+ * コピー済みのURLは貼り付けボタン1回で読み込める（iOS 16以上はOS標準の貼り付けボタン）。
  * 直前に読み込んだ動画が再生できなかった場合は、開いた時点でそのエラーの案内を先に出す。
  */
 
 import { useEffect, useRef, useState } from "react";
 import { View, Text, TextInput, Pressable } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
 import { Button } from "@/shared/components/atoms/Button";
 import { Icon } from "@/shared/components/atoms/Icon";
@@ -57,9 +59,10 @@ export function AddVideoSheet({ visible, onClose }: Props) {
     });
   };
 
-  const handleSubmit = () => {
-    if (!url.trim()) return;
-    const videoId = extractVideoId(url.trim());
+  const handleSubmit = (rawUrl: string) => {
+    const trimmed = rawUrl.trim();
+    if (!trimmed) return;
+    const videoId = extractVideoId(trimmed);
     if (!videoId) {
       setError({ kind: "url" });
       return;
@@ -69,9 +72,49 @@ export function AddVideoSheet({ visible, onClose }: Props) {
     openVideo(videoId, `YouTube動画 (${videoId})`);
   };
 
+  const handlePastedText = (text: string) => {
+    setUrl(text);
+    if (!text.trim()) {
+      setError({ kind: "url" });
+      return;
+    }
+    handleSubmit(text);
+  };
+
+  const pasteFromClipboard = () => {
+    Clipboard.getStringAsync()
+      .catch(() => "")
+      .then(handlePastedText);
+  };
+
   return (
     <BottomSheet visible={visible} onClose={onClose} title="動画を追加">
       <View style={{ gap: 16, paddingTop: 8, paddingBottom: 8 }}>
+        {Clipboard.isPasteButtonAvailable ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Text style={{ flex: 1, fontSize: 14, color: colors.onSurface }}>
+              コピーしたURLを貼り付けて読み込む
+            </Text>
+            <Clipboard.ClipboardPasteButton
+              onPress={(data) => handlePastedText(data.type === "text" ? data.text : "")}
+              acceptedContentTypes={["plain-text", "url"]}
+              backgroundColor={colors.primaryFixed}
+              foregroundColor={colors.onPrimaryFixedVariant}
+              cornerStyle="capsule"
+              displayMode="iconAndLabel"
+              style={{ height: 44, width: 120 }}
+            />
+          </View>
+        ) : (
+          <Button
+            label="コピーしたURLを貼り付けて読み込む"
+            icon="content_paste"
+            variant="tonal"
+            fullWidth
+            onPress={pasteFromClipboard}
+          />
+        )}
+
         <View style={{ flexDirection: "row", gap: 8 }}>
           <TextInput
             value={url}
@@ -85,7 +128,8 @@ export function AddVideoSheet({ visible, onClose }: Props) {
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="go"
-            onSubmitEditing={handleSubmit}
+            autoFocus
+            onSubmitEditing={() => handleSubmit(url)}
             style={{
               flex: 1,
               height: 44,
@@ -97,7 +141,7 @@ export function AddVideoSheet({ visible, onClose }: Props) {
             }}
             accessibilityLabel="YouTube URL入力"
           />
-          <Button label="読み込む" onPress={handleSubmit} />
+          <Button label="読み込む" onPress={() => handleSubmit(url)} />
         </View>
 
         {error !== null && (

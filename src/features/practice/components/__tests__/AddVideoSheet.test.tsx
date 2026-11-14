@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { usePracticeStore } from "@/stores/practice";
 import { describePlayerError } from "@/features/practice/lib/playerError";
 import { AddVideoSheet } from "../AddVideoSheet";
@@ -12,6 +12,25 @@ jest.mock("@/features/practice/api/useAddRecentVideo", () => ({
 jest.mock("@/features/practice/api/useRecentVideos", () => ({
   useRecentVideos: () => ({ data: [] }),
 }));
+
+let mockPasteButtonAvailable = false;
+let mockClipboardText = "";
+let mockPastePayload: { type: "text"; text: string } | { type: "image"; data: string } = {
+  type: "text",
+  text: "",
+};
+jest.mock("expo-clipboard", () => {
+  const { Pressable } = jest.requireActual<typeof import("react-native")>("react-native");
+  return {
+    get isPasteButtonAvailable() {
+      return mockPasteButtonAvailable;
+    },
+    getStringAsync: () => Promise.resolve(mockClipboardText),
+    ClipboardPasteButton: ({ onPress }: { onPress: (data: typeof mockPastePayload) => void }) => (
+      <Pressable testID="clipboard-paste-button" onPress={() => onPress(mockPastePayload)} />
+    ),
+  };
+});
 
 const initialState = usePracticeStore.getState();
 
@@ -38,5 +57,92 @@ describe("AddVideoSheet の動画エラー表示", () => {
     render(<AddVideoSheet visible onClose={jest.fn()} />);
 
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("AddVideoSheet のクリップボードからの読み込み", () => {
+  const onClose = jest.fn();
+
+  beforeEach(() => {
+    usePracticeStore.setState(initialState, true);
+    onClose.mockClear();
+    mockPasteButtonAvailable = false;
+    mockClipboardText = "";
+    mockPastePayload = { type: "text", text: "" };
+  });
+
+  it("入力欄に自動でカーソルが入る", () => {
+    render(<AddVideoSheet visible onClose={onClose} />);
+
+    expect(screen.getByLabelText("YouTube URL入力").props.autoFocus).toBe(true);
+  });
+
+  describe("OS標準の貼り付けボタンが使えない端末", () => {
+    it("YouTubeのURLがコピーされていれば、ボタン1回で動画を読み込みシートを閉じる", async () => {
+      mockClipboardText = "https://youtu.be/dQw4w9WgXcQ";
+      render(<AddVideoSheet visible onClose={onClose} />);
+
+      expect(screen.queryByTestId("clipboard-paste-button")).toBeNull();
+      fireEvent.press(screen.getByRole("button", { name: "コピーしたURLを貼り付けて読み込む" }));
+
+      await waitFor(() => expect(usePracticeStore.getState().loadedVideoId).toBe("dQw4w9WgXcQ"));
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ["YouTube以外の文字列", "https://example.com/watch?v=dQw4w9WgXcQ"],
+      ["空", ""],
+      ["空白だけ", "   "],
+    ])("クリップボードが%sならURLエラーを出し、何も読み込まない", async (_label, text) => {
+      mockClipboardText = text;
+      render(<AddVideoSheet visible onClose={onClose} />);
+
+      fireEvent.press(screen.getByRole("button", { name: "コピーしたURLを貼り付けて読み込む" }));
+
+      expect(await screen.findByText("YouTubeの動画URLではないようです")).toBeTruthy();
+      expect(usePracticeStore.getState().loadedVideoId).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("貼り付けた文字列を入力欄に入れ、手入力と同じく前後の空白を除いて判定する", async () => {
+      mockClipboardText = "  https://www.youtube.com/watch?v=dQw4w9WgXcQ\n";
+      render(<AddVideoSheet visible onClose={onClose} />);
+
+      fireEvent.press(screen.getByRole("button", { name: "コピーしたURLを貼り付けて読み込む" }));
+
+      await waitFor(() => expect(usePracticeStore.getState().loadedVideoId).toBe("dQw4w9WgXcQ"));
+      expect(screen.getByLabelText("YouTube URL入力").props.value).toBe(mockClipboardText);
+    });
+  });
+
+  describe("OS標準の貼り付けボタンが使える端末（iOS 16以上）", () => {
+    beforeEach(() => {
+      mockPasteButtonAvailable = true;
+    });
+
+    it("代わりのボタンを出さず、OS標準の貼り付けボタンから動画を読み込む", () => {
+      mockPastePayload = { type: "text", text: "https://youtu.be/dQw4w9WgXcQ" };
+      render(<AddVideoSheet visible onClose={onClose} />);
+
+      expect(screen.queryByRole("button", { name: "コピーしたURLを貼り付けて読み込む" })).toBeNull();
+      fireEvent.press(screen.getByTestId("clipboard-paste-button"));
+
+      expect(usePracticeStore.getState().loadedVideoId).toBe("dQw4w9WgXcQ");
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ["YouTube以外の文字列", { type: "text" as const, text: "ギターの練習" }],
+      ["画像", { type: "image" as const, data: "data:image/png;base64,AAAA" }],
+    ])("貼り付けた内容が%sならURLエラーを出し、何も読み込まない", (_label, payload) => {
+      mockPastePayload = payload;
+      render(<AddVideoSheet visible onClose={onClose} />);
+
+      fireEvent.press(screen.getByTestId("clipboard-paste-button"));
+
+      expect(screen.getByText("YouTubeの動画URLではないようです")).toBeTruthy();
+      expect(usePracticeStore.getState().loadedVideoId).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+    });
   });
 });
