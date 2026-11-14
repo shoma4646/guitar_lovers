@@ -59,6 +59,50 @@ export function summarizePhraseProgress(
   };
 }
 
+/** 卒業済みフレーズのサマリ（graduatedAtが確定している） */
+export type GraduatedPhraseSummary = PhraseProgressSummary & { graduatedAt: string };
+
+/** 進捗タブに出すフレーズの振り分け結果 */
+export interface PhraseProgressSplit {
+  /** 練習中フレーズ（更新日時の新しい順） */
+  inProgress: PhraseProgressSummary[];
+  /** 卒業したフレーズ（卒業日の新しい順） */
+  graduated: GraduatedPhraseSummary[];
+}
+
+/**
+ * アーカイブ済みを除いたフレーズのサマリを、練習中と卒業に振り分けて並べる
+ * @param phrases - 全フレーズ
+ * @param attempts - 全フレーズの練習結果（フレーズごとに絞り込んでから集計する）
+ */
+export function splitPhraseProgress(
+  phrases: PracticePhrase[],
+  attempts: PhraseAttempt[],
+): PhraseProgressSplit {
+  const summaries = phrases
+    .filter((phrase) => !phrase.archivedAt)
+    .map((phrase) =>
+      summarizePhraseProgress(
+        phrase,
+        attempts.filter((a) => a.phraseId === phrase.id),
+      ),
+    );
+
+  const inProgress = summaries
+    .filter((summary) => !summary.graduatedAt)
+    .sort(
+      (a, b) => new Date(b.phrase.updatedAt).getTime() - new Date(a.phrase.updatedAt).getTime(),
+    );
+
+  const graduated = summaries
+    .flatMap((summary) =>
+      summary.graduatedAt ? [{ ...summary, graduatedAt: summary.graduatedAt }] : [],
+    )
+    .sort((a, b) => new Date(b.graduatedAt).getTime() - new Date(a.graduatedAt).getTime());
+
+  return { inProgress, graduated };
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }

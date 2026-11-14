@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import type { PracticePhrase } from "@/shared/types/models";
-import type { GraduatedPhraseSummary } from "@/features/progress/hooks/usePhraseProgressSummaries";
+import type { GraduatedPhraseSummary } from "@/features/progress/lib/phraseProgress";
 import { GraduatedPhraseList } from "../GraduatedPhraseList";
 
 const LONG_NAME = "Sweet Child O' Mine イントロ";
