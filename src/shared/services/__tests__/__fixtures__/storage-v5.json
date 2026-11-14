@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 5,
+  "practicePhrases": [
+    {
+      "id": "phrase-in-progress",
+      "videoId": "dQw4w9WgXcQ",
+      "videoTitle": "練習中の動画",
+      "name": "速弾きフレーズ1",
+      "startSec": 30,
+      "endSec": 45.5,
+      "currentBpm": 100,
+      "targetBpm": 140,
+      "playbackRate": 0.75,
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-20T21:30:00.000Z",
+      "initialBpm": 80
+    },
+    {
+      "id": "phrase-graduated-exact",
+      "videoId": "abc123def45",
+      "videoTitle": "卒業した動画",
+      "name": "目標ちょうどで卒業",
+      "startSec": 10,
+      "endSec": 20,
+      "currentBpm": 120,
+      "targetBpm": 120,
+      "playbackRate": 1,
+      "createdAt": "2026-09-01T00:00:00.000Z",
+      "updatedAt": "2026-10-05T12:00:00.000Z",
+      "initialBpm": 90,
+      "graduatedAt": "2026-10-05T12:00:00.000Z"
+    },
+    {
+      "id": "phrase-graduated-over",
+      "videoId": "abc123def45",
+      "videoTitle": "卒業した動画",
+      "name": "目標を超えて卒業",
+      "startSec": 60,
+      "endSec": 75,
+      "currentBpm": 135,
+      "targetBpm": 130,
+      "playbackRate": 1.25,
+      "createdAt": "2026-09-02T00:00:00.000Z",
+      "updatedAt": "2026-10-10T08:15:00.000Z",
+      "graduatedAt": "2026-10-08T07:00:00.000Z"
+    },
+    {
+      "id": "phrase-archived",
+      "videoId": "Zx_9-Ab3cDe",
+      "videoTitle": "アーカイブした動画",
+      "name": "しまったフレーズ",
+      "startSec": 0,
+      "endSec": 8,
+      "currentBpm": 70,
+      "targetBpm": 100,
+      "playbackRate": 0.5,
+      "createdAt": "2026-08-20T00:00:00.000Z",
+      "updatedAt": "2026-08-25T00:00:00.000Z",
+      "archivedAt": "2026-09-15T00:00:00.000Z",
+      "initialBpm": 60
+    },
+    {
+      "id": "phrase-legacy-no-initial-bpm",
+      "videoId": "dQw4w9WgXcQ",
+      "videoTitle": "練習中の動画",
+      "name": "保存時BPMが無い古いフレーズ",
+      "startSec": 90,
+      "endSec": 100,
+      "currentBpm": 40,
+      "targetBpm": 240,
+      "playbackRate": 1,
+      "createdAt": "2026-07-01T00:00:00.000Z",
+      "updatedAt": "2026-07-01T00:00:00.000Z"
+    },
+    {
+      "id": "phrase-tiny-range",
+      "videoId": "dQw4w9WgXcQ",
+      "videoTitle": "練習中の動画",
+      "name": "0.1秒幅の区間",
+      "startSec": 12.3,
+      "endSec": 12.4,
+      "currentBpm": 90,
+      "targetBpm": 110,
+      "playbackRate": 0.75,
+      "createdAt": "2026-10-12T00:00:00.000Z",
+      "updatedAt": "2026-10-12T00:00:00.000Z",
+      "initialBpm": 90
+    }
+  ],
+  "phraseAttempts": [
+    {
+      "id": "attempt-ok-with-reps",
+      "phraseId": "phrase-in-progress",
+      "date": "2026-10-20T21:30:00.000Z",
+      "bpm": 100,
+      "result": "ok",
+      "reps": 5
+    },
+    {
+      "id": "attempt-partial-no-reps",
+      "phraseId": "phrase-in-progress",
+      "date": "2026-10-19T21:00:00.000Z",
+      "bpm": 105,
+      "result": "partial"
+    },
+    {
+      "id": "attempt-ng",
+      "phraseId": "phrase-tiny-range",
+      "date": "2026-10-12T10:00:00.000Z",
+      "bpm": 95,
+      "result": "ng",
+      "reps": 1
+    },
+    {
+      "id": "attempt-graduated",
+      "phraseId": "phrase-graduated-exact",
+      "date": "2026-10-05T12:00:00.000Z",
+      "bpm": 120,
+      "result": "ok",
+      "reps": 3
+    },
+    {
+      "id": "attempt-archived",
+      "phraseId": "phrase-archived",
+      "date": "2026-08-25T00:00:00.000Z",
+      "bpm": 70,
+      "result": "ok"
+    }
+  ],
+  "practiceSessions": [
+    {
+      "id": "session-full",
+      "date": "2026-10-20T21:00:00.000Z",
+      "duration": 1800,
+      "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "videoId": "dQw4w9WgXcQ",
+      "videoTitle": "練習中の動画",
+      "notes": "サビのフレーズを中心に"
+    },
+    {
+      "id": "session-short",
+      "date": "2026-10-21T07:45:00.000Z",
+      "duration": 0.5
+    },
+    {
+      "id": "session-minimal",
+      "date": "2026-10-22T12:00:00.000Z",
+      "duration": 60
+    }
+  ],
+  "favoriteVideos": [
+    {
+      "id": "favorite-1",
+      "videoId": "dQw4w9WgXcQ",
+      "title": "練習中の動画",
+      "addedAt": "2026-10-01T09:00:00.000Z"
+    }
+  ],
+  "recentVideos": [
+    {
+      "videoId": "dQw4w9WgXcQ",
+      "title": "練習中の動画",
+      "lastWatchedAt": "2026-10-20T21:00:00.000Z"
+    },
+    {
+      "videoId": "Zx_9-Ab3cDe",
+      "title": "アーカイブした動画",
+      "lastWatchedAt": "2026-08-25T00:00:00.000Z"
+    }
+  ],
+  "reminderSettings": {
+    "enabled": true,
+    "timeOverride": { "hour": 21, "minute": 15 },
+    "permissionPromptedAt": "2026-10-01T09:05:00.000Z"
+  }
+}
