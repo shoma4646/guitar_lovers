@@ -13,6 +13,7 @@ import { ReadErrorCard } from "@/shared/components/molecules/ReadErrorCard";
 import { Button } from "@/shared/components/atoms/Button";
 import { ProgressBar } from "@/shared/components/atoms/ProgressBar";
 import { colors, fontSize, radius } from "@/shared/theme";
+import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import {
@@ -150,6 +151,7 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
           <View>
             <Text style={{ fontSize: 11, color: colors.onSurfaceVariant }}>前回</Text>
             <Text
+              maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
               style={{
                 fontSize: 24,
                 fontWeight: "800",
@@ -160,10 +162,16 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
               {progress.currentBpm}
             </Text>
           </View>
-          <Text style={{ fontSize: 18, color: colors.onSurfaceVariant }}>→</Text>
-          <View>
+          <Text
+            maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
+            style={{ fontSize: 18, color: colors.onSurfaceVariant }}
+          >
+            →
+          </Text>
+          <View testID="today-pick-target-bpm" style={{ flexShrink: 1 }}>
             <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>今日の目標</Text>
             <Text
+              maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
               style={{
                 fontSize: 32,
                 fontWeight: "800",
