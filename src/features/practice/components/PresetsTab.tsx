@@ -25,7 +25,6 @@ import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhra
 
 export function PresetsTab() {
   const loadVideo = usePracticeStore((s) => s.loadVideo);
-  const setPracticeSubTab = usePracticeStore((s) => s.setPracticeSubTab);
   const { data: presets = [] } = useVideoPresets();
   const { mutate: addRecent } = useAddRecentVideo();
   const confirmSwitch = useConfirmPhraseSwitch();
@@ -49,10 +48,9 @@ export function PresetsTab() {
           title: preset.title,
           lastWatchedAt: new Date().toISOString(),
         });
-        setPracticeSubTab("practice");
       });
     },
-    [confirmSwitch, loadVideo, addRecent, setPracticeSubTab],
+    [confirmSwitch, loadVideo, addRecent],
   );
 
   return (

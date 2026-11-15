@@ -67,7 +67,7 @@ interface PracticeState {
   videoRetargetNonce: number;
 
   // --- 練習サブタブ ---
-  /** Practice画面のサブタブ選択状態。Presets/Favoritesからの再生後に「練習」へ戻すため画面遷移をまたいで保持する */
+  /** Practice画面のサブタブ選択状態。画面遷移をまたいで保持し、loadVideoのたびに「練習」へ戻す */
   practiceSubTab: PracticeSubTab;
 
   // --- 練習中のフレーズ ---
@@ -107,7 +107,7 @@ interface PracticeState {
   // --- アクション ---
   setUrlInput: (url: string) => void;
   /**
-   * 動画を読み込む
+   * 動画を読み込み、練習サブタブを「練習」に戻す
    * @param options.abLoop - 指定するとABループを空リセットせずこの値で開始する
    *   （フレーズからの練習再開で、区間を保持したまま動画を切り替えるために使用）
    * @param options.playbackRate - 指定するとその速度をWebView初期化時に焼き込み、
@@ -281,6 +281,8 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
         activePhrasePractice: samePhrase ? state.activePhrasePractice : null,
         pendingAttemptId: samePhrase ? state.pendingAttemptId : null,
         playerError: null,
+        // 動画読み込み後はサブタブ切替が隠れるため、どの入口から読み込んでもプレイヤーのあるpracticeを表示する
+        practiceSubTab: "practice",
       };
     });
   },

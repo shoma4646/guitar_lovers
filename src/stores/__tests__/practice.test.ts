@@ -108,6 +108,30 @@ describe("startPhrasePractice", () => {
   });
 });
 
+describe("動画を読み込むと練習サブタブは「練習」に戻る", () => {
+  it.each(["presets", "favorites"] as const)(
+    "%sを開いたままstartPhrasePracticeを呼ぶとpracticeになる",
+    (subTab) => {
+      usePracticeStore.getState().setPracticeSubTab(subTab);
+
+      usePracticeStore.getState().startPhrasePractice(makePhrase(), 85);
+
+      expect(usePracticeStore.getState().practiceSubTab).toBe("practice");
+    },
+  );
+
+  it.each(["presets", "favorites"] as const)(
+    "%sを開いたままloadVideoを呼ぶとpracticeになる",
+    (subTab) => {
+      usePracticeStore.getState().setPracticeSubTab(subTab);
+
+      usePracticeStore.getState().loadVideo("abc123def45", "テスト動画");
+
+      expect(usePracticeStore.getState().practiceSubTab).toBe("practice");
+    },
+  );
+});
+
 describe("startPracticeOnLoadedVideo", () => {
   function prepareLoadedVideo() {
     const store = usePracticeStore.getState();

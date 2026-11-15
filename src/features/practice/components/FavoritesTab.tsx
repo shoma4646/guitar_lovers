@@ -54,7 +54,6 @@ export function FavoritesTab() {
   const { data: favorites = [] } = favoritesQuery;
   const { data: recents = [] } = recentsQuery;
   const loadVideo = usePracticeStore((s) => s.loadVideo);
-  const setPracticeSubTab = usePracticeStore((s) => s.setPracticeSubTab);
   const { mutateAsync: toggleFavorite } = useToggleFavoriteVideo();
   const confirmSwitch = useConfirmPhraseSwitch();
   const localDay = useLocalDay();
@@ -84,20 +83,18 @@ export function FavoritesTab() {
     (video: RecentVideo) => {
       confirmSwitch(() => {
         loadVideo(video.videoId, video.title);
-        setPracticeSubTab("practice");
       });
     },
-    [confirmSwitch, loadVideo, setPracticeSubTab],
+    [confirmSwitch, loadVideo],
   );
 
   const handlePlayFavorite = useCallback(
     (video: FavoriteVideo) => {
       confirmSwitch(() => {
         loadVideo(video.videoId, video.title);
-        setPracticeSubTab("practice");
       });
     },
-    [confirmSwitch, loadVideo, setPracticeSubTab],
+    [confirmSwitch, loadVideo],
   );
 
   return (

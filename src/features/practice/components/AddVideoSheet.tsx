@@ -34,7 +34,6 @@ export function AddVideoSheet({ visible, onClose }: Props) {
   const [error, setError] = useState<SheetError | null>(null);
 
   const loadVideo = usePracticeStore((s) => s.loadVideo);
-  const setPracticeSubTab = usePracticeStore((s) => s.setPracticeSubTab);
   const playerError = usePracticeStore((s) => s.playerError);
   const { mutate: addRecent } = useAddRecentVideo();
   const { data: recents = [] } = useRecentVideos();
@@ -54,7 +53,6 @@ export function AddVideoSheet({ visible, onClose }: Props) {
     confirmSwitch(() => {
       loadVideo(videoId, title);
       addRecent({ videoId, title, lastWatchedAt: new Date().toISOString() });
-      setPracticeSubTab("practice");
       onClose();
     });
   };
