@@ -13,12 +13,12 @@ import { colors } from "@/shared/theme";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import {
-  buildTodayMenu,
   pickTodayPick,
   resolveCurrentBpm,
   type TodayMenuEntry,
 } from "@/features/practice/lib/progression";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
+import { useTodayMenu } from "@/features/practice/hooks/useTodayMenu";
 import {
   buildPhraseRowLabel,
   PHRASE_ROW_HINT,
@@ -35,9 +35,10 @@ type Props = {
 };
 
 export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
-  const { data: phrases, isLoading: isLoadingPhrases } = usePracticePhrases();
+  const { isLoading: isLoadingPhrases } = usePracticePhrases();
   const { data: attempts, isLoading: isLoadingAttempts } = usePhraseAttempts();
   const handleLongPress = usePhraseLongPressActions();
+  const menuItems = useTodayMenu();
 
   if (isLoadingPhrases || isLoadingAttempts) {
     return (
@@ -51,7 +52,6 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
   }
 
   const allAttempts = attempts ?? [];
-  const menuItems = buildTodayMenu(phrases ?? [], allAttempts, new Date());
   const todayPick = pickTodayPick(menuItems);
 
   const allPhrasesButton = (

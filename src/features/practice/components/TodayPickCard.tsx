@@ -17,7 +17,6 @@ import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import {
-  buildTodayMenu,
   pickTodayPick,
   type TodayMenuPriority,
 } from "@/features/practice/lib/progression";
@@ -28,6 +27,7 @@ import {
   phraseRowAccessibilityActionProps,
 } from "@/features/practice/lib/phraseRowLabel";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
+import { useTodayMenu } from "@/features/practice/hooks/useTodayMenu";
 import type { PracticePhrase } from "@/shared/types/models";
 
 const FIRST_STEPS = ["YouTubeのURLを貼る", "A・Bで区間を囲んで保存", "翌日からワンタップで練習"];
@@ -52,6 +52,7 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
   const { data: phrases } = phrasesQuery;
   const { data: attempts } = attemptsQuery;
   const organizePhrase = usePhraseLongPressActions();
+  const menuItems = useTodayMenu();
   const isLoading = phrasesQuery.isLoading || attemptsQuery.isLoading;
 
   if (isLoading) {
@@ -73,7 +74,6 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
     );
   }
 
-  const menuItems = buildTodayMenu(phrases, attempts, new Date());
   const todayPick = pickTodayPick(menuItems);
 
   if (menuItems.length === 0) {
