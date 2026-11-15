@@ -30,7 +30,7 @@ import { PhraseNotFoundError } from "@/shared/services/storage";
 import { useRunAfterDismiss } from "@/shared/hooks/useRunAfterDismiss";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
-import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progression";
+import { resolveCurrentBpm } from "@/features/practice/lib/progression";
 import { filterOpenMenuEntries, pickNextMenuEntry, planAfterResult } from "@/features/practice/lib/afterResult";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { formatDuration, formatSpokenDuration } from "@/features/practice/lib/formatters";
@@ -54,8 +54,7 @@ import {
   MIN_ONE_SCREEN_BUDGET_WHILE_PRACTICING,
   SCREEN_HORIZONTAL_PADDING,
 } from "@/shared/constants/layout";
-import { useLocalDay } from "@/shared/hooks/useLocalDay";
-import { localDayToDate } from "@/shared/lib/localDay";
+import { useTodayMenu } from "@/features/practice/hooks/useTodayMenu";
 import {
   PRACTICE_KEEP_AWAKE_TAG,
   shouldKeepAwakeDuringPractice,
@@ -344,14 +343,10 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     sendToPlayer({ action: "play" });
   }, [sendToPlayer, setMetronomeEnabled]);
 
-  const localDay = useLocalDay();
   const fitsOneScreen = useFitsOneScreen(
     activePractice ? MIN_ONE_SCREEN_BUDGET_WHILE_PRACTICING : MIN_ONE_SCREEN_BUDGET,
   );
-  const todayMenu = useMemo(
-    () => buildTodayMenu(allPhrases, allPhraseAttempts, localDayToDate(localDay)),
-    [allPhrases, allPhraseAttempts, localDay],
-  );
+  const todayMenu = useTodayMenu();
 
   // 卒業済みに加え、当日すでに目標へ到達したフレーズも除いた「今日まだ残っている」メニュー。
   // ヘッダーの「残りN本」表示と「次の1本へ」の候補選びの両方をこの1つの集合に揃える

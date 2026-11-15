@@ -13,8 +13,9 @@ import { colors } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
-import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progression";
+import { resolveCurrentBpm } from "@/features/practice/lib/progression";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
+import { useTodayMenu } from "@/features/practice/hooks/useTodayMenu";
 import {
   buildPhraseRowLabel,
   PHRASE_ROW_HINT,
@@ -31,13 +32,12 @@ type Props = {
 export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
   const phrasesQuery = usePracticePhrases();
   const attemptsQuery = usePhraseAttempts();
-  const { data: phrases } = phrasesQuery;
   const { data: attempts } = attemptsQuery;
   const handleLongPress = usePhraseLongPressActions();
   const readFailed = hasReadFailure(phrasesQuery, attemptsQuery);
 
   const allAttempts = attempts ?? [];
-  const menuItems = buildTodayMenu(phrases ?? [], allAttempts, new Date());
+  const menuItems = useTodayMenu();
 
   return (
     <BottomSheet
