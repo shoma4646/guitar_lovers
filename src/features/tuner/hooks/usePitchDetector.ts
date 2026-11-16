@@ -29,7 +29,7 @@ export type PitchDetectorStatus =
 
 export interface PitchDetectorState {
   status: PitchDetectorStatus;
-  /** 平滑化済みの検出周波数（無音・未検出ならnull）。小数1桁が変わったときだけ更新される */
+  /** 平滑化済みの検出周波数（無音・未検出ならnull）。`hzDisplayKey` の値が変わったときだけ更新される */
   hz: number | null;
   /** 直近フレームのマイク入力レベル（dBFS）。停止中はnull。整数部が変わったときだけ更新される */
   inputLevelDb: number | null;
@@ -66,8 +66,13 @@ function restorePlaybackSession(): void {
   });
 }
 
-/** マイクからのピッチ検出をタブのフォーカスに連動して開始・停止するhook */
-export function usePitchDetector(): PitchDetectorState {
+/**
+ * マイクからのピッチ検出をタブのフォーカスに連動して開始・停止するhook
+ * @param hzDisplayKey - 検出周波数から、画面の表示と判定を決める値をまとめたキーを返す。キーが変わったときだけ `hz` を更新する（既定は周波数の小数1桁）
+ */
+export function usePitchDetector(
+  hzDisplayKey: (hz: number | null) => string | null = hzDisplayDigits,
+): PitchDetectorState {
   const [status, setStatus] = useState<PitchDetectorStatus>("idle");
   const [hz, setHz] = useState<number | null>(null);
   const [inputLevelDb, setInputLevelDb] = useState<number | null>(null);
@@ -85,6 +90,7 @@ export function usePitchDetector(): PitchDetectorState {
   const smootherRef = useRef(createPitchSmoother());
   const lastUiUpdateRef = useRef(0);
   const hzKeyRef = useRef<string | null>(null);
+  const hzDisplayKeyRef = useRef(hzDisplayKey);
   const inputLevelKeyRef = useRef<string | null>(null);
   // pause()/resume()と同時に更新する。effect側は再購読を避けるためstateでなくこちらを読む
   const pausedByUserRef = useRef(false);
@@ -164,7 +170,7 @@ export function usePitchDetector(): PitchDetectorState {
           const now = Date.now();
           if (now - lastUiUpdateRef.current < UI_UPDATE_INTERVAL_MS) return;
           lastUiUpdateRef.current = now;
-          const hzKey = hzDisplayDigits(smoothed);
+          const hzKey = hzDisplayKeyRef.current(smoothed);
           if (hzKey !== hzKeyRef.current) {
             hzKeyRef.current = hzKey;
             setHz(smoothed);
@@ -248,6 +254,10 @@ export function usePitchDetector(): PitchDetectorState {
     });
     return () => subscription.remove();
   }, [requestAndStart, stop]);
+
+  useEffect(() => {
+    hzDisplayKeyRef.current = hzDisplayKey;
+  }, [hzDisplayKey]);
 
   useEffect(() => {
     return () => {

@@ -64,6 +64,23 @@ function formatCents(cents: number): string {
   return `${sign}${Math.round(cents)} cents`;
 }
 
+/** 検出音がプリセット内のどの弦にも該当しないときに出す実際の音名（例: "G4"） */
+function freeNoteLabelOf(hz: number): string {
+  const detected = frequencyToNote(hz);
+  return `${detected.noteName}${detected.octave}`;
+}
+
+/** 画面に出す周波数・弦・セント差・音名と、許容範囲内かどうかをまとめたキー。変わったときだけ検出値を受け取る */
+function tunerDisplayKey(hz: number | null, notes: string[]): string | null {
+  if (hz === null) return null;
+  const nearest = nearestStringInPreset(hz, notes);
+  const reading =
+    nearest === null
+      ? freeNoteLabelOf(hz)
+      : `${nearest.index}|${formatCents(nearest.cents)}|${tuningState(nearest.cents)}`;
+  return `${hzDisplayDigits(hz)}|${reading}`;
+}
+
 type MicChipTone = "active" | "paused" | "warning";
 
 const MIC_CHIP_DOT_COLOR: Record<MicChipTone, string> = {
@@ -129,18 +146,22 @@ const BADGE_STYLE: Record<BadgeTone, { bg: string; fg: string }> = {
 
 export function TunerScreen() {
   const router = useRouter();
-  const { status, hz, inputLevelDb, pausedByUser, pause, resume } = usePitchDetector();
+  const [selectedPreset, setSelectedPreset] = useState<TuningPresetKey>("standard");
+  const preset = tuningPresets[selectedPreset];
+  const hzDisplayKey = useCallback(
+    (detectedHz: number | null) => tunerDisplayKey(detectedHz, preset.notes),
+    [preset],
+  );
+  const { status, hz, inputLevelDb, pausedByUser, pause, resume } =
+    usePitchDetector(hzDisplayKey);
   useKeepAwakeWhileFocused(shouldKeepAwakeWhileTuning(status), TUNER_KEEP_AWAKE_TAG);
 
-  const [selectedPreset, setSelectedPreset] = useState<TuningPresetKey>("standard");
   const [tunedStrings, setTunedStrings] = useState<boolean[]>(UNTUNED_STRINGS);
 
   const reducedMotion = useReducedMotion();
   const noteOpacity = useSharedValue(1);
   const inTuneSinceRef = useRef<number | null>(null);
   const lastNoteRef = useRef<string | null>(null);
-
-  const preset = tuningPresets[selectedPreset];
 
   const nearest = useMemo(
     () => (hz === null ? null : nearestStringInPreset(hz, preset.notes)),
@@ -149,11 +170,10 @@ export function TunerScreen() {
   const focusedStringIndex = nearest?.index ?? null;
   const cents = nearest?.cents ?? 0;
   /** 検出音がプリセット内のどの弦にも該当しないときの実際の音名（例: "G4"） */
-  const freeNoteLabel = useMemo(() => {
-    if (hz === null || nearest !== null) return null;
-    const detected = frequencyToNote(hz);
-    return `${detected.noteName}${detected.octave}`;
-  }, [hz, nearest]);
+  const freeNoteLabel = useMemo(
+    () => (hz === null || nearest !== null ? null : freeNoteLabelOf(hz)),
+    [hz, nearest],
+  );
 
   const animateNoteChange = useCallback(() => {
     if (reducedMotion) return;
@@ -171,7 +191,7 @@ export function TunerScreen() {
     lastNoteRef.current = note;
   }, [nearest, preset, animateNoteChange]);
 
-  // 検出値は表示桁が変わったときしか届かないため、許容範囲内が続く間も判定できるようタイマーで待つ
+  // 検出値は表示と判定が変わったときしか届かないため、許容範囲内が続く間も判定できるようタイマーで待つ
   useEffect(() => {
     if (nearest === null || Math.abs(nearest.cents) > TUNING_THRESHOLD_CENTS) {
       inTuneSinceRef.current = null;
