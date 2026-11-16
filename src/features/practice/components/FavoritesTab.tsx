@@ -54,18 +54,18 @@ export function FavoritesTab() {
   const { data: favorites = [] } = favoritesQuery;
   const { data: recents = [] } = recentsQuery;
   const loadVideo = usePracticeStore((s) => s.loadVideo);
-  const { mutateAsync: toggleFavorite } = useToggleFavoriteVideo();
+  const { mutate: toggleFavorite } = useToggleFavoriteVideo();
   const confirmSwitch = useConfirmPhraseSwitch();
   const localDay = useLocalDay();
   const today = useMemo(() => localDayToDate(localDay), [localDay]);
 
   const handleToggleFavorite = useCallback(
-    async (video: RecentVideo) => {
+    (video: RecentVideo) => {
       const isFav = favorites.some((f) => f.videoId === video.videoId);
       if (isFav) {
-        await toggleFavorite({ type: "remove", videoId: video.videoId });
+        toggleFavorite({ type: "remove", videoId: video.videoId });
       } else {
-        await toggleFavorite({
+        toggleFavorite({
           type: "add",
           video: {
             id: randomUUID(),
@@ -123,7 +123,7 @@ export function FavoritesTab() {
                 accessibilityRole="button"
                 accessibilityLabel={`${video.title}を再生、${formatRelativeVideoDate(video.lastWatchedAt, today)}`}
                 accessibilityActions={favoriteActions(isFav)}
-                onAccessibilityAction={onFavoriteAction(() => void handleToggleFavorite(video))}
+                onAccessibilityAction={onFavoriteAction(() => handleToggleFavorite(video))}
               >
                 <Image
                   source={{ uri: youtubeThumbnail(video.videoId) }}
@@ -147,7 +147,7 @@ export function FavoritesTab() {
                 <Pressable
                   onPress={(e) => {
                     e.stopPropagation();
-                    void handleToggleFavorite(video);
+                    handleToggleFavorite(video);
                   }}
                   className="active:opacity-70"
                   style={styles.starPosition}
@@ -185,8 +185,8 @@ export function FavoritesTab() {
               accessibilityRole="button"
               accessibilityLabel={`${video.title}を再生、${formatRelativeVideoDate(video.addedAt, today)}`}
               accessibilityActions={favoriteActions(true)}
-              onAccessibilityAction={onFavoriteAction(
-                () => void toggleFavorite({ type: "remove", videoId: video.videoId }),
+              onAccessibilityAction={onFavoriteAction(() =>
+                toggleFavorite({ type: "remove", videoId: video.videoId }),
               )}
             >
               <Image
@@ -211,7 +211,7 @@ export function FavoritesTab() {
               <Pressable
                 onPress={(e) => {
                   e.stopPropagation();
-                  void toggleFavorite({ type: "remove", videoId: video.videoId });
+                  toggleFavorite({ type: "remove", videoId: video.videoId });
                 }}
                 className="active:opacity-70"
                 style={styles.starPosition}

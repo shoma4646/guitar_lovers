@@ -44,7 +44,7 @@ function buildAccessibilityLabel(
 
 type Props = {
   session: PracticeSession;
-  onDelete: (id: string) => void | Promise<void>;
+  onDelete: (id: string) => void;
 };
 
 export function SessionRow({ session, onDelete }: Props) {

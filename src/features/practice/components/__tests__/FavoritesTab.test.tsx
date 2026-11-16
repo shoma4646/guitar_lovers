@@ -17,7 +17,7 @@ jest.mock("@/features/practice/api/useRecentVideos", () => ({
   }),
 }));
 jest.mock("@/features/practice/api/useToggleFavoriteVideo", () => ({
-  useToggleFavoriteVideo: () => ({ mutateAsync: jest.fn() }),
+  useToggleFavoriteVideo: () => ({ mutate: jest.fn() }),
 }));
 jest.mock("@/features/practice/hooks/useConfirmPhraseSwitch", () => ({
   useConfirmPhraseSwitch: () => jest.fn(),

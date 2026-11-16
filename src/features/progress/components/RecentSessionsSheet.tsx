@@ -16,7 +16,7 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   sessions: PracticeSession[];
-  onDelete: (id: string) => void | Promise<void>;
+  onDelete: (id: string) => void;
   onAddPress: () => void;
   /** シートが閉じ終わった後に呼ぶ */
   onDismissed?: () => void;
