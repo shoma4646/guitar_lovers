@@ -36,6 +36,7 @@ type FakePlayer = {
 type PlayerEvents = {
   onReady: (e: { target: FakePlayer }) => void;
   onStateChange: (e: { data: number }) => void;
+  onError: (e: { data: number }) => void;
 };
 
 type PlayerScript = {
@@ -75,8 +76,13 @@ function bootPlayerScript() {
     ReactNativeWebView: { postMessage: (msg: string) => posted.push(JSON.parse(msg)) },
     addEventListener: jest.fn(),
   };
+  const createdElements: { src?: string; onerror?: () => void }[] = [];
   const fakeDocument = {
-    createElement: () => ({}),
+    createElement: () => {
+      const element = {};
+      createdElements.push(element);
+      return element;
+    },
     head: { appendChild: jest.fn() },
     addEventListener: jest.fn(),
   };
@@ -104,6 +110,7 @@ function bootPlayerScript() {
     fire,
     windowListener: listenerOf(fakeWindow),
     documentListener: listenerOf(fakeDocument),
+    createdElements,
   };
 }
 
@@ -318,4 +325,27 @@ describe("プレイヤーHTMLの命令受信", () => {
       expect(player.setPlaybackRate).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("プレイヤーHTMLからアプリへのエラーの知らせ", () => {
+  it.each([[100], [101], [150]])(
+    "YouTubeプレイヤーがエラー %p を出したら、そのコードをアプリへ送る",
+    (code) => {
+      const { posted, fire } = bootPlayerScript();
+
+      fire().onError({ data: code });
+
+      expect(posted.filter((m) => m.type === "error")).toEqual([{ type: "error", code }]);
+    },
+  );
+
+  it("YouTubeの再生スクリプトが読み込めなかったら（オフライン）、コード-1をアプリへ送る", () => {
+    const { posted, createdElements } = bootPlayerScript();
+    const [iframeApiTag] = createdElements;
+    expect(iframeApiTag.src).toBe("https://www.youtube.com/iframe_api");
+
+    iframeApiTag.onerror?.();
+
+    expect(posted).toEqual([{ type: "error", code: -1 }]);
+  });
 });
