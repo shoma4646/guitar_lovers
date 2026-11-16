@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { View, Text, TextInput, StyleSheet } from "react-native";
 import { randomUUID } from "expo-crypto";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
@@ -10,7 +10,8 @@ import type { PracticeSession } from "@/shared/types/models";
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onSave: (session: PracticeSession) => void;
+  /** 保存処理。失敗時はrejectする（失敗の通知は呼び出し側が行う） */
+  onSave: (session: PracticeSession) => Promise<void>;
 };
 
 const DURATION_ERROR = "練習時間を入力してください（分単位）";
@@ -20,6 +21,9 @@ export function AddSessionModal({ visible, onClose, onSave }: Props) {
   const [durationMinutes, setDurationMinutes] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  // 再描画でボタンが無効化される前の連打も弾くため、stateとは別に同期的なフラグを持つ
+  const isSavingRef = useRef(false);
 
   const resetForm = useCallback(() => {
     setDurationMinutes("");
@@ -27,18 +31,29 @@ export function AddSessionModal({ visible, onClose, onSave }: Props) {
     setError(null);
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    if (isSavingRef.current) return;
     const minutes = parseInt(durationMinutes, 10);
     if (isNaN(minutes) || minutes <= 0) {
       setError(DURATION_ERROR);
       return;
     }
-    onSave({
-      id: randomUUID(),
-      date: new Date().toISOString(),
-      duration: minutes * 60,
-      notes: notes.trim() || undefined,
-    });
+    isSavingRef.current = true;
+    setIsSaving(true);
+    try {
+      await onSave({
+        id: randomUUID(),
+        date: new Date().toISOString(),
+        duration: minutes * 60,
+        notes: notes.trim() || undefined,
+      });
+    } catch {
+      // 失敗の通知は呼び出し側が済ませているので、入力を残して再度押せる状態に戻すだけ
+      return;
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
+    }
     resetForm();
     onClose();
   }, [durationMinutes, notes, onSave, onClose, resetForm]);
@@ -86,7 +101,13 @@ export function AddSessionModal({ visible, onClose, onSave }: Props) {
           />
         </View>
 
-        <Button label="記録する" onPress={handleSave} size="lg" fullWidth />
+        <Button
+          label="記録する"
+          onPress={() => void handleSave()}
+          disabled={isSaving}
+          size="lg"
+          fullWidth
+        />
       </View>
     </BottomSheet>
   );

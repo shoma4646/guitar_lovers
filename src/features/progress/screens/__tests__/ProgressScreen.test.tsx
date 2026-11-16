@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { Modal } from "react-native";
+import { Alert, Modal } from "react-native";
+import { deletePracticeSession, getPracticeSessions, savePracticeSession } from "@/shared/services/storage";
 import { createTestQueryClient } from "@/shared/testing/createTestQueryClient";
 import { ProgressScreen } from "../ProgressScreen";
 
@@ -18,6 +19,7 @@ jest.mock("@/shared/services/storage", () => ({
   getPracticePhrases: jest.fn(async () => []),
   savePracticeSession: jest.fn(async () => undefined),
   deletePracticeSession: jest.fn(async () => undefined),
+  StorageValidationError: class StorageValidationError extends Error {},
 }));
 
 let client: QueryClient | undefined;
@@ -87,5 +89,63 @@ describe("ProgressScreen: 最近の記録から手動で記録を追加する", 
     }
 
     expect(visibleModalCount()).toBe(0);
+  });
+});
+
+describe("ProgressScreen: 保存・削除に失敗したとき", () => {
+  let alertSpy: jest.SpyInstance;
+  let consoleErrorSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    alertSpy = jest.spyOn(Alert, "alert");
+    consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    alertSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
+  /** 処理されない失敗はJestがテストの失敗として拾うため、それが届くまで待つ */
+  async function flushRejections() {
+    await act(async () => {
+      await new Promise((resolve) => setImmediate(resolve));
+    });
+  }
+
+  it("手動追加の保存に失敗しても、処理されない失敗を出さず、案内は1回だけで、入力を残したまま開いている", async () => {
+    jest.mocked(savePracticeSession).mockRejectedValueOnce(new Error("disk full"));
+    renderScreen();
+
+    fireEvent.press(await screen.findByLabelText(/^最近の記録/));
+    fireEvent.press(screen.getByText("記録を手動で追加"));
+    for (const modal of screen.UNSAFE_getAllByType(Modal)) {
+      if (modal.props.onDismiss) act(() => modal.props.onDismiss());
+    }
+    fireEvent.changeText(screen.getByLabelText("練習時間入力"), "45");
+    fireEvent.changeText(screen.getByLabelText("メモ入力"), "Aメロ");
+    fireEvent.press(screen.getByRole("button", { name: "記録する" }));
+    await flushRejections();
+
+    expect(alertSpy).toHaveBeenCalledTimes(1);
+    expect(alertSpy).toHaveBeenCalledWith("保存に失敗しました", expect.any(String));
+    expect(visibleModalCount()).toBe(1);
+    expect(screen.getByLabelText("練習時間入力").props.value).toBe("45");
+    expect(screen.getByLabelText("メモ入力").props.value).toBe("Aメロ");
+  });
+
+  it("記録の削除に失敗しても、処理されない失敗を出さない", async () => {
+    jest.mocked(getPracticeSessions).mockResolvedValueOnce([
+      { id: "s1", date: new Date().toISOString(), duration: 600 },
+    ]);
+    jest.mocked(deletePracticeSession).mockRejectedValueOnce(new Error("disk full"));
+    renderScreen();
+
+    fireEvent.press(await screen.findByLabelText("最近の記録 1件"));
+    fireEvent(screen.getByLabelText(/練習10分/), "longPress");
+    const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+    act(() => buttons.find((button) => button.text === "削除")?.onPress?.());
+    await flushRejections();
+
+    expect(alertSpy).toHaveBeenLastCalledWith("保存に失敗しました", expect.any(String));
   });
 });

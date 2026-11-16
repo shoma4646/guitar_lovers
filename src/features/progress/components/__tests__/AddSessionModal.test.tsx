@@ -1,5 +1,5 @@
 import { Alert, Keyboard } from "react-native";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { AddSessionModal } from "../AddSessionModal";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -7,9 +7,8 @@ jest.mock("react-native-safe-area-context", () => ({
 }));
 jest.mock("expo-crypto", () => ({ randomUUID: () => "session-id" }));
 
-function renderSheet() {
+function renderSheet(onSave: jest.Mock = jest.fn(async () => undefined)) {
   const onClose = jest.fn();
-  const onSave = jest.fn();
   render(<AddSessionModal visible onClose={onClose} onSave={onSave} />);
   return { onClose, onSave };
 }
@@ -72,8 +71,11 @@ describe("AddSessionModal", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("正しく入力すると分を秒に直し、空白だけのメモは省いて保存してから閉じる", () => {
-    const { onSave, onClose } = renderSheet();
+  it("正しく入力すると分を秒に直し、空白だけのメモは省いて保存し、保存が終わってから入力を消して閉じる", async () => {
+    let finishSave: () => void = () => {};
+    const { onSave, onClose } = renderSheet(
+      jest.fn(() => new Promise<void>((resolve) => (finishSave = resolve))),
+    );
 
     fireEvent.changeText(screen.getByLabelText("練習時間入力"), "30");
     fireEvent.changeText(screen.getByLabelText("メモ入力"), "   ");
@@ -85,6 +87,41 @@ describe("AddSessionModal", () => {
       duration: 1800,
       notes: undefined,
     });
+    expect(onClose).not.toHaveBeenCalled();
+
+    await act(async () => finishSave());
+
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText("練習時間入力").props.value).toBe("");
+    expect(screen.getByLabelText("メモ入力").props.value).toBe("");
+  });
+
+  it("保存に失敗したら閉じずに、入れた練習時間とメモを残す", async () => {
+    const { onSave, onClose } = renderSheet(jest.fn(async () => Promise.reject(new Error("disk full"))));
+
+    fireEvent.changeText(screen.getByLabelText("練習時間入力"), "45");
+    fireEvent.changeText(screen.getByLabelText("メモ入力"), "Aメロ");
+    await act(async () => {
+      fireEvent.press(screen.getByRole("button", { name: "記録する" }));
+    });
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("練習時間入力").props.value).toBe("45");
+    expect(screen.getByLabelText("メモ入力").props.value).toBe("Aメロ");
+    expect(screen.getByRole("button", { name: "記録する" })).not.toBeDisabled();
+  });
+
+  it("保存中にもう一度押しても、保存は1回だけ", async () => {
+    let finishSave: () => void = () => {};
+    const { onSave } = renderSheet(jest.fn(() => new Promise<void>((resolve) => (finishSave = resolve))));
+
+    fireEvent.changeText(screen.getByLabelText("練習時間入力"), "45");
+    fireEvent.press(screen.getByRole("button", { name: "記録する" }));
+    fireEvent.press(screen.getByRole("button", { name: "記録する" }));
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "記録する" })).toBeDisabled();
+    await act(async () => finishSave());
   });
 });

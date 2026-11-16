@@ -61,7 +61,7 @@ export function ProgressScreen() {
   const { data: attempts = [] } = attemptsQuery;
   const { data: phrases = [] } = phrasesQuery;
   const { mutateAsync: saveSession } = useSavePracticeSession();
-  const { mutateAsync: deleteSession } = useDeletePracticeSession();
+  const { mutate: deleteSession } = useDeletePracticeSession();
   const { inProgress, graduated } = usePhraseProgressSummaries();
 
   const [phraseKind, setPhraseKind] = useState<PhraseKind>("active");
@@ -84,8 +84,8 @@ export function ProgressScreen() {
   );
 
   const handleDelete = useCallback(
-    async (id: string) => {
-      await deleteSession(id);
+    (id: string) => {
+      deleteSession(id);
     },
     [deleteSession],
   );
