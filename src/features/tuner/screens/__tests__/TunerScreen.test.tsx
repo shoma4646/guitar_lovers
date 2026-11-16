@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, within } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import { semantic } from "@/shared/theme/semantic";
 import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
@@ -113,5 +113,51 @@ describe("TunerScreen の一時停止・エラーからの再開", () => {
     render(<TunerScreen />);
 
     expect(screen.getByRole("button", { name: label }).props.accessibilityHint).toBe(hint);
+  });
+});
+
+describe("TunerScreen の弦のマス", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  /** 半音下げに切り替え、6弦（Eb2）を合わせた音を0.5秒聞かせてチューニング済みにする */
+  function tuneLowEbString() {
+    mockDetector = detector(null);
+    const { rerender } = render(<TunerScreen />);
+    fireEvent.press(screen.getByText("半音下げ"));
+    mockDetector = detector(77.78);
+    rerender(<TunerScreen />);
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+    return screen.getByLabelText("6弦 Eb2 チューニング完了");
+  }
+
+  it("チューニング済みの✓は音名と同じ行に並べず、マスの角に重ねて置く", () => {
+    const cell = tuneLowEbString();
+
+    const check = within(cell).getByTestId("string-tuned-check");
+    expect(StyleSheet.flatten(check.props.style).position).toBe("absolute");
+    expect(check.parent?.parent).toBe(cell);
+  });
+
+  it("音名と弦番号は1行に収め、文字サイズの拡大に上限を付ける", () => {
+    const cell = tuneLowEbString();
+
+    for (const text of [within(cell).getByText("Eb2"), within(cell).getByText("6弦")]) {
+      expect(text.props.numberOfLines).toBe(1);
+      expect(text.props.maxFontSizeMultiplier).toBe(NUMERIC_MAX_FONT_SIZE_MULTIPLIER);
+    }
+  });
+
+  it("チューニング前のマスには✓を出さない", () => {
+    mockDetector = detector(null);
+    render(<TunerScreen />);
+
+    expect(screen.queryByTestId("string-tuned-check")).toBeNull();
   });
 });

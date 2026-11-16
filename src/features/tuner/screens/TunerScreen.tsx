@@ -396,6 +396,8 @@ export function TunerScreen() {
                 accessibilityLabel={`${stringNum}弦 ${note} ${isTunedString ? "チューニング完了" : "未チューニング"}`}
               >
                 <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
                   style={[
                     styles.stringNumberText,
                     {
@@ -409,19 +411,21 @@ export function TunerScreen() {
                 >
                   {stringNum}弦
                 </Text>
-                <View style={styles.stringNoteRow}>
-                  <Text
-                    style={[
-                      styles.stringNoteText,
-                      { color: isTunedString ? colors.onPrimaryFixedVariant : colors.onSurface },
-                    ]}
-                  >
-                    {note}
-                  </Text>
-                  {isTunedString && (
-                    <Icon name="check" size={14} color={colors.onPrimaryFixedVariant} />
-                  )}
-                </View>
+                <Text
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
+                  style={[
+                    styles.stringNoteText,
+                    { color: isTunedString ? colors.onPrimaryFixedVariant : colors.onSurface },
+                  ]}
+                >
+                  {note}
+                </Text>
+                {isTunedString && (
+                  <View testID="string-tuned-check" style={styles.stringTunedCheck}>
+                    <Icon name="check" size={12} color={colors.onPrimaryFixedVariant} />
+                  </View>
+                )}
               </View>
             );
           })}
@@ -538,10 +542,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
   },
-  stringNoteRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
+  stringTunedCheck: {
+    position: "absolute",
+    top: 4,
+    right: 4,
   },
   stringNoteText: {
     fontSize: 15,
