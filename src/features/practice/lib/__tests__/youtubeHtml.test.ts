@@ -1,4 +1,5 @@
 import { buildYouTubeHtml, YOUTUBE_EMBED_ORIGIN } from "../youtubeHtml";
+import type { PlayerCommand } from "../playerFocus";
 
 describe("buildYouTubeHtml", () => {
   it("playerVarsにembed originを含める", () => {
@@ -222,6 +223,28 @@ describe("プレイヤーHTMLの命令受信", () => {
     setLoop: { action: "setLoop", enabled: false, pointA: null, pointB: null },
     seek: { action: "seek", time: 30 },
     setRate: { action: "setRate", rate: 2 },
+  } satisfies { [K in PlayerCommand["action"]]: Extract<PlayerCommand, { action: K }> };
+
+  const EFFECTS: {
+    [K in PlayerCommand["action"]]: {
+      arrange?: (boot: ReturnType<typeof bootPlayerScript>) => void;
+      assert: (boot: ReturnType<typeof bootPlayerScript>) => void;
+    };
+  } = {
+    pause: { assert: ({ player }) => expect(player.pauseVideo).toHaveBeenCalledTimes(1) },
+    play: { assert: ({ player }) => expect(player.playVideo).toHaveBeenCalledTimes(1) },
+    seek: { assert: ({ player }) => expect(player.seekTo).toHaveBeenCalledWith(30, true) },
+    setRate: { assert: ({ player }) => expect(player.setPlaybackRate).toHaveBeenCalledWith(2) },
+    setLoop: {
+      arrange: ({ script }) =>
+        script.handleMsg(JSON.stringify({ action: "setLoop", enabled: true, pointA: 10, pointB: 12 })),
+      assert: ({ player, fire }) => {
+        fire().onStateChange({ data: PLAYER_STATE.PLAYING });
+        player.currentTime = 12.5;
+        jest.advanceTimersByTime(50);
+        expect(player.seekTo).not.toHaveBeenCalled();
+      },
+    },
   };
 
   function fromFrame(cmd: Record<string, unknown>) {
@@ -239,6 +262,17 @@ describe("プレイヤーHTMLの命令受信", () => {
   afterEach(() => {
     jest.useRealTimers();
   });
+
+  it.each(Object.keys(COMMANDS) as PlayerCommand["action"][])(
+    "アプリが送る命令 %s はプレイヤーに効果がある",
+    (action) => {
+      const boot = bootPlayerScript();
+      EFFECTS[action].arrange?.(boot);
+      boot.script.handleMsg(JSON.stringify(COMMANDS[action]));
+
+      EFFECTS[action].assert(boot);
+    },
+  );
 
   it("windowに別の枠から届いた命令は実行しない", () => {
     const { player, windowListener } = bootPlayerScript();

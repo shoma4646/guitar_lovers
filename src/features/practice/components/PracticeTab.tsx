@@ -46,6 +46,7 @@ import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhra
 import { useSaveTimerSession } from "@/features/practice/hooks/useSaveTimerSession";
 import { useCloseVideo } from "@/features/practice/hooks/useCloseVideo";
 import { usePausePlayerOnBlur } from "@/features/practice/hooks/usePausePlayerOnBlur";
+import type { SendToPlayer } from "@/features/practice/lib/playerFocus";
 import { useSyncPlayerLoop } from "@/features/practice/hooks/useSyncPlayerLoop";
 import { useKeepAwakeWhileFocused } from "@/shared/hooks/useKeepAwakeWhileFocused";
 import { useFitsOneScreen } from "@/shared/hooks/useFitsOneScreen";
@@ -146,7 +147,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const [showAllPhrases, setShowAllPhrases] = useState(false);
   const { schedule: runAfterMenuDismissed, flush: handleMenuDismissed } = useRunAfterDismiss();
 
-  const sendToPlayer = useCallback((cmd: Record<string, unknown>) => {
+  const sendToPlayer = useCallback<SendToPlayer>((cmd) => {
     webViewRef.current?.postMessage(JSON.stringify(cmd));
   }, []);
   const isPlayerMounted = useCallback(() => webViewRef.current !== null, []);
