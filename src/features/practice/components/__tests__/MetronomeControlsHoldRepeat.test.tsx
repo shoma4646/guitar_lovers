@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { BPM_MAX, BPM_MIN } from "@/shared/constants/bpm";
+import { pressAndHold } from "@/shared/testing/pressAndHold";
 import { stepBpm } from "../../lib/tempo";
 import { MetronomeControls } from "../MetronomeControls";
 
@@ -27,15 +28,7 @@ function currentBpm(): number | undefined {
 }
 
 function hold(name: string, durationMs: number) {
-  const button = screen.getByRole("button", { name });
-  fireEvent(button, "pressIn");
-  // act内の更新は抜けるまで反映されないため、実機と同じく1tickごとに再描画させる
-  for (let elapsed = 0; elapsed < durationMs; elapsed += 10) {
-    act(() => {
-      jest.advanceTimersByTime(10);
-    });
-  }
-  fireEvent(button, "pressOut");
+  pressAndHold(screen.getByRole("button", { name }), durationMs);
 }
 
 describe("MetronomeControls の長押しリピート", () => {
@@ -46,7 +39,7 @@ describe("MetronomeControls の長押しリピート", () => {
     jest.useRealTimers();
   });
 
-  it("100 BPMで「1上げる」を1.05秒押し続けると111になる", () => {
+  it("100 BPMで「1上げる」を1.05秒押し続けて離すと111になり、離したときのタップで112にはならない", () => {
     render(<Host initialBpm={100} />);
     hold(INC, 1050);
     expect(currentBpm()).toBe(111);
