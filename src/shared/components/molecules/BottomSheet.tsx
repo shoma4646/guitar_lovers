@@ -118,6 +118,7 @@ export function BottomSheet({
           <Animated.View
             testID="bottom-sheet"
             accessibilityViewIsModal
+            onAccessibilityEscape={onClose}
             style={[
               {
                 // 割合で書くと高さが中身で決まる親を基準に計算され、シートが中身より縮むため数値で渡す
