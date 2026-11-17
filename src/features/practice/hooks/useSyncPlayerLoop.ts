@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ABLoop } from "@/shared/types/models";
-import type { PlayerCommand } from "@/features/practice/lib/playerFocus";
+import type { PlayerCommand, SendToPlayer } from "@/features/practice/lib/playerFocus";
 
 /** ABループの区間をプレイヤーHTMLへ渡す setLoop コマンドを作る */
 export function buildSetLoopCommand(abLoop: ABLoop): PlayerCommand {
@@ -20,7 +20,7 @@ export function buildSetLoopCommand(abLoop: ABLoop): PlayerCommand {
  */
 export function useSyncPlayerLoop(
   abLoop: ABLoop,
-  sendToPlayer: (cmd: PlayerCommand) => void,
+  sendToPlayer: SendToPlayer,
 ): () => void {
   const abLoopRef = useRef(abLoop);
   abLoopRef.current = abLoop;
