@@ -5,7 +5,7 @@
  * データ取得は呼び出し側（画面・シート）が `usePhraseProgressSummaries` で行う。
  */
 
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, type LayoutChangeEvent } from "react-native";
 import { colors } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
 import { Icon } from "@/shared/components/atoms/Icon";
@@ -15,6 +15,8 @@ type Props = {
   items: GraduatedPhraseSummary[];
   /** 表示する最大件数。未指定なら全件表示する（全件シート用） */
   maxItems?: number;
+  /** 先頭行の高さを測ったときに呼ばれる。表示行数を決める側が行の実測値を使うためのもの */
+  onRowLayout?: (height: number) => void;
 };
 
 function formatMonthDay(iso: string): string {
@@ -22,7 +24,7 @@ function formatMonthDay(iso: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-export function GraduatedPhraseList({ items, maxItems }: Props) {
+export function GraduatedPhraseList({ items, maxItems, onRowLayout }: Props) {
   const visible = maxItems !== undefined ? items.slice(0, maxItems) : items;
 
   if (visible.length === 0) {
@@ -31,19 +33,35 @@ export function GraduatedPhraseList({ items, maxItems }: Props) {
 
   return (
     <View>
-      {visible.map((summary) => (
-        <GraduatedPhraseRow key={summary.phrase.id} summary={summary} />
+      {visible.map((summary, index) => (
+        <GraduatedPhraseRow
+          key={summary.phrase.id}
+          summary={summary}
+          onLayout={
+            index === 0 && onRowLayout
+              ? (event) => onRowLayout(event.nativeEvent.layout.height)
+              : undefined
+          }
+        />
       ))}
     </View>
   );
 }
 
-function GraduatedPhraseRow({ summary }: { summary: GraduatedPhraseSummary }) {
+function GraduatedPhraseRow({
+  summary,
+  onLayout,
+}: {
+  summary: GraduatedPhraseSummary;
+  onLayout?: (event: LayoutChangeEvent) => void;
+}) {
   const { phrase, startBpm, currentBpm, targetBpm, graduatedAt } = summary;
 
   return (
     <View
+      testID="graduated-phrase-row"
       style={styles.row}
+      onLayout={onLayout}
       accessible
       accessibilityLabel={`${phrase.name}、${formatMonthDay(graduatedAt)}に卒業、${startBpm}から${currentBpm}、目標${targetBpm}BPM`}
     >
