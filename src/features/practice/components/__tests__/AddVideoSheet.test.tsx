@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { AccessibilityInfo } from "react-native";
 import { usePracticeStore } from "@/stores/practice";
 import { describePlayerError } from "@/features/practice/lib/playerError";
 import { AddVideoSheet } from "../AddVideoSheet";
@@ -144,5 +145,83 @@ describe("AddVideoSheet のクリップボードからの読み込み", () => {
       expect(usePracticeStore.getState().loadedVideoId).toBeNull();
       expect(onClose).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("AddVideoSheet のエラーの読み上げ", () => {
+  const URL_ERROR_SPEECH =
+    "YouTubeの動画URLではないようです。youtube.com または youtu.be から始まるURLを貼り付けてください。";
+  let announceSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    usePracticeStore.setState(initialState, true);
+    mockPasteButtonAvailable = false;
+    announceSpy = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => {});
+    announceSpy.mockClear();
+  });
+
+  afterEach(() => {
+    announceSpy.mockRestore();
+  });
+
+  it("YouTube以外のURLを読み込もうとすると、URLエラーの案内を1回読み上げる", () => {
+    render(<AddVideoSheet visible onClose={jest.fn()} />);
+
+    fireEvent.changeText(screen.getByLabelText("YouTube URL入力"), "https://example.com/");
+    fireEvent.press(screen.getByRole("button", { name: "読み込む" }));
+
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+    expect(announceSpy).toHaveBeenCalledWith(URL_ERROR_SPEECH);
+  });
+
+  it("URLエラーが出たまま再描画しても、重ねて読み上げない", () => {
+    const { rerender } = render(<AddVideoSheet visible onClose={jest.fn()} />);
+    fireEvent.changeText(screen.getByLabelText("YouTube URL入力"), "https://example.com/");
+    fireEvent.press(screen.getByRole("button", { name: "読み込む" }));
+
+    rerender(<AddVideoSheet visible onClose={jest.fn()} />);
+
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("開いた時点でプレイヤーのエラーがあれば、その案内を1回読み上げる", () => {
+    usePracticeStore.getState().setPlayerError(150);
+
+    render(<AddVideoSheet visible onClose={jest.fn()} />);
+
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+    expect(announceSpy).toHaveBeenCalledWith(
+      `この動画はアプリ内で再生できません。${describePlayerError(150)}`,
+    );
+  });
+
+  it("閉じている間は読み上げず、同じプレイヤーのエラーのまま開き直すと改めて1回読み上げる", () => {
+    usePracticeStore.getState().setPlayerError(150);
+    const { rerender } = render(<AddVideoSheet visible onClose={jest.fn()} />);
+
+    rerender(<AddVideoSheet visible={false} onClose={jest.fn()} />);
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+
+    rerender(<AddVideoSheet visible onClose={jest.fn()} />);
+    expect(announceSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("エラーが無ければ読み上げない", () => {
+    render(<AddVideoSheet visible onClose={jest.fn()} />);
+
+    expect(announceSpy).not.toHaveBeenCalled();
+  });
+
+  it("URLエラーのまま閉じて開き直したとき、前回のエラーを読み上げも表示もしない", () => {
+    const { rerender } = render(<AddVideoSheet visible onClose={jest.fn()} />);
+    fireEvent.changeText(screen.getByLabelText("YouTube URL入力"), "https://example.com/");
+    fireEvent.press(screen.getByRole("button", { name: "読み込む" }));
+    rerender(<AddVideoSheet visible={false} onClose={jest.fn()} />);
+    announceSpy.mockClear();
+
+    rerender(<AddVideoSheet visible onClose={jest.fn()} />);
+
+    expect(announceSpy).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
