@@ -3,13 +3,13 @@
  *
  * iPhone 16 Pro で縦スクロールなしの1画面に収める構成:
  * ヘッダー(最近の記録/シェア/設定) → 今週のカード（練習日数+連続日数+週バー）
- * → 上達中/卒業のセグメント → フレーズ一覧（最大4行） → 今日の1本を開くボタン。
+ * → 上達中/卒業のセグメント → フレーズ一覧（余った高さに収まる行数） → 今日の1本を開くボタン。
  * 手動記録の追加・全件表示はシートへ逃がす。
  * 記録の読み出しに失敗したときは、0件の表示ではなく読み込みエラーと再読み込みだけを出す。
  */
 
 import { useCallback, useMemo, useState } from "react";
-import { View, Text, Share, StyleSheet } from "react-native";
+import { View, Text, Share, StyleSheet, type LayoutChangeEvent } from "react-native";
 import { useRouter } from "expo-router";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { IconButton } from "@/shared/components/atoms/IconButton";
@@ -35,6 +35,7 @@ import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { buildTodayMenu, pickTodayPick } from "@/features/practice/lib/progression";
 import { calcStats } from "@/features/progress/lib/calcStats";
+import { fitListRows, legacyListRows } from "@/features/progress/lib/fitListRows";
 import { usePhraseProgressSummaries } from "@/features/progress/hooks/usePhraseProgressSummaries";
 import { WeekBarChart } from "@/features/progress/components/WeekBarChart";
 import { AddSessionModal } from "@/features/progress/components/AddSessionModal";
@@ -43,8 +44,16 @@ import { GraduatedPhraseList } from "@/features/progress/components/GraduatedPhr
 import { RecentSessionsSheet } from "@/features/progress/components/RecentSessionsSheet";
 import { AllPhrasesProgressSheet } from "@/features/progress/components/AllPhrasesProgressSheet";
 
-/** 画面本体で表示するフレーズ一覧の上限行数（超過時は最終行が「他N本を見る」になる） */
-const LIST_MAX_ROWS = 4;
+/** 一覧の高さを測る前に表示する上限行数（超過時は最終行が「他N本を見る」になる） */
+const LIST_UNMEASURED_MAX_ROWS = 4;
+
+/** 高さが足りなくても一覧に表示する最低行数 */
+const LIST_MIN_ROWS = 3;
+
+const LIST_CARD_PADDING = 12;
+
+/** 「他N本を見る」（sm ボタン）を測る前に使う高さ */
+const SHOW_MORE_DEFAULT_HEIGHT = 44;
 
 type PhraseKind = "active" | "graduated";
 
@@ -68,6 +77,9 @@ export function ProgressScreen() {
   const [showRecentSheet, setShowRecentSheet] = useState(false);
   const [showAllPhrasesSheet, setShowAllPhrasesSheet] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [listAreaHeight, setListAreaHeight] = useState<number | undefined>(undefined);
+  const [rowHeight, setRowHeight] = useState<number | undefined>(undefined);
+  const [showMoreHeight, setShowMoreHeight] = useState(SHOW_MORE_DEFAULT_HEIGHT);
   const { schedule: runAfterRecentSheetDismissed, flush: handleRecentSheetDismissed } =
     useRunAfterDismiss();
 
@@ -146,8 +158,23 @@ export function ProgressScreen() {
   ];
 
   const activeCount = phraseKind === "active" ? inProgress.length : graduated.length;
-  const showMoreCount = activeCount > LIST_MAX_ROWS ? activeCount - (LIST_MAX_ROWS - 1) : 0;
-  const listCap = showMoreCount > 0 ? LIST_MAX_ROWS - 1 : LIST_MAX_ROWS;
+  const { rows: listCap, moreCount: showMoreCount } =
+    listAreaHeight !== undefined && rowHeight !== undefined
+      ? fitListRows({
+          availableHeight: listAreaHeight - LIST_CARD_PADDING * 2,
+          rowHeight,
+          moreHeight: showMoreHeight,
+          total: activeCount,
+          minRows: LIST_MIN_ROWS,
+        })
+      : legacyListRows(activeCount, LIST_UNMEASURED_MAX_ROWS);
+
+  const handleListAreaLayout = (event: LayoutChangeEvent) => {
+    setListAreaHeight(event.nativeEvent.layout.height);
+  };
+  const handleShowMoreLayout = (event: LayoutChangeEvent) => {
+    setShowMoreHeight(event.nativeEvent.layout.height);
+  };
 
   if (hasReadFailure(sessionsQuery, attemptsQuery, phrasesQuery)) {
     return (
@@ -233,23 +260,35 @@ export function ProgressScreen() {
           accessibilityLabel="進捗の種類"
         />
 
-        {/* フレーズ一覧 */}
-        <Card elevation="low" padding={12} style={styles.listCard}>
-          {phraseKind === "active" ? (
-            <PhraseProgressList items={inProgress} maxItems={listCap} />
-          ) : (
-            <GraduatedPhraseList items={graduated} maxItems={listCap} />
-          )}
-          {showMoreCount > 0 ? (
-            <Button
-              label={`他${showMoreCount}本を見る`}
-              variant="ghost"
-              size="sm"
-              onPress={() => setShowAllPhrasesSheet(true)}
-              style={styles.showMoreButton}
-            />
-          ) : null}
-        </Card>
+        {/* フレーズ一覧。余った高さを測る領域の中で、カード自体は中身の高さにする */}
+        <View testID="phrase-list-area" style={styles.listArea} onLayout={handleListAreaLayout}>
+          <Card elevation="low" padding={LIST_CARD_PADDING}>
+            {phraseKind === "active" ? (
+              <PhraseProgressList
+                items={inProgress}
+                maxItems={listCap}
+                onRowLayout={setRowHeight}
+              />
+            ) : (
+              <GraduatedPhraseList
+                items={graduated}
+                maxItems={listCap}
+                onRowLayout={setRowHeight}
+              />
+            )}
+            {showMoreCount > 0 ? (
+              <View onLayout={handleShowMoreLayout}>
+                <Button
+                  label={`他${showMoreCount}本を見る`}
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => setShowAllPhrasesSheet(true)}
+                  style={styles.showMoreButton}
+                />
+              </View>
+            ) : null}
+          </Card>
+        </View>
 
         {/* 今日の1本 */}
         <View style={styles.bottomArea}>
@@ -360,7 +399,7 @@ const styles = StyleSheet.create({
   weekChart: {
     marginTop: 12,
   },
-  listCard: {
+  listArea: {
     flex: 1,
   },
   showMoreButton: {

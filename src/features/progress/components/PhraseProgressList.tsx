@@ -21,9 +21,11 @@ type Props = {
   items: PhraseProgressSummary[];
   /** 表示する最大件数。未指定なら全件表示する（全件シート用） */
   maxItems?: number;
+  /** 先頭行の高さを測ったときに呼ばれる。表示行数を決める側が行の実測値を使うためのもの */
+  onRowLayout?: (height: number) => void;
 };
 
-export function PhraseProgressList({ items, maxItems }: Props) {
+export function PhraseProgressList({ items, maxItems, onRowLayout }: Props) {
   const visible = maxItems !== undefined ? items.slice(0, maxItems) : items;
   const [rangeMinWidth, setRangeMinWidth] = useState<number | undefined>(undefined);
   const handleTemplateLayout = (event: LayoutChangeEvent) => {
@@ -58,6 +60,11 @@ export function PhraseProgressList({ items, maxItems }: Props) {
           summary={summary}
           delay={index * 70}
           rangeMinWidth={rangeMinWidth}
+          onLayout={
+            index === 0 && onRowLayout
+              ? (event) => onRowLayout(event.nativeEvent.layout.height)
+              : undefined
+          }
         />
       ))}
     </View>
@@ -68,16 +75,20 @@ function PhraseProgressRow({
   summary,
   delay,
   rangeMinWidth,
+  onLayout,
 }: {
   summary: PhraseProgressSummary;
   delay: number;
   rangeMinWidth: number | undefined;
+  onLayout?: (event: LayoutChangeEvent) => void;
 }) {
   const { phrase, startBpm, currentBpm, targetBpm, progressRatio } = summary;
 
   return (
     <View
+      testID="phrase-progress-row"
       style={styles.row}
+      onLayout={onLayout}
       accessible
       accessibilityLabel={`${phrase.name}、開始${startBpm}から目標${targetBpm}のうち現在${currentBpm}`}
     >
