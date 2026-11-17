@@ -993,3 +993,60 @@ describe("複数件ある状態での削除・追加・先頭への移動", () =
     expect(recents[0].lastWatchedAt).toBe("2026-09-04T00:00:00.000Z");
   });
 });
+
+describe("お気に入りの重複防止と最近の動画の件数上限", () => {
+  const RECENT_LIMIT = 10;
+
+  function makeVideoId(index: number): string {
+    return `video${String(index).padStart(6, "0")}`;
+  }
+
+  function makeRecent(index: number, minute: number): RecentVideo {
+    return {
+      videoId: makeVideoId(index),
+      title: `動画${index}`,
+      lastWatchedAt: `2026-09-01T00:${String(minute).padStart(2, "0")}:00.000Z`,
+    };
+  }
+
+  async function openDistinctVideos(count: number): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      await addRecentVideo(makeRecent(i, i));
+    }
+  }
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("同じ動画を id を変えて2回お気に入りに追加しても1件だけ残る", async () => {
+    const videoId = makeVideoId(0);
+    await addFavoriteVideo({ id: "f1", videoId, title: "動画", addedAt: "2026-09-01T00:00:00.000Z" });
+    await addFavoriteVideo({ id: "f2", videoId, title: "動画", addedAt: "2026-09-01T00:00:01.000Z" });
+
+    const favorites = await getFavoriteVideos();
+    expect(favorites).toHaveLength(1);
+    expect(favorites[0].id).toBe("f1");
+  });
+
+  it("11本の別々の動画を開くと10件になり、最初に開いた1本が消える", async () => {
+    await openDistinctVideos(RECENT_LIMIT + 1);
+
+    const ids = (await getRecentVideos()).map((r) => r.videoId);
+    expect(ids).toHaveLength(RECENT_LIMIT);
+    expect(ids).not.toContain(makeVideoId(0));
+    expect(ids[0]).toBe(makeVideoId(RECENT_LIMIT));
+  });
+
+  it("10件の状態で既存の1本を開き直すと10件のまま、その動画が先頭になる", async () => {
+    await openDistinctVideos(RECENT_LIMIT);
+
+    await addRecentVideo(makeRecent(3, 30));
+
+    const recents = await getRecentVideos();
+    expect(recents).toHaveLength(RECENT_LIMIT);
+    expect(recents[0].videoId).toBe(makeVideoId(3));
+    expect(recents[0].lastWatchedAt).toBe("2026-09-01T00:30:00.000Z");
+    expect(new Set(recents.map((r) => r.videoId)).size).toBe(RECENT_LIMIT);
+  });
+});
