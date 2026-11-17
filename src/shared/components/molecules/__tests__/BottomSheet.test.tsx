@@ -90,6 +90,21 @@ describe("BottomSheet", () => {
 
       expect(onClose).toHaveBeenCalledTimes(1);
     });
+
+    it("VoiceOverの閉じる操作（2本指でZ）は、キーボード表示中でもonCloseを呼ぶ", () => {
+      isVisibleSpy.mockReturnValue(true);
+      const { onClose } = setup(true);
+
+      fireEvent(screen.getByTestId("bottom-sheet"), "accessibilityEscape");
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("VoiceOverの閉じる操作（2本指でZ）でonCloseを1回呼ぶ", () => {
+    const { onClose } = setup(true);
+    fireEvent(screen.getByTestId("bottom-sheet"), "accessibilityEscape");
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("閉じるボタンからもonCloseを呼べる", () => {

@@ -117,7 +117,12 @@ export function SettingsScreen() {
 
   return (
     <ErrorBoundary>
-      <SafeAreaView edges={["top", "bottom"]} className="flex-1 bg-surface">
+      <SafeAreaView
+        testID="settings-screen"
+        edges={["top", "bottom"]}
+        className="flex-1 bg-surface"
+        onAccessibilityEscape={() => router.back()}
+      >
         {/* Top App Bar */}
         <View className="flex-row items-center justify-between px-margin-mobile h-16">
           <Text className="font-bold text-headline-lg text-on-surface">
