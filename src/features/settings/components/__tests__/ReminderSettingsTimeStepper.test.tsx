@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import type { ReminderSettings, ReminderTime } from "@/shared/lib/schemas/reminderSettings";
+import { pressAndHold } from "@/shared/testing/pressAndHold";
 import { ReminderSettingsSection } from "../ReminderSettingsSection";
 
 /** 更新するとすぐに表示へ反映される設定（楽観的更新後のキャッシュと同じ振る舞い） */
@@ -55,14 +56,7 @@ function timeAdjustable() {
 }
 
 function hold(name: string, durationMs: number) {
-  const button = screen.getByRole("button", { name });
-  fireEvent(button, "pressIn");
-  for (let elapsed = 0; elapsed < durationMs; elapsed += 10) {
-    act(() => {
-      jest.advanceTimersByTime(10);
-    });
-  }
-  fireEvent(button, "pressOut");
+  pressAndHold(screen.getByRole("button", { name }), durationMs);
 }
 
 beforeEach(() => {
@@ -164,13 +158,14 @@ describe("ReminderSettingsSection の時刻の長押しリピート", () => {
     jest.useRealTimers();
   });
 
-  it("20:00で「早く」を1.05秒押し続けると11段階（5時間30分）早まり14:30になる", () => {
+  it("20:00で「早く」を1.05秒押し続けて離すと11段階（5時間30分）早まり14:30になり、離したときのタップで14:00にはならない", () => {
     setTimeOverride({ hour: 20, minute: 0 });
     render(<ReminderSettingsSection />);
 
     hold(EARLIER, 1050);
 
     expect(timeAdjustable().props.accessibilityValue).toEqual({ text: "14時30分" });
+    expect(mockUpdateSettings).toHaveBeenCalledTimes(11);
   });
 
   it("20:00で「遅く」を押し続けても22:00で止まり、それ以上は保存しない", () => {
