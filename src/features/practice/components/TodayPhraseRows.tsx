@@ -10,6 +10,7 @@ import { Card } from "@/shared/components/molecules/Card";
 import { Button } from "@/shared/components/atoms/Button";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { colors } from "@/shared/theme";
+import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import {
@@ -91,22 +92,36 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
     };
   });
   const completedCount = rows.filter((row) => row.status.reached).length;
+  const visibleRows = rows.slice(0, VISIBLE_COUNT);
+  const hasVisibleCompletedRow = visibleRows.some((row) => row.status.reached);
 
   return (
     <Card background={colors.surfaceContainerLow} style={{ gap: 8 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Text style={{ fontSize: 13, color: colors.onSurface }}>
-          <Text style={{ fontWeight: "700" }}>今日のフレーズ</Text>
-          <Text style={{ color: colors.onSurfaceVariant }}>
-            {" "}
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          columnGap: 8,
+          rowGap: 2,
+        }}
+      >
+        <View
+          testID="today-phrases-heading"
+          accessible
+          style={{ flexShrink: 1, flexDirection: "row", flexWrap: "wrap", columnGap: 4 }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: "700", color: colors.onSurface }}>今日のフレーズ</Text>
+          <Text style={{ fontSize: 13, color: colors.onSurfaceVariant }}>
             {rest.length}本中{completedCount}本完了
           </Text>
-        </Text>
-        <Text style={{ fontSize: 11, color: colors.onSurfaceVariant }}>長押しで整理</Text>
+        </View>
+        <Text style={{ flexShrink: 0, fontSize: 11, color: colors.onSurfaceVariant }}>長押しで整理</Text>
       </View>
 
       <View>
-        {rows.slice(0, VISIBLE_COUNT).map(({ entry, currentBpm, status }, index) => {
+        {visibleRows.map(({ entry, currentBpm, status }, index) => {
           const completed = status.reached;
           return (
             <Pressable
@@ -115,7 +130,7 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
               onLongPress={() => handleLongPress(entry.phrase)}
               className="active:opacity-80"
               style={{
-                height: 56,
+                minHeight: 56,
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 10,
@@ -129,9 +144,9 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
             >
               {completed ? (
                 <Icon name="check_circle" size={20} color={colors.primary} />
-              ) : (
-                <View style={{ width: 20 }} />
-              )}
+              ) : hasVisibleCompletedRow ? (
+                <View testID="today-phrase-check-placeholder" style={{ width: 20 }} />
+              ) : null}
               <Text
                 style={{
                   flex: 1,
@@ -144,12 +159,18 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
                 {entry.phrase.name}
               </Text>
               {completed ? (
-                <Text style={{ fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], color: colors.primary }}>
+                <Text
+                  maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
+                  style={{ fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], color: colors.primary }}
+                >
                   {status.todayBestOkBpm}
                   <Text style={{ fontSize: 12, fontWeight: "600" }}> 今日完了</Text>
                 </Text>
               ) : (
-                <Text style={{ fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] }}>
+                <Text
+                  maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
+                  style={{ fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] }}
+                >
                   <Text style={{ color: colors.onSurfaceVariant }}>{currentBpm}</Text>
                   <Text style={{ color: colors.onSurfaceVariant }}> → </Text>
                   <Text style={{ color: colors.primary }}>{status.targetBeforeToday}</Text>
