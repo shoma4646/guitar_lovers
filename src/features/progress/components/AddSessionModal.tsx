@@ -5,6 +5,7 @@ import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
 import { Button } from "@/shared/components/atoms/Button";
 import { colors } from "@/shared/theme/colors";
 import { fontSize, fontWeight, spacing, radius } from "@/shared/theme";
+import { useAnnounceOnChange } from "@/shared/hooks/useAnnounceOnChange";
 import type { PracticeSession } from "@/shared/types/models";
 
 type Props = {
@@ -24,6 +25,7 @@ export function AddSessionModal({ visible, onClose, onSave }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   // 再描画でボタンが無効化される前の連打も弾くため、stateとは別に同期的なフラグを持つ
   const isSavingRef = useRef(false);
+  useAnnounceOnChange(visible ? error : null);
 
   const resetForm = useCallback(() => {
     setDurationMinutes("");

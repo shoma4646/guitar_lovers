@@ -6,13 +6,14 @@
  * 直前に読み込んだ動画が再生できなかった場合は、開いた時点でそのエラーの案内を先に出す。
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { View, Text, TextInput, Pressable } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
 import { Button } from "@/shared/components/atoms/Button";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { colors, radius } from "@/shared/theme";
+import { useAnnounceOnChange } from "@/shared/hooks/useAnnounceOnChange";
 import { usePracticeStore, extractVideoId } from "@/stores/practice";
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { useRecentVideos } from "@/features/practice/api/useRecentVideos";
@@ -29,6 +30,16 @@ type SheetError = { kind: "url" } | { kind: "player"; code: number };
 /** シート内に表示する最近開いた動画の件数 */
 const RECENT_COUNT = 3;
 
+function describeSheetError(error: SheetError): { title: string; message: string } {
+  if (error.kind === "url") {
+    return {
+      title: "YouTubeの動画URLではないようです",
+      message: "youtube.com または youtu.be から始まるURLを貼り付けてください。",
+    };
+  }
+  return { title: describePlayerErrorTitle(error.code), message: describePlayerError(error.code) };
+}
+
 export function AddVideoSheet({ visible, onClose }: Props) {
   const [url, setUrl] = useState("");
   const [error, setError] = useState<SheetError | null>(null);
@@ -39,15 +50,19 @@ export function AddVideoSheet({ visible, onClose }: Props) {
   const { data: recents = [] } = useRecentVideos();
   const confirmSwitch = useConfirmPhraseSwitch();
 
-  // 開いた瞬間だけリセットする。開いている間にplayerErrorが変化しても入力中のURLを消さない
-  const wasVisibleRef = useRef(false);
-  useEffect(() => {
-    if (visible && !wasVisibleRef.current) {
+  // 開いた瞬間だけリセットする。開いている間にplayerErrorが変化しても入力中のURLを消さない。
+  // 描画中に直すのは、開いた直後の1回目の描画で前回のエラーを表示・読み上げしないため
+  const [wasVisible, setWasVisible] = useState(false);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) {
       setUrl("");
       setError(playerError !== null ? { kind: "player", code: playerError } : null);
     }
-    wasVisibleRef.current = visible;
-  }, [visible, playerError]);
+  }
+
+  const shownError = error !== null ? describeSheetError(error) : null;
+  useAnnounceOnChange(visible && shownError !== null ? `${shownError.title}。${shownError.message}` : null);
 
   const openVideo = (videoId: string, title: string) => {
     confirmSwitch(() => {
@@ -142,7 +157,7 @@ export function AddVideoSheet({ visible, onClose }: Props) {
           <Button label="読み込む" onPress={() => handleSubmit(url)} />
         </View>
 
-        {error !== null && (
+        {shownError !== null && (
           <View
             accessible
             accessibilityRole="alert"
@@ -154,14 +169,10 @@ export function AddVideoSheet({ visible, onClose }: Props) {
             }}
           >
             <Text style={{ fontSize: 14, fontWeight: "700", color: colors.onErrorContainer }}>
-              {error.kind === "url"
-                ? "YouTubeの動画URLではないようです"
-                : describePlayerErrorTitle(error.code)}
+              {shownError.title}
             </Text>
             <Text style={{ fontSize: 13, color: colors.onErrorContainer }}>
-              {error.kind === "url"
-                ? "youtube.com または youtu.be から始まるURLを貼り付けてください。"
-                : describePlayerError(error.code)}
+              {shownError.message}
             </Text>
           </View>
         )}

@@ -1,4 +1,4 @@
-import { Alert, Keyboard } from "react-native";
+import { AccessibilityInfo, Alert, Keyboard } from "react-native";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { AddSessionModal } from "../AddSessionModal";
 
@@ -123,5 +123,46 @@ describe("AddSessionModal", () => {
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "記録する" })).toBeDisabled();
     await act(async () => finishSave());
+  });
+});
+
+describe("AddSessionModal のエラーの読み上げ", () => {
+  let announceSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    announceSpy = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => {});
+    announceSpy.mockClear();
+  });
+
+  afterEach(() => {
+    announceSpy.mockRestore();
+  });
+
+  it("練習時間が空のまま「記録する」を押すと、エラー文を1回読み上げる", () => {
+    renderSheet();
+
+    fireEvent.press(screen.getByRole("button", { name: "記録する" }));
+
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+    expect(announceSpy).toHaveBeenCalledWith("練習時間を入力してください（分単位）");
+  });
+
+  it("エラーが出たままメモを入力して再描画しても、重ねて読み上げない", () => {
+    renderSheet();
+    fireEvent.press(screen.getByRole("button", { name: "記録する" }));
+
+    fireEvent.changeText(screen.getByLabelText("メモ入力"), "Aメロ");
+
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("入力し直してエラーが消えた後にまた空で押すと、改めて読み上げる", () => {
+    renderSheet();
+    fireEvent.press(screen.getByRole("button", { name: "記録する" }));
+    fireEvent.changeText(screen.getByLabelText("練習時間入力"), "");
+    fireEvent.press(screen.getByRole("button", { name: "記録する" }));
+
+    expect(announceSpy).toHaveBeenCalledTimes(2);
   });
 });

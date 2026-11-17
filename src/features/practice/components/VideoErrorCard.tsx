@@ -5,12 +5,12 @@
  * 動画が二度と再生できないエラーなら、練習中のフレーズの整理と次の1本への移動もここから行える。
  */
 
-import { useEffect } from "react";
-import { AccessibilityInfo, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Card } from "@/shared/components/molecules/Card";
 import { Button } from "@/shared/components/atoms/Button";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { colors } from "@/shared/theme";
+import { useAnnounceOnChange } from "@/shared/hooks/useAnnounceOnChange";
 import { usePracticeStore } from "@/stores/practice";
 import {
   describePlayerError,
@@ -43,9 +43,7 @@ export function VideoErrorCard({ code, onStartNextPhrase }: Props) {
   const unplayablePhrase = activePhrase !== null && isPermanentPlayerError(code) ? activePhrase : null;
   const canStartNext = unplayablePhrase !== null && onStartNextPhrase !== undefined;
 
-  useEffect(() => {
-    AccessibilityInfo.announceForAccessibility(`${title}。${message}`);
-  }, [title, message]);
+  useAnnounceOnChange(`${title}。${message}`);
 
   return (
     <Card style={{ alignItems: "center", gap: 12 }}>
