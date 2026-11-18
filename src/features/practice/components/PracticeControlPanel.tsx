@@ -189,8 +189,8 @@ export function PracticeControlPanel({
       {showSavePhraseLabel ? (
         <Pressable
           onPress={onOpenSavePhrase}
-          hitSlop={{ top: 12, bottom: 12 }}
-          style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4 }}
+          // 上下のボタン列との間が狭く hitSlop だと隣のボタンの押下を奪うため、本体の高さで44ptを取る
+          style={{ minHeight: 44, minWidth: 44, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4 }}
           accessibilityRole="button"
           accessibilityLabel="この区間をフレーズとして保存"
         >

@@ -18,6 +18,7 @@ import { useRouter } from "expo-router";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { IconButton } from "@/shared/components/atoms/IconButton";
 import { SegmentedControl } from "@/shared/components/atoms/SegmentedControl";
+import { TextButton } from "@/shared/components/atoms/TextButton";
 import { Card } from "@/shared/components/molecules/Card";
 import { ScreenFrame } from "@/shared/components/molecules/ScreenFrame";
 import { colors, radius } from "@/shared/theme";
@@ -315,26 +316,16 @@ export function TunerScreen() {
             </View>
 
             {status === "denied" && (
-              <Pressable
-                onPress={() => void Linking.openSettings()}
-                style={styles.openSettingsLink}
-                accessibilityRole="button"
+              <TextButton
+                label="設定を開く"
                 accessibilityLabel="端末の設定を開く"
-              >
-                <Text style={styles.openSettingsLabel}>設定を開く</Text>
-              </Pressable>
+                onPress={() => void Linking.openSettings()}
+                style={styles.textAction}
+              />
             )}
 
             {resumeActionLabel !== null && (
-              <Pressable
-                onPress={resume}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                style={styles.openSettingsLink}
-                accessibilityRole="button"
-                accessibilityLabel={resumeActionLabel}
-              >
-                <Text style={styles.openSettingsLabel}>{resumeActionLabel}</Text>
-              </Pressable>
+              <TextButton label={resumeActionLabel} onPress={resume} style={styles.textAction} />
             )}
           </View>
         </Card>
@@ -483,13 +474,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
-  openSettingsLink: {
+  textAction: {
     alignSelf: "center",
-  },
-  openSettingsLabel: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: colors.primary,
   },
   stringGrid: {
     flexDirection: "row",
