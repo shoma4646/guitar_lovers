@@ -9,13 +9,26 @@ jest.mock("@/shared/hooks/useKeepAwakeWhileFocused", () => ({
   useKeepAwakeWhileFocused: () => {},
 }));
 
-let mockFocusEffect: (() => void | (() => void)) | null = null;
-jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: jest.fn() }),
-  useFocusEffect: (effect: () => void | (() => void)) => {
-    mockFocusEffect = effect;
-  },
-}));
+const mockFocusEffects = new Set<() => void | (() => void)>();
+jest.mock("expo-router", () => {
+  const { useEffect } = jest.requireActual("react");
+  return {
+    useRouter: () => ({ push: jest.fn() }),
+    // 画面内のすべてのuseFocusEffectを集め、focus() でまとめて発火する
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      useEffect(() => {
+        mockFocusEffects.add(effect);
+        return () => {
+          mockFocusEffects.delete(effect);
+        };
+      }, [effect]);
+    },
+  };
+});
+
+function focus() {
+  for (const effect of mockFocusEffects) effect();
+}
 
 const mockDetectedHz: number[] = [];
 jest.mock("pitchy", () => ({
@@ -62,7 +75,7 @@ function pushFrame() {
 describe("TunerScreen の検出中の描画回数", () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    mockFocusEffect = null;
+    mockFocusEffects.clear();
     mockOnAudioReady = null;
     mockDetectedHz.length = 0;
   });
@@ -78,7 +91,7 @@ describe("TunerScreen の検出中の描画回数", () => {
       </Profiler>,
     );
     await act(async () => {
-      mockFocusEffect?.();
+      focus();
     });
     expect(screen.getByText("マイク入力中")).toBeTruthy();
     expect(mockOnAudioReady).not.toBeNull();
@@ -102,7 +115,7 @@ describe("TunerScreen の検出中の描画回数", () => {
       </Profiler>,
     );
     await act(async () => {
-      mockFocusEffect?.();
+      focus();
     });
 
     mockDetectedHz.push(...Array.from({ length: FRAME_COUNT }, (_, i) => 112.0 + (i % 2) * 0.01));
@@ -119,7 +132,7 @@ describe("TunerScreen の検出中の描画回数", () => {
   it("表示桁が変わらない合った音が続けば、検出値の更新が無くても0.5秒後にチューニング済みにする", async () => {
     render(<TunerScreen />);
     await act(async () => {
-      mockFocusEffect?.();
+      focus();
     });
 
     mockDetectedHz.push(110, 110, 110);
@@ -139,7 +152,7 @@ describe("TunerScreen の検出中の描画回数", () => {
 describe("TunerScreen の判定は表示桁の中で動いた最新の検出値で行う", () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    mockFocusEffect = null;
+    mockFocusEffects.clear();
     mockOnAudioReady = null;
     mockDetectedHz.length = 0;
   });
@@ -158,7 +171,7 @@ describe("TunerScreen の判定は表示桁の中で動いた最新の検出値�
     render(<TunerScreen />);
     fireEvent.press(screen.getByText(presetLabel));
     await act(async () => {
-      mockFocusEffect?.();
+      focus();
     });
   }
 
