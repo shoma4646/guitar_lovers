@@ -54,6 +54,13 @@ describe("SessionRow", () => {
     );
   });
 
+  it("行はボタンとして読み上げられ、ヒントで長押しと操作メニューの削除方法を伝える", () => {
+    render(<SessionRow session={makeSession()} onDelete={jest.fn()} />);
+    const row = screen.getByLabelText(/10月21日/);
+    expect(row.props.accessibilityRole).toBe("button");
+    expect(row.props.accessibilityHint).toBe("長押し、または操作メニューで削除");
+  });
+
   it("2暦日以上前の記録はラベルに相対日付を重ねない", () => {
     const session = makeSession({ date: new Date(2026, 9, 20, 9).toISOString(), duration: 45 });
     render(<SessionRow session={session} onDelete={jest.fn()} />);
