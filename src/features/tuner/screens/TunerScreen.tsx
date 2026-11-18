@@ -23,11 +23,7 @@ import { ScreenFrame } from "@/shared/components/molecules/ScreenFrame";
 import { colors, radius } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
 import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
-import {
-  tuningPresets,
-  TuningPresetKey,
-  TUNING_THRESHOLD_CENTS,
-} from "@/shared/constants/tuning";
+import { tuningPresets, TuningPresetKey } from "@/shared/constants/tuning";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 import { useKeepAwakeWhileFocused } from "@/shared/hooks/useKeepAwakeWhileFocused";
@@ -36,6 +32,7 @@ import {
   type PitchDetectorStatus,
 } from "@/features/tuner/hooks/usePitchDetector";
 import { useTuningAnnouncement } from "@/features/tuner/hooks/useTuningAnnouncement";
+import { useTunedStrings } from "@/features/tuner/hooks/useTunedStrings";
 import { NeedleMeter } from "@/features/tuner/components/NeedleMeter";
 import { shouldKeepAwakeWhileTuning, TUNER_KEEP_AWAKE_TAG } from "@/features/tuner/lib/keepAwake";
 import {
@@ -50,11 +47,6 @@ const STRING_NUMBERS = [6, 5, 4, 3, 2, 1];
 
 /** 音名の行の高さ。未検出時も同じ高さを確保して、音を拾った瞬間にレイアウトが動かないようにする */
 const NOTE_LINE_HEIGHT = 96;
-
-/** 許容範囲内がこの時間続いたら弦をチューニング済みにする */
-const TUNED_HOLD_MS = 500;
-
-const UNTUNED_STRINGS = [false, false, false, false, false, false];
 
 /** セント値を `+12 cents` 形式に整形。針の可動範囲（±50）を超える場合はその旨を示す */
 function formatCents(cents: number): string {
@@ -156,17 +148,15 @@ export function TunerScreen() {
     usePitchDetector(hzDisplayKey);
   useKeepAwakeWhileFocused(shouldKeepAwakeWhileTuning(status), TUNER_KEEP_AWAKE_TAG);
 
-  const [tunedStrings, setTunedStrings] = useState<boolean[]>(UNTUNED_STRINGS);
-
   const reducedMotion = useReducedMotion();
   const noteOpacity = useSharedValue(1);
-  const inTuneSinceRef = useRef<number | null>(null);
   const lastNoteRef = useRef<string | null>(null);
 
   const nearest = useMemo(
     () => (hz === null ? null : nearestStringInPreset(hz, preset.notes)),
     [hz, preset],
   );
+  const { tunedStrings, resetTunedStrings } = useTunedStrings(nearest);
   const focusedStringIndex = nearest?.index ?? null;
   const cents = nearest?.cents ?? 0;
   /** 検出音がプリセット内のどの弦にも該当しないときの実際の音名（例: "G4"） */
@@ -191,38 +181,14 @@ export function TunerScreen() {
     lastNoteRef.current = note;
   }, [nearest, preset, animateNoteChange]);
 
-  // 検出値は表示と判定が変わったときしか届かないため、許容範囲内が続く間も判定できるようタイマーで待つ
-  useEffect(() => {
-    if (nearest === null || Math.abs(nearest.cents) > TUNING_THRESHOLD_CENTS) {
-      inTuneSinceRef.current = null;
-      return;
-    }
-    const stringIndex = nearest.index;
-    const now = Date.now();
-    inTuneSinceRef.current ??= now;
-    if (tunedStrings[stringIndex]) return;
-    const markTuned = () =>
-      setTunedStrings((prev) => {
-        if (prev[stringIndex]) return prev;
-        const next = [...prev];
-        next[stringIndex] = true;
-        return next;
-      });
-    const remainingMs = TUNED_HOLD_MS - (now - inTuneSinceRef.current);
-    if (remainingMs <= 0) {
-      markTuned();
-      return;
-    }
-    const timer = setTimeout(markTuned, remainingMs);
-    return () => clearTimeout(timer);
-  }, [nearest, tunedStrings]);
-
-  const handleSelectPreset = useCallback((key: TuningPresetKey) => {
-    setSelectedPreset(key);
-    setTunedStrings(UNTUNED_STRINGS);
-    inTuneSinceRef.current = null;
-    lastNoteRef.current = null;
-  }, []);
+  const handleSelectPreset = useCallback(
+    (key: TuningPresetKey) => {
+      setSelectedPreset(key);
+      resetTunedStrings();
+      lastNoteRef.current = null;
+    },
+    [resetTunedStrings],
+  );
 
   const currentState = tuningState(cents);
   const hasSignal = focusedStringIndex !== null;

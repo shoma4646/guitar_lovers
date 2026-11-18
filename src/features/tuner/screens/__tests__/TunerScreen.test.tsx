@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react-native";
-import { StyleSheet } from "react-native";
+import { AppState, StyleSheet, type AppStateStatus } from "react-native";
 import { semantic } from "@/shared/theme/semantic";
 import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import type { PitchDetectorState } from "@/features/tuner/hooks/usePitchDetector";
@@ -8,7 +8,25 @@ import { TunerScreen } from "../TunerScreen";
 jest.mock("@/shared/components/molecules/ScreenFrame", () => ({
   ScreenFrame: ({ children }: { children: React.ReactNode }) => children,
 }));
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+let mockFocused = true;
+const mockFocusListeners = new Set<(focused: boolean) => void>();
+jest.mock("expo-router", () => {
+  const { useEffect, useState } = jest.requireActual("react");
+  return {
+    useRouter: () => ({ push: jest.fn() }),
+    // フォーカス状態をテストから切り替えられるuseFocusEffectの代用
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      const [focused, setFocused] = useState(mockFocused);
+      useEffect(() => {
+        mockFocusListeners.add(setFocused);
+        return () => {
+          mockFocusListeners.delete(setFocused);
+        };
+      }, []);
+      useEffect(() => (focused ? effect() : undefined), [focused, effect]);
+    },
+  };
+});
 jest.mock("@/shared/hooks/useKeepAwakeWhileFocused", () => ({
   useKeepAwakeWhileFocused: () => {},
 }));
@@ -159,5 +177,147 @@ describe("TunerScreen の弦のマス", () => {
     render(<TunerScreen />);
 
     expect(screen.queryByTestId("string-tuned-check")).toBeNull();
+  });
+});
+
+describe("TunerScreen の✓は「今合っている」弦だけに付ける", () => {
+  /** スタンダードの6弦〜1弦にちょうど合う周波数 */
+  const STANDARD_IN_TUNE_HZ = [82.41, 110, 146.83, 196, 246.94, 329.63];
+  /** A2（5弦）より約-16 cents低い周波数 */
+  const FLAT_5 = 109;
+  const IN_5 = 110;
+
+  let appStateListeners: Set<(state: AppStateStatus) => void>;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockFocused = true;
+    mockFocusListeners.clear();
+    appStateListeners = new Set();
+    jest.spyOn(AppState, "addEventListener").mockImplementation((_type, listener) => {
+      const typed = listener as (state: AppStateStatus) => void;
+      appStateListeners.add(typed);
+      return { remove: () => appStateListeners.delete(typed) } as ReturnType<typeof AppState.addEventListener>;
+    });
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  function advance(ms: number) {
+    act(() => {
+      jest.advanceTimersByTime(ms);
+    });
+  }
+
+  function setFocused(focused: boolean) {
+    mockFocused = focused;
+    act(() => {
+      for (const listener of mockFocusListeners) listener(focused);
+    });
+  }
+
+  function emitAppState(state: AppStateStatus) {
+    act(() => {
+      for (const listener of appStateListeners) listener(state);
+    });
+  }
+
+  function hear(rerender: (ui: React.ReactElement) => void, hz: number | null) {
+    mockDetector = detector(hz);
+    rerender(<TunerScreen />);
+  }
+
+  /** 6本すべてを0.5秒ずつ合わせてから音を止める */
+  function tuneAllStrings() {
+    mockDetector = detector(null);
+    const utils = render(<TunerScreen />);
+    for (const hz of STANDARD_IN_TUNE_HZ) {
+      hear(utils.rerender, hz);
+      advance(500);
+    }
+    hear(utils.rerender, null);
+    expect(screen.getAllByTestId("string-tuned-check")).toHaveLength(6);
+    return utils;
+  }
+
+  it("全弦✓の状態からタブを離れて戻ると、全弦が未チューニングに戻る", () => {
+    tuneAllStrings();
+
+    setFocused(false);
+    setFocused(true);
+
+    expect(screen.queryByTestId("string-tuned-check")).toBeNull();
+    expect(screen.getByLabelText("6弦 E2 未チューニング")).toBeTruthy();
+    expect(screen.getByLabelText("1弦 E4 未チューニング")).toBeTruthy();
+  });
+
+  it("アプリがバックグラウンドから前面に戻ると、全弦が未チューニングに戻る", () => {
+    tuneAllStrings();
+
+    emitAppState("background");
+    emitAppState("active");
+
+    expect(screen.queryByTestId("string-tuned-check")).toBeNull();
+  });
+
+  it("コントロールセンターを開いたときのような inactive からの復帰では✓を外さない", () => {
+    tuneAllStrings();
+
+    emitAppState("inactive");
+    emitAppState("active");
+
+    expect(screen.getAllByTestId("string-tuned-check")).toHaveLength(6);
+  });
+
+  it("✓の弦で許容範囲外が1秒続くと✓が外れる", () => {
+    const { rerender } = tuneAllStrings();
+
+    hear(rerender, FLAT_5);
+    advance(999);
+    expect(screen.getByLabelText("5弦 A2 チューニング完了")).toBeTruthy();
+
+    advance(1);
+    expect(screen.getByLabelText("5弦 A2 未チューニング")).toBeTruthy();
+    expect(screen.getAllByTestId("string-tuned-check")).toHaveLength(5);
+  });
+
+  it("0.5秒以内の揺れを繰り返しても✓は外れない", () => {
+    const { rerender } = tuneAllStrings();
+
+    for (let i = 0; i < 4; i++) {
+      hear(rerender, FLAT_5);
+      advance(500);
+      hear(rerender, IN_5);
+      advance(100);
+    }
+
+    expect(screen.getByLabelText("5弦 A2 チューニング完了")).toBeTruthy();
+  });
+
+  it("ずれた音が途切れて無音になった時間は、ずれが続いた時間に数えない", () => {
+    const { rerender } = tuneAllStrings();
+
+    hear(rerender, FLAT_5);
+    advance(600);
+    hear(rerender, null);
+    advance(1000);
+    hear(rerender, FLAT_5);
+    advance(600);
+
+    expect(screen.getByLabelText("5弦 A2 チューニング完了")).toBeTruthy();
+  });
+
+  it("✓が外れた弦は、もう一度0.5秒合わせると✓に戻る", () => {
+    const { rerender } = tuneAllStrings();
+    hear(rerender, FLAT_5);
+    advance(1000);
+    expect(screen.getByLabelText("5弦 A2 未チューニング")).toBeTruthy();
+
+    hear(rerender, IN_5);
+    advance(500);
+
+    expect(screen.getByLabelText("5弦 A2 チューニング完了")).toBeTruthy();
   });
 });

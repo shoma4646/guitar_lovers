@@ -1,12 +1,12 @@
 import { act, render, screen } from "@testing-library/react-native";
-import { AccessibilityInfo } from "react-native";
+import { AccessibilityInfo, AppState, type AppStateStatus } from "react-native";
 import type { PitchDetectorState } from "@/features/tuner/hooks/usePitchDetector";
 import { TunerScreen } from "../TunerScreen";
 
 jest.mock("@/shared/components/molecules/ScreenFrame", () => ({
   ScreenFrame: ({ children }: { children: React.ReactNode }) => children,
 }));
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }), useFocusEffect: () => {} }));
 jest.mock("@/shared/hooks/useKeepAwakeWhileFocused", () => ({
   useKeepAwakeWhileFocused: () => {},
 }));
@@ -107,6 +107,52 @@ describe("TunerScreen の判定の読み上げ", () => {
       advance(300);
     }
     expect(announceSpy).toHaveBeenCalledTimes(2);
+    expect(announceSpy).toHaveBeenLastCalledWith("5弦: 合いました");
+  });
+
+  /** 5弦を合わせて「合いました」まで読ませる */
+  async function tuneString5() {
+    const utils = await renderWith(IN_5, true);
+    advance(500);
+    expect(announceSpy).toHaveBeenLastCalledWith("5弦: 合いました");
+    return utils;
+  }
+
+  it("ずれが1秒続いて✓が外れた弦をもう一度合わせると、「合いました」を再び読む", async () => {
+    const { rerender } = await tuneString5();
+
+    mockDetector = detector(FLAT_5);
+    rerender(<TunerScreen />);
+    advance(1000);
+    expect(screen.getByLabelText("5弦 A2 未チューニング")).toBeTruthy();
+
+    announceSpy.mockClear();
+    mockDetector = detector(IN_5);
+    rerender(<TunerScreen />);
+    advance(500);
+    expect(announceSpy).toHaveBeenLastCalledWith("5弦: 合いました");
+  });
+
+  it("アプリが前面に戻って✓が外れた弦をもう一度合わせると、「合いました」を再び読む", async () => {
+    let appStateListener: ((state: AppStateStatus) => void) | null = null;
+    jest.spyOn(AppState, "addEventListener").mockImplementation((_type, listener) => {
+      appStateListener = listener as (state: AppStateStatus) => void;
+      return { remove: jest.fn() } as ReturnType<typeof AppState.addEventListener>;
+    });
+    const { rerender } = await tuneString5();
+
+    mockDetector = detector(null);
+    rerender(<TunerScreen />);
+    act(() => {
+      appStateListener?.("background");
+      appStateListener?.("active");
+    });
+    expect(screen.getByLabelText("5弦 A2 未チューニング")).toBeTruthy();
+
+    announceSpy.mockClear();
+    mockDetector = detector(IN_5);
+    rerender(<TunerScreen />);
+    advance(500);
     expect(announceSpy).toHaveBeenLastCalledWith("5弦: 合いました");
   });
 
