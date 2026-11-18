@@ -47,13 +47,16 @@ export function RecentSessionsSheet({
       {sessions.length === 0 ? (
         <Text style={styles.empty}>練習記録がありません</Text>
       ) : (
-        <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.list}>
-            {sessions.map((session) => (
-              <SessionRow key={session.id} session={session} onDelete={onDelete} />
-            ))}
-          </View>
-        </ScrollView>
+        <>
+          <Text style={styles.deleteHint}>長押しで削除</Text>
+          <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.list}>
+              {sessions.map((session) => (
+                <SessionRow key={session.id} session={session} onDelete={onDelete} />
+              ))}
+            </View>
+          </ScrollView>
+        </>
       )}
     </BottomSheet>
   );
@@ -68,6 +71,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.onSurfaceVariant,
     paddingVertical: 24,
+  },
+  deleteHint: {
+    alignSelf: "flex-end",
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
   },
   scroll: {
     maxHeight: 420,

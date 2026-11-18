@@ -77,7 +77,9 @@ export function SessionRow({ session, onDelete }: Props) {
       className="bg-surface-container-lowest active:opacity-90"
       style={[styles.row, shadowStyle]}
       accessible
+      accessibilityRole="button"
       accessibilityLabel={buildAccessibilityLabel(session, namedDay)}
+      accessibilityHint="長押し、または操作メニューで削除"
       accessibilityActions={[{ name: DELETE_ACTION, label: "削除" }]}
       onAccessibilityAction={handleAccessibilityAction}
     >
