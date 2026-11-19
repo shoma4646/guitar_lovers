@@ -1,6 +1,6 @@
 import { fitListRows, legacyListRows } from "../fitListRows";
 
-const base = { rowHeight: 56, moreHeight: 44, minRows: 3 };
+const base = { rowHeight: 56, moreHeight: 44, minRows: 1 };
 
 describe("fitListRows", () => {
   it("302ptに5本は全部入るので5行・他なし", () => {
@@ -16,12 +16,17 @@ describe("fitListRows", () => {
     expect(fitListRows({ ...base, availableHeight: 330, total: 10 })).toEqual({ rows: 5, moreCount: 5 });
   });
 
-  it("高さが足りなくても下限の3行は表示する", () => {
-    expect(fitListRows({ ...base, availableHeight: 100, total: 5 })).toEqual({ rows: 3, moreCount: 2 });
+  it("高さが足りなければ最低1行と「他N本を見る」を表示する", () => {
+    // 1行＋「他N本を見る」(56 + 44) に届かない高さ
+    expect(fitListRows({ ...base, availableHeight: 72, total: 6 })).toEqual({ rows: 1, moreCount: 5 });
+  });
+
+  it.each([0, -20])("使える高さが %ipt でも1行は表示する", (availableHeight) => {
+    expect(fitListRows({ ...base, availableHeight, total: 6 })).toEqual({ rows: 1, moreCount: 5 });
   });
 
   it("下限の行数で総数に届くなら「他N本を見る」は出さない", () => {
-    expect(fitListRows({ ...base, availableHeight: 100, total: 3 })).toEqual({ rows: 3, moreCount: 0 });
+    expect(fitListRows({ ...base, availableHeight: 0, total: 1 })).toEqual({ rows: 1, moreCount: 0 });
   });
 
   it("行が高くなると表示行数が減る", () => {
