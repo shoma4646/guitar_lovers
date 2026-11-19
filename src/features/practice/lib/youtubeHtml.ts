@@ -11,6 +11,7 @@ const LOOP_CHECK_INTERVAL_MS = 50;
 
 /**
  * WebViewに表示するYouTube IFrame APIラッパーHTMLを生成する。
+ * マイク・カメラ・位置情報のAPIはYouTubeのスクリプトを読み込む前にページから外す。
  * postMessageで再生中の再生位置・duration・コマンド受信を扱い、ABループのB点判定と
  * A点への巻き戻しはアプリへの往復を待たずプレイヤー内で行う（区間は setLoop コマンドで受け取る）。
  * @param videoId - YouTube動画ID
@@ -41,6 +42,12 @@ export function buildYouTubeHtml(
 <body>
   <div id="player"></div>
   <script>
+    // Androidは端末のマイク権限があればページの要求を確認なしで許可するため、読み込むスクリプトより先に封じる
+    ['mediaDevices', 'geolocation', 'getUserMedia', 'webkitGetUserMedia'].forEach(function(name) {
+      try {
+        Object.defineProperty(navigator, name, { value: undefined, writable: false, configurable: false });
+      } catch (e) {}
+    });
     var tag = document.createElement('script');
     tag.src = 'https://www.youtube.com/iframe_api';
     // オフライン時はscriptの読み込み自体が失敗しonErrorが発火しないため、ここで通知する

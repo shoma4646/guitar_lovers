@@ -22,6 +22,38 @@ describe("buildYouTubeHtml", () => {
   });
 });
 
+describe("プレイヤーHTMLのマイク・位置情報の封鎖", () => {
+  it("navigator.mediaDevicesを無効化するコードがiframe_apiの読み込みより前にある", () => {
+    const html = buildYouTubeHtml("abc123def45");
+    const blockAt = html.indexOf("mediaDevices");
+
+    expect(blockAt).toBeGreaterThanOrEqual(0);
+    expect(blockAt).toBeLessThan(html.indexOf("iframe_api"));
+  });
+
+  it("実行後はマイク・位置情報のAPIがページから使えない", () => {
+    const { navigator } = bootPlayerScript();
+
+    expect(navigator.mediaDevices).toBeUndefined();
+    expect(navigator.geolocation).toBeUndefined();
+    expect(navigator.getUserMedia).toBeUndefined();
+    expect(navigator.webkitGetUserMedia).toBeUndefined();
+    expect(navigator.userAgent).toBe("fake");
+  });
+
+  it("後から読み込まれたスクリプトが代入し直しても無効のまま", () => {
+    const { navigator } = bootPlayerScript();
+
+    try {
+      navigator.mediaDevices = { getUserMedia: jest.fn() };
+    } catch {
+      // strict mode では書き込み不可プロパティへの代入が例外になる
+    }
+
+    expect(navigator.mediaDevices).toBeUndefined();
+  });
+});
+
 const PLAYER_STATE = { ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5 };
 
 type FakePlayer = {
@@ -48,6 +80,23 @@ type PlayerScript = {
     range: { enabled: boolean; pointA: number | null; pointB: number | null },
   ) => boolean;
 };
+
+/** WebViewのnavigatorと同じく、端末機能のAPIをプロトタイプのgetterで持つ偽物 */
+function createFakeNavigator(): Record<string, unknown> {
+  const getUserMedia = jest.fn(async () => ({}));
+  const proto = {
+    get mediaDevices() {
+      return { getUserMedia };
+    },
+    get geolocation() {
+      return { getCurrentPosition: jest.fn(), watchPosition: jest.fn() };
+    },
+    getUserMedia: jest.fn(),
+    webkitGetUserMedia: jest.fn(),
+    userAgent: "fake",
+  };
+  return Object.create(proto) as Record<string, unknown>;
+}
 
 /** 生成HTMLの<script>を、YouTube IFrame APIとWebViewブリッジの偽物の上で実行する */
 function bootPlayerScript() {
@@ -87,13 +136,15 @@ function bootPlayerScript() {
     head: { appendChild: jest.fn() },
     addEventListener: jest.fn(),
   };
+  const fakeNavigator = createFakeNavigator();
   const run = new Function(
     "window",
     "document",
     "YT",
+    "navigator",
     `${source}\nreturn { onYouTubeIframeAPIReady, handleMsg, shouldSeekToLoopStart };`,
-  ) as (w: unknown, d: unknown, yt: unknown) => PlayerScript;
-  const script = run(fakeWindow, fakeDocument, YT);
+  ) as (w: unknown, d: unknown, yt: unknown, nav: unknown) => PlayerScript;
+  const script = run(fakeWindow, fakeDocument, YT, fakeNavigator);
   script.onYouTubeIframeAPIReady();
   const fire = () => {
     if (events === null) throw new Error("YT.Player が生成されていない");
@@ -106,6 +157,7 @@ function bootPlayerScript() {
   };
   return {
     script,
+    navigator: fakeNavigator,
     player,
     posted,
     fire,

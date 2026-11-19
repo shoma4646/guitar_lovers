@@ -84,6 +84,7 @@ export const VideoPlayerCard = memo(
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled
           domStorageEnabled
+          mediaCapturePermissionGrantType="deny"
           originWhitelist={PLAYER_ORIGIN_WHITELIST}
           onShouldStartLoadWithRequest={handlePlayerNavigationRequest}
           // AndroidのWebViewは遷移判定の返事を250msしか待たず、間に合わなければ許可して進むため事後にも止める
