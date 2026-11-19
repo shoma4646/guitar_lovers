@@ -46,7 +46,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="practice"
         options={{
-          title: "Practice",
+          title: "練習",
           tabBarIcon: ({ focused }) => (
             <TabIcon name="timer" focused={focused} />
           ),
@@ -55,7 +55,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="progress"
         options={{
-          title: "Progress",
+          title: "進捗",
           tabBarIcon: ({ focused }) => (
             <TabIcon name="history" focused={focused} />
           ),
@@ -64,7 +64,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="tuner"
         options={{
-          title: "Tuner",
+          title: "チューナー",
           tabBarIcon: ({ focused }) => (
             <TabIcon name="tune" focused={focused} />
           ),

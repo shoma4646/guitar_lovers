@@ -96,3 +96,11 @@ describe("PhraseProgressList の範囲欄の幅", () => {
     expect(screen.queryByText("999 → 999 / 目標999")).toBeNull();
   });
 });
+
+describe("PhraseProgressList の空状態", () => {
+  it("案内はタブバーと同じ日本語のタブ名で練習タブを指す", () => {
+    render(<PhraseProgressList items={[]} />);
+
+    expect(screen.getByText(/^練習タブでフレーズを保存すると/)).toBeTruthy();
+  });
+});

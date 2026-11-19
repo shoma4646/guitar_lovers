@@ -14,7 +14,7 @@ import { usePracticeStore } from "@/stores/practice";
 
 /**
  * 通知が名指ししたフレーズの練習を開始する
- * 削除済み・アーカイブ済みならPracticeタブを開くだけにする
+ * 削除済み・アーカイブ済みなら練習タブを開くだけにする
  */
 export async function startPhrasePracticeFromReminder(phraseId: string): Promise<void> {
   try {
@@ -31,7 +31,7 @@ export async function startPhrasePracticeFromReminder(phraseId: string): Promise
  * リマインド通知とアプリの状態をつなぐ（何も描画しない）
  *
  * 起動時・前面復帰時・バックグラウンド移行時と、予約の入力を変えるmutationの成功時に
- * 画面と共有するキャッシュを使って予約を作り直し、リマインド通知のタップで名指しされたフレーズの練習を開始してPracticeタブを開く
+ * 画面と共有するキャッシュを使って予約を作り直し、リマインド通知のタップで名指しされたフレーズの練習を開始して練習タブを開く
  */
 export function ReminderBridge() {
   const router = useRouter();

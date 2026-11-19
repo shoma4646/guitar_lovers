@@ -35,7 +35,7 @@ export function PhraseProgressList({ items, maxItems, onRowLayout }: Props) {
   if (visible.length === 0) {
     return (
       <Text style={styles.empty}>
-        Practiceタブでフレーズを保存すると、ここにBPMの推移が表示されます
+        練習タブでフレーズを保存すると、ここにBPMの推移が表示されます
       </Text>
     );
   }

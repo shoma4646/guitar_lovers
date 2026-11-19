@@ -56,7 +56,7 @@ describe("ProgressScreen: 端末内の記録を読み出せないとき", () => 
     expect(await screen.findByText(/読み込めませんでした/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "再読み込み" })).toBeTruthy();
     expect(screen.queryByText("0")).toBeNull();
-    expect(screen.queryByText(/Practiceタブでフレーズを保存すると/)).toBeNull();
+    expect(screen.queryByText(/練習タブでフレーズを保存すると/)).toBeNull();
     expect(screen.queryByText("フレーズを追加する")).toBeNull();
     expect(screen.queryByLabelText(/^最近の記録/)).toBeNull();
   });
