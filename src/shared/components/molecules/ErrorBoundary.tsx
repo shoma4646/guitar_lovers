@@ -1,6 +1,8 @@
 import { Component, ReactNode } from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Linking } from "react-native";
 import { colors } from "@/shared/theme/colors";
+import { SUPPORT_URL } from "@/shared/constants/links";
+import { Button } from "@/shared/components/atoms/Button";
 
 type Props = {
   children: ReactNode;
@@ -9,13 +11,14 @@ type Props = {
 
 type State = {
   error: Error | null;
+  showDetails: boolean;
 };
 
 /** 予期しないエラーをキャッチしてfallback UIを表示する */
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null };
+  state: State = { error: null, showDetails: false };
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
   }
 
@@ -23,10 +26,16 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error("[ErrorBoundary]", error, info.componentStack);
   }
 
-  reset = () => this.setState({ error: null });
+  reset = () => this.setState({ error: null, showDetails: false });
+
+  toggleDetails = () => this.setState((prev) => ({ showDetails: !prev.showDetails }));
+
+  openSupport = () => {
+    Linking.openURL(SUPPORT_URL).catch(() => {});
+  };
 
   render() {
-    const { error } = this.state;
+    const { error, showDetails } = this.state;
     if (!error) return this.props.children;
 
     if (this.props.fallback) {
@@ -42,7 +51,10 @@ export class ErrorBoundary extends Component<Props, State> {
           alignItems: "center",
         }}
       >
-        <Text style={{ color: colors.onSurface, fontSize: 20, fontWeight: "700" }}>
+        <Text
+          accessibilityRole="header"
+          style={{ color: colors.onSurface, fontSize: 20, fontWeight: "700" }}
+        >
           問題が発生しました
         </Text>
         <Text
@@ -53,24 +65,11 @@ export class ErrorBoundary extends Component<Props, State> {
             textAlign: "center",
           }}
         >
-          アプリでエラーが起きたので、画面を再読み込みしてください
+          表示中にエラーが起きました。保存した記録は消えていません。『もう一度試す』で直らないときは、アプリを終了して開き直してください。
         </Text>
 
-        <View
-          style={{
-            marginTop: 24,
-            width: "100%",
-            borderRadius: 16,
-            padding: 16,
-            backgroundColor: colors.surfaceContainerLowest,
-          }}
-        >
-          <Text style={{ color: colors.onSurfaceVariant, fontSize: 12 }}>
-            {error.message || String(error)}
-          </Text>
-        </View>
-
         <TouchableOpacity
+          accessibilityRole="button"
           style={{
             marginTop: 32,
             alignItems: "center",
@@ -86,6 +85,37 @@ export class ErrorBoundary extends Component<Props, State> {
             もう一度試す
           </Text>
         </TouchableOpacity>
+
+        <Button
+          label="サポートに問い合わせる"
+          variant="outline"
+          onPress={this.openSupport}
+          style={{ marginTop: 12 }}
+        />
+
+        <Button
+          label="エラーの詳細"
+          variant="ghost"
+          size="sm"
+          onPress={this.toggleDetails}
+          style={{ marginTop: 16 }}
+        />
+
+        {showDetails && (
+          <View
+            style={{
+              marginTop: 8,
+              width: "100%",
+              borderRadius: 16,
+              padding: 16,
+              backgroundColor: colors.surfaceContainerLowest,
+            }}
+          >
+            <Text selectable style={{ color: colors.onSurfaceVariant, fontSize: 12 }}>
+              {error.message || String(error)}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     );
   }
