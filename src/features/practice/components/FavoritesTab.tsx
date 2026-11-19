@@ -27,12 +27,9 @@ import { useRecentVideos } from "@/features/practice/api/useRecentVideos";
 import { useToggleFavoriteVideo } from "@/features/practice/api/useToggleFavoriteVideo";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { formatRelativeVideoDate } from "@/features/practice/lib/relativeVideoDate";
+import { youtubeThumbnail } from "@/features/practice/lib/youtubeThumbnail";
 import { useLocalDay } from "@/shared/hooks/useLocalDay";
 import { localDayToDate } from "@/shared/lib/localDay";
-
-function youtubeThumbnail(videoId: string): string {
-  return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-}
 
 const TOGGLE_FAVORITE_ACTION = "toggleFavorite";
 
