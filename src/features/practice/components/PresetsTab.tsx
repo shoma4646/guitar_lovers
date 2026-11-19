@@ -2,8 +2,8 @@
  * プリセットタブ（Stitch modern_6 風）
  *
  * カテゴリ別にカードでプリセット動画を表示する。
- * - カード: title + category description + 再生ボタン
- * - カテゴリ間にセクションラベルを挟む
+ * - カード: お気に入りタブと同じサムネ + タイトル（2行まで）+ 再生アイコン
+ * - カテゴリ名はセクションラベルにだけ出す
  */
 
 import { useCallback, useMemo } from "react";
@@ -12,16 +12,18 @@ import {
   Text,
   Pressable,
   ScrollView,
+  Image,
   StyleSheet,
 } from "react-native";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors, fontSize, radius, shadows } from "@/shared/theme";
+import { colors, radius, shadows } from "@/shared/theme";
 import type { VideoPreset } from "@/shared/types/models";
 import { usePracticeStore } from "@/stores/practice";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { CATEGORY_LABELS } from "@/features/practice/lib/formatters";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
+import { youtubeThumbnail } from "@/features/practice/lib/youtubeThumbnail";
 
 export function PresetsTab() {
   const loadVideo = usePracticeStore((s) => s.loadVideo);
@@ -73,31 +75,19 @@ export function PresetsTab() {
                 accessibilityRole="button"
                 accessibilityLabel={`${preset.title}を再生`}
               >
-                <View className="flex-row items-center" style={{ gap: 16 }}>
-                  <View className="flex-1">
-                    <Text
-                      testID="preset-title"
-                      className="text-on-surface mb-1"
-                      style={styles.title}
-                      numberOfLines={2}
-                    >
-                      {preset.title}
-                    </Text>
-                    <Text className="text-on-surface-variant text-body-md">
-                      {CATEGORY_LABELS[preset.category] ?? preset.category}
-                    </Text>
-                  </View>
-                  <View
-                    className="items-center justify-center"
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 9999,
-                      backgroundColor: `${colors.primaryContainer}1A`,
-                    }}
+                <Image source={{ uri: youtubeThumbnail(preset.videoId) }} style={styles.thumb} />
+                <View className="flex-1 min-w-0">
+                  <Text
+                    testID="preset-title"
+                    className="text-on-surface"
+                    style={styles.title}
+                    numberOfLines={2}
                   >
-                    <Icon name="play_arrow" size={20} color={colors.primary} />
-                  </View>
+                    {preset.title}
+                  </Text>
+                </View>
+                <View className="items-center justify-center" style={styles.playBadge}>
+                  <Icon name="play_arrow" size={20} color={colors.primary} />
                 </View>
               </Pressable>
             ))}
@@ -122,11 +112,27 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   card: {
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderRadius: radius.xl,
+    gap: 16,
+  },
+  thumb: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceContainer,
   },
   title: {
-    fontSize: fontSize.headingLg,
-    fontWeight: "800",
+    fontSize: 18,
+    fontWeight: "700",
+    lineHeight: 22,
+  },
+  playBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.pill,
+    backgroundColor: `${colors.primaryContainer}1A`,
   },
 });

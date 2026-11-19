@@ -1,6 +1,5 @@
-import { ScrollView, StyleSheet } from "react-native";
-import { render, screen } from "@testing-library/react-native";
-import { fontSize } from "@/shared/theme";
+import { Image, ScrollView, StyleSheet, Text } from "react-native";
+import { render, screen, within } from "@testing-library/react-native";
 import { PresetsTab } from "../PresetsTab";
 
 jest.mock("@/features/practice/api/useVideoPresets", () => ({
@@ -10,6 +9,12 @@ jest.mock("@/features/practice/api/useVideoPresets", () => ({
         id: "preset-1",
         videoId: "abc123def45",
         title: "初心者向けコード練習 - G, C, D, Em",
+        category: "chord",
+      },
+      {
+        id: "preset-2",
+        videoId: "zyx987wvu65",
+        title: "コードチェンジ練習",
         category: "chord",
       },
     ],
@@ -43,11 +48,36 @@ describe("PresetsTab の見た目", () => {
     expect(screen.queryByText("Curated routine")).toBeNull();
   });
 
-  it("タイトルは今日タブのフレーズ名と同じ fontSize.headingLg・2行まで", () => {
+  it("タイトルはお気に入りのカードと同じ18ptの太字・2行まで", () => {
     render(<PresetsTab />);
 
-    const title = screen.getByTestId("preset-title");
-    expect(StyleSheet.flatten(title.props.style).fontSize).toBe(fontSize.headingLg);
-    expect(title.props.numberOfLines).toBe(2);
+    for (const title of screen.getAllByTestId("preset-title")) {
+      expect(StyleSheet.flatten(title.props.style)).toMatchObject({ fontSize: 18, fontWeight: "700" });
+      expect(title.props.numberOfLines).toBe(2);
+    }
+  });
+
+  it("カード内にはカテゴリ名を出さない（見出しの1回だけ）", () => {
+    render(<PresetsTab />);
+
+    const cards = screen.getAllByRole("button", { name: /を再生$/ });
+    expect(cards).toHaveLength(2);
+    for (const card of cards) {
+      const texts = card.findAll((node: typeof card) => node.type === Text);
+      expect(texts.map((node: typeof card) => node.props.children)).not.toContain("コード");
+    }
+    expect(screen.getAllByText("コード")).toHaveLength(1);
+  });
+
+  it("各カードに動画のサムネ（YouTube mqdefault）を出す", () => {
+    render(<PresetsTab />);
+
+    const [first, second] = screen.getAllByRole("button", { name: /を再生$/ });
+    expect(within(first).UNSAFE_getByType(Image).props.source).toEqual({
+      uri: "https://img.youtube.com/vi/abc123def45/mqdefault.jpg",
+    });
+    expect(within(second).UNSAFE_getByType(Image).props.source).toEqual({
+      uri: "https://img.youtube.com/vi/zyx987wvu65/mqdefault.jpg",
+    });
   });
 });
