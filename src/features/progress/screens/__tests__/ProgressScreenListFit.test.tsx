@@ -123,6 +123,27 @@ describe("ProgressScreen: 一覧の行数を余った高さから決める", () 
   });
 });
 
+describe("ProgressScreen: 小さい画面では一覧の行数を減らして主ボタンを画面内に残す", () => {
+  const sixPhrases = [1, 2, 3, 4, 5, 6].map((i) => phrase(i));
+
+  it.each([
+    ["iPhone SE 第2/3世代相当", 195, 2, "他4本を見る"],
+    ["iPhone SE 第1世代相当", 96, 1, "他5本を見る"],
+    ["従来どおり", 302, 4, "他2本を見る"],
+    ["従来どおり", 330, 4, "他2本を見る"],
+    ["従来どおり（中身302＋余白）", 302 + CARD_PADDING_TOTAL, 4, "他2本を見る"],
+    ["従来どおり（中身330＋余白）", 330 + CARD_PADDING_TOTAL, 5, "他1本を見る"],
+  ])("%s: 一覧エリアが%iptなら%i行＋「%s」", async (_, areaHeight, rows, more) => {
+    await renderWithPhrases(sixPhrases);
+
+    layoutFirstRow("phrase-progress-row", 56);
+    layout("phrase-list-area", areaHeight);
+
+    expect(screen.getAllByTestId("phrase-progress-row")).toHaveLength(rows);
+    expect(screen.getByText(more)).toBeTruthy();
+  });
+});
+
 describe("ProgressScreen: 行が少ないときのカードの高さ", () => {
   it.each([
     ["卒業1本", [phrase(1, true)], "11/2 卒業"],

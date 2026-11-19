@@ -48,7 +48,7 @@ import { AllPhrasesProgressSheet } from "@/features/progress/components/AllPhras
 const LIST_UNMEASURED_MAX_ROWS = 4;
 
 /** 高さが足りなくても一覧に表示する最低行数 */
-const LIST_MIN_ROWS = 3;
+const LIST_MIN_ROWS = 1;
 
 const LIST_CARD_PADDING = 12;
 
