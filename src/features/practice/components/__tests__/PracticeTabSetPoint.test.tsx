@@ -17,9 +17,6 @@ jest.mock("expo-crypto", () => ({ randomUUID: () => "uuid" }));
 jest.mock("expo-haptics", () => ({
   selectionAsync: jest.fn(async () => {}),
 }));
-jest.mock("@/features/practice/api/useAddRecentVideo", () => ({
-  useAddRecentVideo: () => ({ mutate: jest.fn() }),
-}));
 jest.mock("@/features/practice/api/useSavePracticePhrase", () => ({
   useSavePracticePhrase: () => ({ mutateAsync: jest.fn() }),
 }));

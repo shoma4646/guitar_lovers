@@ -20,7 +20,6 @@ import { usePracticeStore, type PlaybackRate } from "@/stores/practice";
 import { colors, radius } from "@/shared/theme";
 import { IconButton } from "@/shared/components/atoms/IconButton";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
-import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { useSavePracticePhrase } from "@/features/practice/api/useSavePracticePhrase";
 import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseResult";
 import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePracticePhrase";
@@ -120,7 +119,6 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const setShowMenu = usePracticeStore((s) => s.setToolsSheetOpen);
 
   const router = useRouter();
-  const { mutate: addRecent } = useAddRecentVideo();
   const { mutateAsync: savePhraseAsync } = useSavePracticePhrase();
   const { mutateAsync: recordResultAsync } = useRecordPhraseResult();
   const { mutate: graduatePhrase } = useGraduatePracticePhrase();
@@ -441,13 +439,8 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
     if (!preset) return;
     confirmSwitch(() => {
       loadVideo(preset.videoId, preset.title);
-      addRecent({
-        videoId: preset.videoId,
-        title: preset.title,
-        lastWatchedAt: new Date().toISOString(),
-      });
     });
-  }, [presets, confirmSwitch, loadVideo, addRecent]);
+  }, [presets, confirmSwitch, loadVideo]);
 
   const handleCloseVideo = useCloseVideo();
 

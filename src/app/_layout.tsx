@@ -15,6 +15,7 @@ import { ReducedMotionConfig, ReduceMotion } from "react-native-reanimated";
 import { colors } from "@/shared/theme";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { ReminderBridge } from "@/features/reminder/components/ReminderBridge";
+import { RecentVideoRecorder } from "@/features/practice/components/RecentVideoRecorder";
 import { REMINDER_DATA_TYPE } from "@/features/reminder/lib/planReminder";
 import { connectQueryFocusToAppState } from "@/shared/lib/queryFocus";
 import { createAppQueryClient } from "@/shared/lib/createAppQueryClient";
@@ -55,6 +56,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
         </Stack>
         <ReminderBridge />
+        <RecentVideoRecorder />
       </QueryClientProvider>
     </ErrorBoundary>
   );
