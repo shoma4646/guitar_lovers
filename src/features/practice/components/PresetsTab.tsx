@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { colors, radius, shadows } from "@/shared/theme";
-import type { VideoPreset } from "@/shared/types/models";
+import type { PresetCategory, VideoPreset } from "@/shared/types/models";
 import { usePracticeStore } from "@/stores/practice";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
@@ -33,11 +33,12 @@ export function PresetsTab() {
 
   const grouped = useMemo(
     () =>
-      presets.reduce<Record<string, VideoPreset[]>>((acc, preset) => {
-        if (!acc[preset.category]) acc[preset.category] = [];
-        acc[preset.category].push(preset);
+      presets.reduce((acc, preset) => {
+        const items = acc.get(preset.category) ?? [];
+        items.push(preset);
+        acc.set(preset.category, items);
         return acc;
-      }, {}),
+      }, new Map<PresetCategory, VideoPreset[]>()),
     [presets],
   );
 
@@ -60,10 +61,10 @@ export function PresetsTab() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      {Object.entries(grouped).map(([category, items]) => (
+      {Array.from(grouped, ([category, items]) => (
         <View key={category} className="mb-lg">
           <Text className="text-label-sm text-on-surface-variant mb-sm">
-            {CATEGORY_LABELS[category] ?? category}
+            {CATEGORY_LABELS[category]}
           </Text>
           <View style={{ gap: 16 }}>
             {items.map((preset) => (

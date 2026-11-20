@@ -20,7 +20,7 @@ describe("保存データのスキーマは不正な動画IDを拒否する", ()
   const cases = [
     ["最近開いた動画", recentVideoSchema, { title: "曲", lastWatchedAt: "2026-09-01T00:00:00.000Z" }],
     ["お気に入り", favoriteVideoSchema, { id: "f1", title: "曲", addedAt: "2026-09-01T00:00:00.000Z" }],
-    ["プリセット", videoPresetSchema, { id: "p1", title: "曲", category: "rock" }],
+    ["プリセット", videoPresetSchema, { id: "p1", title: "曲", category: "chord" }],
   ] as const;
 
   it.each(cases)("%s: 正しいIDは通り、不正なIDは失敗する", (_label, schema, rest) => {

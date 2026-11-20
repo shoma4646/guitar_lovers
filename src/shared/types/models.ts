@@ -6,6 +6,7 @@ import type { z } from "zod";
 import type { practiceSessionSchema } from "@/shared/lib/schemas/practiceSession";
 import type { practicePhraseSchema } from "@/shared/lib/schemas/practicePhrase";
 import type { phraseAttemptSchema } from "@/shared/lib/schemas/phraseAttempt";
+import type { videoPresetSchema } from "@/shared/lib/schemas/videoPreset";
 
 /** 練習セッションの記録 */
 export type PracticeSession = z.infer<typeof practiceSessionSchema>;
@@ -39,18 +40,10 @@ export type PracticePhrase = z.infer<typeof practicePhraseSchema>;
 export type PhraseAttempt = z.infer<typeof phraseAttemptSchema>;
 
 /** 動画プリセット */
-export interface VideoPreset {
-  /** 一意のID */
-  id: string;
-  /** YouTube動画ID */
-  videoId: string;
-  /** 動画タイトル */
-  title: string;
-  /** カテゴリ */
-  category: string;
-  /** サムネイルURL（任意） */
-  thumbnail?: string;
-}
+export type VideoPreset = z.infer<typeof videoPresetSchema>;
+
+/** 動画プリセットのカテゴリ */
+export type PresetCategory = VideoPreset["category"];
 
 /** お気に入り動画 */
 export interface FavoriteVideo {
