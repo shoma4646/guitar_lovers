@@ -121,7 +121,7 @@ export function PracticeMenuSheet({
       >
         <View style={{ paddingBottom: 8, gap: 12 }}>
           <View style={{ gap: 4 }}>
-            <Text style={{ fontSize: 12, fontWeight: "700", color: colors.onSurfaceVariant }}>
+            <Text accessibilityRole="header" style={{ fontSize: 12, fontWeight: "700", color: colors.onSurfaceVariant }}>
               メトロノーム
             </Text>
             <MetronomeControls
@@ -137,7 +137,9 @@ export function PracticeMenuSheet({
 
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <View>
-              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.onSurfaceVariant }}>練習タイマー</Text>
+              <Text accessibilityRole="header" style={{ fontSize: 12, fontWeight: "700", color: colors.onSurfaceVariant }}>
+                練習タイマー
+              </Text>
               <Text
                 style={{ fontSize: 28, fontWeight: "800", color: colors.onSurface, fontVariant: ["tabular-nums"] }}
               >
@@ -158,7 +160,10 @@ export function PracticeMenuSheet({
           <Divider />
 
           <View>
-            <Text style={{ fontSize: 12, fontWeight: "700", color: colors.onSurfaceVariant, marginBottom: 4 }}>
+            <Text
+              accessibilityRole="header"
+              style={{ fontSize: 12, fontWeight: "700", color: colors.onSurfaceVariant, marginBottom: 4 }}
+            >
               今日のメニュー
             </Text>
             {readFailed ? (
@@ -223,7 +228,7 @@ export function PracticeMenuSheet({
 
               <View style={{ gap: 8 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.onSurfaceVariant }}>
+                  <Text accessibilityRole="header" style={{ fontSize: 12, fontWeight: "700", color: colors.onSurfaceVariant }}>
                     ブックマーク（{bookmarks.length}件）
                   </Text>
                   <IconButton name="add" accessibilityLabel="ブックマークを追加" onPress={onAddBookmark} color={colors.primary} />

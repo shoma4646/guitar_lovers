@@ -149,3 +149,11 @@ describe("ProgressScreen: 保存・削除に失敗したとき", () => {
     expect(alertSpy).toHaveBeenLastCalledWith("保存に失敗しました", expect.any(String));
   });
 });
+
+describe("ProgressScreen: 見出し", () => {
+  it("画面タイトルは読み上げで見出しとして扱われる", async () => {
+    renderScreen();
+
+    expect(await screen.findByRole("header", { name: "進捗" })).toBeTruthy();
+  });
+});

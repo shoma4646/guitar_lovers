@@ -321,3 +321,12 @@ describe("TunerScreen の✓は「今合っている」弦だけに付ける", (
     expect(screen.getByLabelText("5弦 A2 チューニング完了")).toBeTruthy();
   });
 });
+
+describe("TunerScreen の見出し", () => {
+  it("画面タイトルは読み上げで見出しとして扱われる", () => {
+    mockDetector = detector(null);
+    render(<TunerScreen />);
+
+    expect(screen.getByRole("header", { name: "チューナー" })).toBeTruthy();
+  });
+});

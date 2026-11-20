@@ -32,6 +32,7 @@ function Section({ title, children }: SectionProps) {
   return (
     <View className="mb-xl">
       <Text
+        accessibilityRole="header"
         className="text-label-sm mb-sm"
         style={{
           color: colors.onSurfaceVariant,
@@ -125,7 +126,7 @@ export function SettingsScreen() {
       >
         {/* Top App Bar */}
         <View className="flex-row items-center justify-between px-margin-mobile h-16">
-          <Text className="font-bold text-headline-lg text-on-surface">
+          <Text accessibilityRole="header" className="font-bold text-headline-lg text-on-surface">
             設定
           </Text>
           <Pressable

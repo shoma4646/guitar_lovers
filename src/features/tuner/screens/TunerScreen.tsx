@@ -252,7 +252,7 @@ export function TunerScreen() {
     <ErrorBoundary>
       <ScreenFrame>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>チューナー</Text>
+          <Text accessibilityRole="header" style={styles.headerTitle}>チューナー</Text>
           <MicStatusChip {...micChipConfig} />
           <IconButton
             name="settings"

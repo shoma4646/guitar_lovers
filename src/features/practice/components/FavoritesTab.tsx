@@ -100,7 +100,9 @@ export function FavoritesTab() {
       showsVerticalScrollIndicator={false}
     >
       {/* 最近の動画 */}
-      <Text className="text-label-sm text-on-surface-variant mb-sm">最近見た動画</Text>
+      <Text accessibilityRole="header" className="text-label-sm text-on-surface-variant mb-sm">
+        最近見た動画
+      </Text>
       <View style={{ gap: 16 }}>
         {hasReadFailure(recentsQuery) ? (
           <ReadErrorCard title="最近見た動画を読み込めませんでした" onRetry={() => refetchAll(recentsQuery)} />
@@ -164,7 +166,9 @@ export function FavoritesTab() {
       </View>
 
       {/* お気に入り */}
-      <Text className="text-label-sm text-on-surface-variant mt-xl mb-sm">お気に入り</Text>
+      <Text accessibilityRole="header" className="text-label-sm text-on-surface-variant mt-xl mb-sm">
+        お気に入り
+      </Text>
       <View style={{ gap: 16 }}>
         {hasReadFailure(favoritesQuery) ? (
           <ReadErrorCard title="お気に入りを読み込めませんでした" onRetry={() => refetchAll(favoritesQuery)} />

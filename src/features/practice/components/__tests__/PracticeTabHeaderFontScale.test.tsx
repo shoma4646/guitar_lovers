@@ -96,3 +96,14 @@ describe("PracticeTab の動画読み込み後ヘッダー（文字サイズを�
     expect(screen.getByText(/^\d+:\d{2}$/).props.maxFontSizeMultiplier).toBe(1.3);
   });
 });
+
+describe("PracticeTab の動画読み込み後ヘッダーの見出し", () => {
+  it("タイトルは見出しとして扱い、サブタイトルとタイマーは見出しにしない", () => {
+    act(() => {
+      usePracticeStore.getState().startPhrasePractice(PHRASE, 85);
+    });
+    render(<PracticeTab onOpenAddVideo={jest.fn()} />);
+
+    expect(screen.getAllByRole("header").map((h) => h.props.children)).toEqual(["イントロ"]);
+  });
+});

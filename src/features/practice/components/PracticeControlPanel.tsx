@@ -88,7 +88,9 @@ export function PracticeControlPanel({
   return (
     <Card padding={12} style={{ gap: 8 }}>
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.onSurface }}>ABループ</Text>
+        <Text accessibilityRole="header" style={{ fontSize: 13, fontWeight: "700", color: colors.onSurface }}>
+          ABループ
+        </Text>
         <View testID="ab-loop-header-actions" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           {showClearLoop && (
             <IconButton name="close" size={18} accessibilityLabel="ABループを解除" onPress={onClearLoop} />

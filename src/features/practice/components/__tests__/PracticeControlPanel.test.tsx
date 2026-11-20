@@ -86,3 +86,12 @@ describe("PracticeControlPanel のABループ解除ボタン", () => {
     expect(gap - (hitSlop.left ?? 0)).toBeGreaterThanOrEqual(8);
   });
 });
+
+describe("PracticeControlPanel の見出し", () => {
+  it("「ABループ」は見出しとして読まれる", () => {
+    renderPanel({ abLoop: VALID_LOOP, hasNoPhrases: false });
+
+    expect(screen.getByRole("header", { name: "ABループ" })).toBeTruthy();
+    expect(screen.getAllByRole("header")).toHaveLength(1);
+  });
+});

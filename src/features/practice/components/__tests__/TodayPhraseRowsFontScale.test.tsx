@@ -126,3 +126,12 @@ describe("名前の左のチェック用の枠", () => {
     });
   });
 });
+
+describe("今日のフレーズの見出し", () => {
+  it("見出しと進み具合をまとめて1つの見出しとして読み、「長押しで整理」は見出しにしない", () => {
+    renderRows();
+
+    expect(screen.getByRole("header", { name: /^今日のフレーズ/ })).toBe(screen.getByTestId("today-phrases-heading"));
+    expect(screen.getAllByRole("header")).toHaveLength(1);
+  });
+});

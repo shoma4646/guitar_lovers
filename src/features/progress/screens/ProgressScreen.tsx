@@ -181,7 +181,7 @@ export function ProgressScreen() {
       <ErrorBoundary>
         <ScreenFrame>
           <View style={styles.header}>
-            <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>
+            <Text accessibilityRole="header" style={styles.headerTitle} maxFontSizeMultiplier={1.3}>
               進捗
             </Text>
             <IconButton
@@ -201,7 +201,7 @@ export function ProgressScreen() {
       <ScreenFrame>
         {/* ヘッダー */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>
+          <Text accessibilityRole="header" style={styles.headerTitle} maxFontSizeMultiplier={1.3}>
             進捗
           </Text>
           <View style={styles.headerActions}>

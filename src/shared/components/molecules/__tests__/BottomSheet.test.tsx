@@ -201,3 +201,10 @@ describe("BottomSheet", () => {
     });
   });
 });
+
+describe("BottomSheet の見出し", () => {
+  it("タイトルは読み上げで見出しとして扱われる", () => {
+    setup(true);
+    expect(screen.getByRole("header", { name: "最近の記録" })).toBeTruthy();
+  });
+});

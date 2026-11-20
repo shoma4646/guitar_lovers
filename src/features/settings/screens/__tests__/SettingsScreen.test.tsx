@@ -32,3 +32,12 @@ describe("SettingsScreen: 閉じる操作", () => {
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("SettingsScreen: 見出し", () => {
+  it("画面タイトルと各セクション名だけが見出しとして読まれる", () => {
+    render(<SettingsScreen />);
+
+    const headers = screen.getAllByRole("header").map((h) => h.props.children);
+    expect(headers).toEqual(["設定", "リマインド", "アプリについて", "プライバシーとサポート", "利用しているサービス"]);
+  });
+});

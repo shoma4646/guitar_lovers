@@ -72,7 +72,11 @@ export function PracticeScreen() {
                 >
                   {formatHeaderDate(localDayToDate(localDay))}
                 </Text>
-                <Text style={{ fontSize: 22, fontWeight: "800", color: colors.onSurface }} maxFontSizeMultiplier={1.3}>
+                <Text
+                  accessibilityRole="header"
+                  style={{ fontSize: 22, fontWeight: "800", color: colors.onSurface }}
+                  maxFontSizeMultiplier={1.3}
+                >
                   今日の練習
                 </Text>
               </View>
