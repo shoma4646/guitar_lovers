@@ -1,3 +1,5 @@
+import type { PresetCategory } from "@/shared/types/models";
+
 /** 秒数を mm:ss 形式にフォーマットする（小数秒は切り捨てる） */
 export function formatDuration(seconds: number): string {
   const total = Math.floor(seconds);
@@ -16,7 +18,7 @@ export function formatSpokenDuration(seconds: number): string {
 }
 
 /** カテゴリ表示名マッピング */
-export const CATEGORY_LABELS: Record<string, string> = {
+export const CATEGORY_LABELS: Record<PresetCategory, string> = {
   chord: "コード",
   scale: "スケール",
   fingerpicking: "フィンガーピッキング",
