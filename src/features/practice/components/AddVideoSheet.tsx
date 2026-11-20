@@ -15,7 +15,6 @@ import { Icon } from "@/shared/components/atoms/Icon";
 import { colors, radius } from "@/shared/theme";
 import { useAnnounceOnChange } from "@/shared/hooks/useAnnounceOnChange";
 import { usePracticeStore, extractVideoId } from "@/stores/practice";
-import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { useRecentVideos } from "@/features/practice/api/useRecentVideos";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { describePlayerError, describePlayerErrorTitle } from "@/features/practice/lib/playerError";
@@ -46,7 +45,6 @@ export function AddVideoSheet({ visible, onClose }: Props) {
 
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const playerError = usePracticeStore((s) => s.playerError);
-  const { mutate: addRecent } = useAddRecentVideo();
   const { data: recents = [] } = useRecentVideos();
   const confirmSwitch = useConfirmPhraseSwitch();
 
@@ -67,7 +65,6 @@ export function AddVideoSheet({ visible, onClose }: Props) {
   const openVideo = (videoId: string, title: string) => {
     confirmSwitch(() => {
       loadVideo(videoId, title);
-      addRecent({ videoId, title, lastWatchedAt: new Date().toISOString() });
       onClose();
     });
   };

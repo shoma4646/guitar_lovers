@@ -48,9 +48,6 @@ jest.mock("react-native-audio-api", () => ({
   })),
 }));
 jest.mock("@/features/practice/lib/metronomeClick", () => ({ scheduleClick: jest.fn() }));
-jest.mock("@/features/practice/api/useAddRecentVideo", () => ({
-  useAddRecentVideo: () => ({ mutate: jest.fn() }),
-}));
 jest.mock("@/features/practice/api/useSavePracticePhrase", () => ({
   useSavePracticePhrase: () => ({ mutateAsync: jest.fn() }),
 }));

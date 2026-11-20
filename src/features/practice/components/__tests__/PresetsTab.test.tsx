@@ -20,9 +20,6 @@ jest.mock("@/features/practice/api/useVideoPresets", () => ({
     ],
   }),
 }));
-jest.mock("@/features/practice/api/useAddRecentVideo", () => ({
-  useAddRecentVideo: () => ({ mutate: jest.fn() }),
-}));
 jest.mock("@/features/practice/hooks/useConfirmPhraseSwitch", () => ({
   useConfirmPhraseSwitch: () => jest.fn(),
 }));

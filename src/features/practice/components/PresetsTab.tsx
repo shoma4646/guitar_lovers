@@ -20,7 +20,6 @@ import { colors, radius, shadows } from "@/shared/theme";
 import type { PresetCategory, VideoPreset } from "@/shared/types/models";
 import { usePracticeStore } from "@/stores/practice";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
-import { useAddRecentVideo } from "@/features/practice/api/useAddRecentVideo";
 import { CATEGORY_LABELS } from "@/features/practice/lib/formatters";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { youtubeThumbnail } from "@/features/practice/lib/youtubeThumbnail";
@@ -28,7 +27,6 @@ import { youtubeThumbnail } from "@/features/practice/lib/youtubeThumbnail";
 export function PresetsTab() {
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const { data: presets = [] } = useVideoPresets();
-  const { mutate: addRecent } = useAddRecentVideo();
   const confirmSwitch = useConfirmPhraseSwitch();
 
   const grouped = useMemo(
@@ -46,14 +44,9 @@ export function PresetsTab() {
     (preset: VideoPreset) => {
       confirmSwitch(() => {
         loadVideo(preset.videoId, preset.title);
-        addRecent({
-          videoId: preset.videoId,
-          title: preset.title,
-          lastWatchedAt: new Date().toISOString(),
-        });
       });
     },
-    [confirmSwitch, loadVideo, addRecent],
+    [confirmSwitch, loadVideo],
   );
 
   return (

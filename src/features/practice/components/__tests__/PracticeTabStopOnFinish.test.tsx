@@ -29,9 +29,6 @@ jest.mock("react-native-safe-area-context", () => ({
 }));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock("expo-crypto", () => ({ randomUUID: () => "uuid" }));
-jest.mock("@/features/practice/api/useAddRecentVideo", () => ({
-  useAddRecentVideo: () => ({ mutate: jest.fn() }),
-}));
 jest.mock("@/features/practice/api/useSavePracticePhrase", () => ({
   useSavePracticePhrase: () => ({ mutateAsync: jest.fn() }),
 }));
