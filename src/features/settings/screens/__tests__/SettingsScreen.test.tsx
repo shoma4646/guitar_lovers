@@ -1,9 +1,9 @@
-import { ScrollView, StyleSheet } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { SettingsScreen } from "../SettingsScreen";
+import { ScrollView, StyleSheet } from "react-native";
 import { Card } from "@/shared/components/molecules/Card";
 import { SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
 import { colors } from "@/shared/theme";
-import { SettingsScreen } from "../SettingsScreen";
 
 const mockBack = jest.fn();
 
