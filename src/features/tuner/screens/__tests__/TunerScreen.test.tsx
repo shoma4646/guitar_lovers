@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react-native";
-import { AppState, StyleSheet, type AppStateStatus } from "react-native";
+import { AppState, Linking, StyleSheet, type AppStateStatus } from "react-native";
 import { semantic } from "@/shared/theme/semantic";
 import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
+import { MIN_TOUCH_TARGET, minTouchTargetSize } from "@/shared/testing/touchTarget";
 import type { PitchDetectorState } from "@/features/tuner/hooks/usePitchDetector";
 import { TunerScreen } from "../TunerScreen";
 
@@ -328,5 +329,32 @@ describe("TunerScreen の✓は「今合っている」弦だけに付ける", (
     advance(500);
 
     expect(screen.getByLabelText("5弦 A2 チューニング完了")).toBeTruthy();
+  });
+});
+
+describe("TunerScreen の文字だけのボタンのタップ領域", () => {
+  it.each([
+    [{ status: "denied", pausedByUser: false }, "端末の設定を開く", "設定を開く"],
+    [{ status: "idle", pausedByUser: true }, "再開する", "再開する"],
+    [{ status: "error", pausedByUser: false }, "もう一度試す", "もう一度試す"],
+  ] as const)("%o のときの「%s」は本体＋hitSlopで縦横44pt以上、文字は13ptの太字のまま", (state, name, text) => {
+    mockDetector = { ...detector(null), ...state };
+    render(<TunerScreen />);
+
+    const size = minTouchTargetSize(screen.getByRole("button", { name }));
+    expect(size.height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
+    expect(size.width).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
+    expect(StyleSheet.flatten(screen.getByText(text).props.style)).toMatchObject({ fontSize: 13, fontWeight: "700" });
+  });
+
+  it("拒否時の「設定を開く」で端末の設定を開く", () => {
+    const openSettings = jest.spyOn(Linking, "openSettings").mockResolvedValue();
+    mockDetector = { ...detector(null), status: "denied" };
+    render(<TunerScreen />);
+
+    fireEvent.press(screen.getByRole("button", { name: "端末の設定を開く" }));
+
+    expect(openSettings).toHaveBeenCalledTimes(1);
+    openSettings.mockRestore();
   });
 });

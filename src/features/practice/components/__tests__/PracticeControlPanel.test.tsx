@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import type { ABLoop } from "@/shared/types/models";
+import { MIN_TOUCH_TARGET, minTouchTargetSize } from "@/shared/testing/touchTarget";
 import { PracticeControlPanel } from "../PracticeControlPanel";
 
 // 保存ボタン周りだけを見るため、Reanimated を使う子は描画しない
@@ -53,6 +54,24 @@ describe("PracticeControlPanel の「フレーズとして保存」の文字ラ�
     const { onOpenSavePhrase } = renderPanel({ abLoop: VALID_LOOP, hasNoPhrases: true });
     fireEvent.press(screen.getByText("フレーズとして保存"));
     expect(onOpenSavePhrase).toHaveBeenCalledTimes(1);
+  });
+
+  it("文字ラベルのボタンは縦横44pt以上で、文字は13ptの太字のまま", () => {
+    renderPanel({ abLoop: VALID_LOOP, hasNoPhrases: true });
+
+    const size = minTouchTargetSize(screen.getByRole("button", { name: "この区間をフレーズとして保存" }));
+    expect(size.height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
+    expect(size.width).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
+    expect(StyleSheet.flatten(screen.getByText("フレーズとして保存").props.style)).toMatchObject({
+      fontSize: 13,
+      fontWeight: "700",
+    });
+  });
+
+  it("文字ラベルのタップ領域は上下のボタン列へはみ出さない（hitSlopを使わない）", () => {
+    renderPanel({ abLoop: VALID_LOOP, hasNoPhrases: true });
+
+    expect(screen.getByRole("button", { name: "この区間をフレーズとして保存" }).props.hitSlop).toBeUndefined();
   });
 
   it("フレーズが1本以上あるときは出さない", () => {

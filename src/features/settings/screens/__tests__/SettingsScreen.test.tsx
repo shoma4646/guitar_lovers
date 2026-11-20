@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { MIN_TOUCH_TARGET, minTouchTargetSize } from "@/shared/testing/touchTarget";
 import { SettingsScreen } from "../SettingsScreen";
 import { ScrollView, StyleSheet } from "react-native";
 import { Card } from "@/shared/components/molecules/Card";
@@ -34,6 +35,14 @@ describe("SettingsScreen: 閉じる操作", () => {
     fireEvent.press(screen.getByRole("button", { name: "閉じる" }));
 
     expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("右上の閉じるボタンは本体＋hitSlopで縦横44pt以上", () => {
+    render(<SettingsScreen />);
+
+    const size = minTouchTargetSize(screen.getByRole("button", { name: "閉じる" }));
+    expect(size.height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
+    expect(size.width).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
   });
 });
 

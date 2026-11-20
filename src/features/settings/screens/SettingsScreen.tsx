@@ -12,7 +12,7 @@ import { View, Text, Pressable, ScrollView, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
-import { Icon } from "@/shared/components/atoms/Icon";
+import { IconButton } from "@/shared/components/atoms/IconButton";
 import { colors, spacing } from "@/shared/theme";
 import { SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
 import { Card } from "@/shared/components/molecules/Card";
@@ -131,15 +131,14 @@ export function SettingsScreen() {
           >
             設定
           </Text>
-          <Pressable
-            onPress={() => router.back()}
-            className="active:opacity-70"
-            hitSlop={8}
-            accessibilityRole="button"
+          <IconButton
+            name="close"
+            size={24}
             accessibilityLabel="閉じる"
-          >
-            <Icon name="close" size={24} color={colors.onSurfaceVariant} />
-          </Pressable>
+            onPress={() => router.back()}
+            // 44ptの枠にしてもアイコンの右端が余白の線に揃うよう、枠の広がり分だけ右へ出す
+            style={{ marginRight: -10 }}
+          />
         </View>
 
         <ScrollView
