@@ -82,6 +82,15 @@ describe("TunerScreen の音名表示", () => {
   });
 });
 
+describe("TunerScreen の見出し", () => {
+  it("画面タイトルは読み上げで見出しとして扱われる", () => {
+    mockDetector = detector(null);
+    render(<TunerScreen />);
+
+    expect(screen.getByRole("header", { name: "チューナー" })).toBeTruthy();
+  });
+});
+
 describe("TunerScreen の文字サイズ拡大", () => {
   it("検出した音名は文字サイズの拡大に上限を付ける", () => {
     mockDetector = detector(110);
@@ -319,14 +328,5 @@ describe("TunerScreen の✓は「今合っている」弦だけに付ける", (
     advance(500);
 
     expect(screen.getByLabelText("5弦 A2 チューニング完了")).toBeTruthy();
-  });
-});
-
-describe("TunerScreen の見出し", () => {
-  it("画面タイトルは読み上げで見出しとして扱われる", () => {
-    mockDetector = detector(null);
-    render(<TunerScreen />);
-
-    expect(screen.getByRole("header", { name: "チューナー" })).toBeTruthy();
   });
 });
