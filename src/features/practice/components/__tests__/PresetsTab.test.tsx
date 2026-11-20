@@ -78,3 +78,11 @@ describe("PresetsTab の見た目", () => {
     });
   });
 });
+
+describe("PresetsTab の見出し", () => {
+  it("カテゴリ名は見出しとして読まれ、カードは見出しにしない", () => {
+    render(<PresetsTab />);
+
+    expect(screen.getAllByRole("header").map((h) => h.props.children)).toEqual(["コード"]);
+  });
+});

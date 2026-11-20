@@ -75,3 +75,14 @@ describe("ProgressScreen: 端末内の記録を読み出せないとき", () => 
     expect(screen.getByLabelText(/^最近の記録/)).toBeTruthy();
   });
 });
+
+describe("ProgressScreen: 読み出せないときの見出し", () => {
+  it("エラー表示でも画面タイトルは見出しとして扱われる", async () => {
+    (getPracticeSessions as jest.Mock).mockImplementation(readFailure);
+
+    renderScreen();
+
+    expect(await screen.findByText(/読み込めませんでした/)).toBeTruthy();
+    expect(screen.getByRole("header", { name: "進捗" })).toBeTruthy();
+  });
+});

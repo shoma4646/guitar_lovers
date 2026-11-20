@@ -110,6 +110,7 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
         <View
           testID="today-phrases-heading"
           accessible
+          accessibilityRole="header"
           style={{ flexShrink: 1, flexDirection: "row", flexWrap: "wrap", columnGap: 4 }}
         >
           <Text style={{ fontSize: 13, fontWeight: "700", color: colors.onSurface }}>今日のフレーズ</Text>

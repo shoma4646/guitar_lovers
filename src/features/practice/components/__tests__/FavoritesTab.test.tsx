@@ -64,3 +64,11 @@ describe("FavoritesTab の見た目", () => {
     expect(screen.queryByText("YOUTUBE")).toBeNull();
   });
 });
+
+describe("FavoritesTab の見出し", () => {
+  it("「最近見た動画」「お気に入り」だけが見出しとして読まれる", () => {
+    render(<FavoritesTab />);
+
+    expect(screen.getAllByRole("header").map((h) => h.props.children)).toEqual(["最近見た動画", "お気に入り"]);
+  });
+});

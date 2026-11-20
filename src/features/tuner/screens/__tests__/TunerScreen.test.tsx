@@ -82,6 +82,15 @@ describe("TunerScreen の音名表示", () => {
   });
 });
 
+describe("TunerScreen の見出し", () => {
+  it("画面タイトルは読み上げで見出しとして扱われる", () => {
+    mockDetector = detector(null);
+    render(<TunerScreen />);
+
+    expect(screen.getByRole("header", { name: "チューナー" })).toBeTruthy();
+  });
+});
+
 describe("TunerScreen の文字サイズ拡大", () => {
   it("検出した音名は文字サイズの拡大に上限を付ける", () => {
     mockDetector = detector(110);

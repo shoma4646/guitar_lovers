@@ -56,7 +56,7 @@ export function PresetsTab() {
     >
       {Array.from(grouped, ([category, items]) => (
         <View key={category} className="mb-lg">
-          <Text className="text-label-sm text-on-surface-variant mb-sm">
+          <Text accessibilityRole="header" className="text-label-sm text-on-surface-variant mb-sm">
             {CATEGORY_LABELS[category]}
           </Text>
           <View style={{ gap: 16 }}>

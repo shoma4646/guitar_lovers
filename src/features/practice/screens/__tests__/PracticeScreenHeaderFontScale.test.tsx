@@ -42,3 +42,12 @@ describe("PracticeScreen の日付ヘッダー（文字サイズを大きくし�
     expect(screen.getByText("今日の練習").props.maxFontSizeMultiplier).toBe(1.3);
   });
 });
+
+describe("PracticeScreen の見出し", () => {
+  it("画面タイトルは見出しとして扱い、日付は見出しにしない", () => {
+    render(<PracticeScreen />);
+
+    expect(screen.getByRole("header", { name: "今日の練習" })).toBeTruthy();
+    expect(screen.queryByRole("header", { name: /^\d+月\d+日/ })).toBeNull();
+  });
+});

@@ -155,6 +155,7 @@ export function BottomSheet({
             >
               <Text
                 testID="bottom-sheet-title"
+                accessibilityRole="header"
                 numberOfLines={titleNumberOfLines}
                 maxFontSizeMultiplier={1.3}
                 style={{ flexShrink: 1, fontSize: 17, fontWeight: "800", color: colors.onSurface }}

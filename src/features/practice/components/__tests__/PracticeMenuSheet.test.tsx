@@ -109,3 +109,15 @@ describe("PracticeMenuSheet のスクロール領域", () => {
     expect(scroll.flexShrink).toBe(1);
   });
 });
+
+describe("PracticeMenuSheet の見出し", () => {
+  it("シートのタイトルと4つのセクション名だけが見出しとして読まれる", () => {
+    renderSheet(false, { hasVideo: true });
+
+    expect(screen.getByRole("header", { name: "メトロノーム" })).toBeTruthy();
+    expect(screen.getByRole("header", { name: "練習タイマー" })).toBeTruthy();
+    expect(screen.getByRole("header", { name: "今日のメニュー" })).toBeTruthy();
+    expect(screen.getByRole("header", { name: /^ブックマーク/ })).toBeTruthy();
+    expect(screen.getAllByRole("header")).toHaveLength(5);
+  });
+});

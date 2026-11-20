@@ -600,7 +600,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           <View testID="practice-video-header" style={styles.header}>
             <IconButton name="menu" accessibilityLabel="メニューを開く" onPress={() => setShowMenu(true)} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.headerTitle} numberOfLines={1} maxFontSizeMultiplier={1.3}>
+              <Text accessibilityRole="header" style={styles.headerTitle} numberOfLines={1} maxFontSizeMultiplier={1.3}>
                 {headerTitle}
               </Text>
               {headerSubtitle && (
