@@ -6,7 +6,7 @@
  */
 
 import { View, Text, Pressable, Switch, Linking, type AccessibilityActionEvent } from "react-native";
-import { colors } from "@/shared/theme";
+import { colors, spacing } from "@/shared/theme";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { ReadErrorCard } from "@/shared/components/molecules/ReadErrorCard";
 import { hasReadFailure, refetchAll } from "@/shared/lib/readFailure";
@@ -27,7 +27,8 @@ const STEP_MINUTES = 30;
 const DEFAULT_MANUAL_TIME: ReminderTime = { hour: 20, minute: 0 };
 const AUTO_TIME_LABEL = "自動（ふだんの練習時刻に合わせる）";
 
-const rowBorder = { borderBottomWidth: 1, borderBottomColor: colors.outlineVariant };
+const rowPadding = { paddingHorizontal: spacing.lg, paddingVertical: spacing.md };
+const borderedRow = [rowPadding, { borderBottomWidth: 1, borderBottomColor: colors.divider }];
 
 function formatFireAt(date: Date): string {
   const time = `${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
@@ -76,7 +77,7 @@ export function ReminderSettingsSection() {
 
   if (hasReadFailure(settingsQuery)) {
     return (
-      <View className="px-lg py-md" style={rowBorder}>
+      <View style={borderedRow}>
         <ReadErrorCard title="リマインド設定を読み込めませんでした" onRetry={() => refetchAll(settingsQuery)} />
       </View>
     );
@@ -129,7 +130,7 @@ export function ReminderSettingsSection() {
 
   return (
     <View>
-      <View className="flex-row items-center justify-between px-lg py-md" style={rowBorder}>
+      <View className="flex-row items-center justify-between" style={borderedRow}>
         <View style={{ flex: 1, paddingRight: 12 }}>
           <Text className="text-body-md" style={{ color: colors.onSurface }}>
             練習リマインド
@@ -149,8 +150,8 @@ export function ReminderSettingsSection() {
       {isBlockedByOs && (
         <Pressable
           onPress={() => void Linking.openSettings()}
-          className="flex-row items-center justify-between px-lg py-md active:opacity-70"
-          style={rowBorder}
+          className="flex-row items-center justify-between active:opacity-70"
+          style={borderedRow}
           accessibilityRole="button"
           accessibilityLabel="端末の設定を開く"
         >
@@ -163,7 +164,7 @@ export function ReminderSettingsSection() {
         </Pressable>
       )}
 
-      <View className="flex-row items-center justify-between px-lg py-md" style={rowBorder}>
+      <View className="flex-row items-center justify-between" style={borderedRow}>
         <View
           style={{ flex: 1, paddingRight: 12 }}
           accessible
@@ -204,8 +205,8 @@ export function ReminderSettingsSection() {
       {settings.timeOverride && (
         <Pressable
           onPress={() => updateSettings({ timeOverride: null })}
-          className="px-lg py-md active:opacity-70"
-          style={rowBorder}
+          className="active:opacity-70"
+          style={borderedRow}
           accessibilityRole="button"
           accessibilityLabel="時刻を自動に戻す"
         >
@@ -215,7 +216,7 @@ export function ReminderSettingsSection() {
         </Pressable>
       )}
 
-      <View className="px-lg py-md">
+      <View style={rowPadding}>
         <Text className="text-caption" style={{ color: colors.onSurfaceVariant }}>
           {isActive && nextPlan?.fireAt
             ? `次回: ${formatFireAt(nextPlan.fireAt)}`

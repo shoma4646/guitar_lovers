@@ -13,7 +13,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import { Icon } from "@/shared/components/atoms/Icon";
-import { colors } from "@/shared/theme";
+import { colors, spacing } from "@/shared/theme";
+import { SCREEN_HORIZONTAL_PADDING } from "@/shared/constants/layout";
+import { Card } from "@/shared/components/molecules/Card";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import {
   PRIVACY_POLICY_URL,
@@ -28,25 +30,25 @@ type SectionProps = {
   children: ReactNode;
 };
 
+const rowStyle = { paddingHorizontal: spacing.lg, paddingVertical: spacing.md };
+const rowDividerStyle = { borderBottomWidth: 1, borderBottomColor: colors.divider };
+
 function Section({ title, children }: SectionProps) {
   return (
-    <View className="mb-xl">
+    <View style={{ marginBottom: spacing["3xl"] }}>
       <Text
         accessibilityRole="header"
-        className="text-label-sm mb-sm"
+        className="text-label-sm"
         style={{
           color: colors.onSurfaceVariant,
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
           fontWeight: "600",
-          paddingHorizontal: 4,
+          paddingHorizontal: spacing.xs,
+          marginBottom: spacing.md,
         }}
       >
         {title}
       </Text>
-      <View className="bg-surface-container-lowest rounded-xl overflow-hidden">
-        {children}
-      </View>
+      <Card padding={0}>{children}</Card>
     </View>
   );
 }
@@ -60,12 +62,8 @@ type InfoRowProps = {
 function InfoRow({ label, value, isLast }: InfoRowProps) {
   return (
     <View
-      className="flex-row items-center justify-between px-lg py-md"
-      style={
-        isLast
-          ? undefined
-          : { borderBottomWidth: 1, borderBottomColor: colors.outlineVariant }
-      }
+      className="flex-row items-center justify-between"
+      style={[rowStyle, isLast ? undefined : rowDividerStyle]}
     >
       <Text className="text-body-md" style={{ color: colors.onSurface }}>
         {label}
@@ -93,12 +91,8 @@ function LinkRow({ label, url, isLast }: LinkRowProps) {
   return (
     <Pressable
       onPress={handlePress}
-      className="flex-row items-center justify-between px-lg py-md active:opacity-70"
-      style={
-        isLast
-          ? undefined
-          : { borderBottomWidth: 1, borderBottomColor: colors.outlineVariant }
-      }
+      className="flex-row items-center justify-between active:opacity-70"
+      style={[rowStyle, isLast ? undefined : rowDividerStyle]}
       accessibilityRole="link"
       accessibilityLabel={label}
     >
@@ -125,8 +119,16 @@ export function SettingsScreen() {
         onAccessibilityEscape={() => router.back()}
       >
         {/* Top App Bar */}
-        <View className="flex-row items-center justify-between px-margin-mobile h-16">
-          <Text accessibilityRole="header" className="font-bold text-headline-lg text-on-surface">
+        <View
+          testID="settings-header"
+          className="flex-row items-center justify-between"
+          style={{ height: 44, paddingHorizontal: SCREEN_HORIZONTAL_PADDING }}
+        >
+          <Text
+            accessibilityRole="header"
+            style={{ fontSize: 22, fontWeight: "800", color: colors.onSurface }}
+            maxFontSizeMultiplier={1.3}
+          >
             設定
           </Text>
           <Pressable
@@ -141,7 +143,11 @@ export function SettingsScreen() {
         </View>
 
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+          contentContainerStyle={{
+            paddingHorizontal: SCREEN_HORIZONTAL_PADDING,
+            paddingTop: spacing.md,
+            paddingBottom: spacing["4xl"],
+          }}
           showsVerticalScrollIndicator={false}
         >
           <Section title="リマインド">
@@ -160,8 +166,7 @@ export function SettingsScreen() {
 
           <Section title="利用しているサービス">
             <View
-              className="px-lg pt-md pb-sm"
-              style={{ borderBottomWidth: 1, borderBottomColor: colors.outlineVariant }}
+              style={[rowDividerStyle, { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm }]}
             >
               <Text
                 className="text-body-md"
