@@ -7,13 +7,14 @@
  */
 
 import { useEffect, useState } from "react";
-import { Pressable, Text, View, type AccessibilityActionEvent } from "react-native";
+import { Pressable, Text, View, type AccessibilityActionEvent, type LayoutChangeEvent } from "react-native";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
 import { Button } from "@/shared/components/atoms/Button";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { ProgressBar } from "@/shared/components/atoms/ProgressBar";
 import { colors, radius } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
+import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import { formatDuration } from "@/features/practice/lib/formatters";
 import { computeTodayTargetBpm } from "@/features/practice/lib/progression";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
@@ -61,6 +62,7 @@ export function PhraseResultSheet({
   onSubmit,
 }: Props) {
   const [result, setResult] = useState<Result>("ok");
+  const [trackWidth, setTrackWidth] = useState(0);
 
   useEffect(() => {
     if (visible) {
@@ -85,14 +87,8 @@ export function PhraseResultSheet({
 
   const diffFromPrevious = progress ? bpm - progress.currentBpm : 0;
   const bpmToGraduate = progress ? Math.max(0, progress.targetBpm - bpm) : 0;
-  const span = progress ? progress.targetBpm - progress.startBpm : 0;
-  const todayRatio = progress
-    ? span <= 0
-      ? bpm >= progress.targetBpm
-        ? 1
-        : 0
-      : Math.max(0, Math.min(1, (bpm - progress.startBpm) / span))
-    : 0;
+  const todayRatio = progress ? ratioOnBar(bpm, progress) : 0;
+  const previousRatio = progress ? ratioOnBar(progress.currentBpm, progress) : 0;
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title={phrase.name}>
@@ -125,14 +121,37 @@ export function PhraseResultSheet({
         </View>
 
         {progress && (
-          <View style={{ gap: 4 }}>
-            <ProgressBar ratio={todayRatio} accessibilityLabel={`${phrase.name}の進捗`} />
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }}>開始 {progress.startBpm}</Text>
-              <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }}>前回 {progress.currentBpm}</Text>
-              <Text style={{ fontSize: 10, fontWeight: "700", color: colors.primary }}>今日 {bpm}</Text>
-              <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }}>卒業 {progress.targetBpm}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }} numberOfLines={1}>
+              開始 {progress.startBpm}
+            </Text>
+            <View
+              testID="phrase-result-progress-track"
+              style={{ flex: 1 }}
+              onLayout={(e: LayoutChangeEvent) => setTrackWidth(e.nativeEvent.layout.width)}
+            >
+              <BarMarker
+                testIDPrefix="phrase-result-today"
+                label={`今日 ${bpm}`}
+                ratio={todayRatio}
+                trackWidth={trackWidth}
+                placement="above"
+                color={colors.primary}
+                emphasized
+              />
+              <ProgressBar ratio={todayRatio} accessibilityLabel={`${phrase.name}の進捗`} />
+              <BarMarker
+                testIDPrefix="phrase-result-previous"
+                label={`前回 ${progress.currentBpm}`}
+                ratio={previousRatio}
+                trackWidth={trackWidth}
+                placement="below"
+                color={colors.onSurfaceVariant}
+              />
             </View>
+            <Text style={{ fontSize: 10, color: colors.onSurfaceVariant }} numberOfLines={1}>
+              卒業 {progress.targetBpm}
+            </Text>
           </View>
         )}
 
@@ -212,6 +231,74 @@ export function PhraseResultSheet({
         </View>
       </View>
     </BottomSheet>
+  );
+}
+
+/** BPMを開始BPM〜卒業BPMのバー上の位置（0〜1）に変換する。開始と卒業が同じなら卒業以上で1、未満で0 */
+function ratioOnBar(value: number, progress: PhraseProgressSummary): number {
+  const span = progress.targetBpm - progress.startBpm;
+  if (span <= 0) return value >= progress.targetBpm ? 1 : 0;
+  return Math.max(0, Math.min(1, (value - progress.startBpm) / span));
+}
+
+const MARKER_TICK_WIDTH = 2;
+const MARKER_TICK_HEIGHT = 4;
+
+type BarMarkerProps = {
+  testIDPrefix: string;
+  label: string;
+  /** バー上の位置（0〜1） */
+  ratio: number;
+  trackWidth: number;
+  placement: "above" | "below";
+  color: string;
+  emphasized?: boolean;
+};
+
+/** 進捗バーの上か下に、値の位置を指す目盛りとラベルを置く。ラベルはバーの中央より左なら右へ、右なら左へ伸ばす */
+function BarMarker({ testIDPrefix, label, ratio, trackWidth, placement, color, emphasized = false }: BarMarkerProps) {
+  const paddingStyle =
+    placement === "above" ? { paddingBottom: MARKER_TICK_HEIGHT } : { paddingTop: MARKER_TICK_HEIGHT };
+  const textStyle = { fontSize: 10, fontWeight: emphasized ? ("700" as const) : ("400" as const), color };
+
+  // 幅が分かる前も同じ高さを確保し、測り終えた瞬間にシートの中身が下にずれないようにする
+  if (trackWidth <= 0) {
+    return (
+      <View style={paddingStyle} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        <Text numberOfLines={1} maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER} style={[textStyle, { opacity: 0 }]}>
+          {label}
+        </Text>
+      </View>
+    );
+  }
+
+  const x = ratio * trackWidth;
+  const tickLeft = Math.max(0, Math.min(trackWidth - MARKER_TICK_WIDTH, x - MARKER_TICK_WIDTH / 2));
+  const labelPosition =
+    ratio < 0.5 ? { alignSelf: "flex-start" as const, left: x } : { alignSelf: "flex-end" as const, right: trackWidth - x };
+
+  return (
+    <View style={paddingStyle}>
+      <View
+        testID={`${testIDPrefix}-tick`}
+        style={{
+          position: "absolute",
+          [placement === "above" ? "bottom" : "top"]: 0,
+          left: tickLeft,
+          width: MARKER_TICK_WIDTH,
+          height: MARKER_TICK_HEIGHT,
+          backgroundColor: color,
+        }}
+      />
+      <Text
+        testID={`${testIDPrefix}-marker`}
+        numberOfLines={1}
+        maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
+        style={[textStyle, { fontVariant: ["tabular-nums"] }, labelPosition]}
+      >
+        {label}
+      </Text>
+    </View>
   );
 }
 
