@@ -28,9 +28,11 @@ type Props = {
   code: number;
   /** 今日のメニューに次の1本があるとき、その練習を始める。次が無ければ渡さない */
   onStartNextPhrase?: () => void;
+  /** 動画の入力シートを開く。練習中のフレーズが無いときの「別の動画を読み込む」から呼ぶ */
+  onOpenAddVideo: () => void;
 };
 
-export function VideoErrorCard({ code, onStartNextPhrase }: Props) {
+export function VideoErrorCard({ code, onStartNextPhrase, onOpenAddVideo }: Props) {
   const reloadVideo = usePracticeStore((s) => s.reloadVideo);
   const activePhrase = usePracticeStore((s) => s.activePhrasePractice?.phrase ?? null);
   const hasActivePhrase = activePhrase !== null;
@@ -70,11 +72,18 @@ export function VideoErrorCard({ code, onStartNextPhrase }: Props) {
           accessibilityHint="アーカイブまたは削除を選べます"
         />
       ) : null}
-      <Button
-        label={hasActivePhrase ? "今日のメニューに戻る" : "別の動画を読み込む"}
-        onPress={closeVideo}
-        variant={canReload || canStartNext ? "ghost" : "primary"}
-      />
+      {hasActivePhrase ? (
+        <Button
+          label="今日のメニューに戻る"
+          onPress={closeVideo}
+          variant={canReload || canStartNext ? "ghost" : "primary"}
+        />
+      ) : (
+        <>
+          <Button label="別の動画を読み込む" onPress={onOpenAddVideo} variant={canReload ? "ghost" : "primary"} />
+          <Button label="動画を閉じる" onPress={closeVideo} variant="ghost" />
+        </>
+      )}
     </Card>
   );
 }
