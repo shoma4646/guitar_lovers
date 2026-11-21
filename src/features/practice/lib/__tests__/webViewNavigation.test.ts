@@ -11,6 +11,7 @@ import {
   shouldAllowPlayerNavigation,
 } from "../webViewNavigation";
 import { YOUTUBE_EMBED_ORIGIN } from "../youtubeHtml";
+import { YOUTUBE_TERMS_URL } from "@/shared/constants/links";
 
 describe("shouldAllowPlayerNavigation", () => {
   it("about:blank・プレイヤーHTMLのorigin配下・iframe内のembedは許可する", () => {
@@ -68,7 +69,20 @@ describe("isAllowedExternalUrl", () => {
     "https://www.youtube.com/watch?v=x",
     "https://youtube.com/watch?v=x",
     "https://m.youtube.com/watch?v=x",
-    "https://youtu.be/x",
+    "https://youtu.be/dQw4w9WgXcQ",
+    "https://youtu.be/dQw4w9WgXcQ?t=30",
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "https://www.youtube.com/",
+    "https://www.youtube.com",
+    "https://www.youtube.com/@handle",
+    "https://www.youtube.com/channel/UCxxxx",
+    "https://www.youtube.com/c/name",
+    "https://www.youtube.com/user/name",
+    "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+    "https://www.youtube.com/playlist?list=PL1",
+    "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    YOUTUBE_TERMS_URL,
+    "https://support.google.com/youtube/answer/1",
     "https://policies.google.com/privacy",
     "https://WWW.YOUTUBE.COM/watch?v=x",
     "https://www.youtube.com:443/watch?v=x",
@@ -123,7 +137,26 @@ describe("isAllowedExternalUrl", () => {
   });
 
   it.each([
+    "https://www.youtube.com/attribution_link?u=%2Fredirect%3Fq%3Dhttps%3A%2F%2Fexample.com",
+    "https://m.youtube.com/attribution_link?u=%2Fredirect%3Fq%3Dhttps%3A%2F%2Fexample.com",
+    "https://youtube.com/attribution_link?u=%2Fredirect%3Fq%3Dhttps%3A%2F%2Fexample.com",
+    "https://www.youtube.com/ATTRIBUTION_LINK?u=%2Fredirect%3Fq%3Dhttps%3A%2F%2Fexample.com",
+    "https://www.youtube.com/%61ttribution_link?u=%2Fredirect%3Fq%3Dhttps%3A%2F%2Fexample.com",
+    "https://www.youtube.com/./attribution_link?u=%2Fredirect%3Fq%3Dhttps%3A%2F%2Fexample.com",
+    "https://www.youtube.com/watch/../attribution_link?u=%2Fredirect",
+    "https://www.youtube.com/logout?continue=https://example.com",
+    "https://www.youtube.com/signin?next=https://example.com",
     "https://www.youtube.com/redirects-guide",
+    "https://www.youtube.com/@",
+    "https://youtu.be/x",
+    "https://youtu.be/",
+    "https://youtu.be/redirect",
+    "https://youtu.be/dQw4w9WgXcQ/extra",
+  ])("youtube.com系の許可リストに無いパス %s は外部で開かない", (url) => {
+    expect(isAllowedExternalUrl(url)).toBe(false);
+  });
+
+  it.each([
     "https://www.youtube.com/watch?v=x&next=/redirect",
     "https://support.google.com/youtube/answer/1",
     "https://www.youtube.com/channel/url",
@@ -155,11 +188,34 @@ describe("isAllowedExternalUrl", () => {
     );
   });
 
-  it("許可リストのホストの転送パス以外は開いてよい", () => {
+  it("Google系の許可ホストでは転送パス以外は開いてよい", () => {
     fc.assert(
-      fc.property(fc.constantFrom(...EXTERNAL_LINK_HOSTS), fc.webPath(), (h, path) => {
+      fc.property(fc.constantFrom("policies.google.com", "support.google.com"), fc.webPath(), (h, path) => {
         fc.pre(!/redirect|url|\.\.|%/i.test(path));
         expect(isAllowedExternalUrl(`https://${h}${path}`)).toBe(true);
+      }),
+    );
+  });
+
+  const youTubeSiteHost = fc.constantFrom("youtube.com", "www.youtube.com", "m.youtube.com");
+  const allowedFirstSegment = fc.constantFrom("watch", "shorts", "channel", "c", "user", "playlist", "embed", "t");
+
+  it("youtube.com系では許可した先頭セグメントの下なら開いてよい", () => {
+    fc.assert(
+      fc.property(youTubeSiteHost, allowedFirstSegment, fc.webPath(), (h, first, rest) => {
+        fc.pre(!/\.\.|%/.test(rest));
+        expect(isAllowedExternalUrl(`https://${h}/${first}${rest}`)).toBe(true);
+      }),
+    );
+  });
+
+  it("youtube.com系では許可リストに無い先頭セグメントなら開かない", () => {
+    const first = fc
+      .stringMatching(/^[a-z0-9_-]{1,20}$/)
+      .filter((seg) => !["watch", "shorts", "channel", "c", "user", "playlist", "embed", "t"].includes(seg));
+    fc.assert(
+      fc.property(youTubeSiteHost, first, fc.constantFrom("", "/x", "?u=/redirect", "#x"), (h, seg, rest) => {
+        expect(isAllowedExternalUrl(`https://${h}/${seg}${rest}`)).toBe(false);
       }),
     );
   });
@@ -213,7 +269,7 @@ describe("openExternally", () => {
 
   it("YouTubeのURLはLinking.openURLで開く", () => {
     openExternally("https://www.youtube.com/watch?v=x");
-    openExternally("https://youtu.be/x");
+    openExternally("https://youtu.be/dQw4w9WgXcQ");
     expect(openURL).toHaveBeenCalledTimes(2);
   });
 
@@ -267,7 +323,7 @@ describe("handlePlayerNavigationRequest", () => {
     warn.mockRestore();
   });
 
-  it.each(["https://www.youtube.com/watch?v=x", "https://youtu.be/x", "https://policies.google.com/privacy"])(
+  it.each(["https://www.youtube.com/watch?v=x", "https://youtu.be/dQw4w9WgXcQ", "https://policies.google.com/privacy"])(
     "トップフレームの %s は従来どおり外部で開く",
     (url) => {
       expect(handlePlayerNavigationRequest({ url, isTopFrame: true })).toBe(false);
