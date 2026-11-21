@@ -29,7 +29,16 @@ export const EXTERNAL_LINK_HOSTS = [
   "support.google.com",
 ] as const;
 
-/** 許可ホスト上でも、行き先を自由に指定できる転送用のパス（先頭セグメント、小文字） */
+/** youtube.com系のホスト。転送用のパスが名前を変えて増えても通さないよう、通してよいパスだけを並べる */
+const YOUTUBE_SITE_HOSTS = ["youtube.com", "www.youtube.com", "m.youtube.com"] as const;
+
+/** youtube.com系のホストで外部で開いてよいパスの先頭セグメント（小文字）。トップ（/）と「@ハンドル」は別に許可する */
+const YOUTUBE_ALLOWED_FIRST_SEGMENTS = ["watch", "shorts", "channel", "c", "user", "playlist", "embed", "t"] as const;
+
+/** youtu.beの短縮URLのパス（11文字の動画ID） */
+const YOUTU_BE_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
+
+/** Google系の許可ホスト上でも、行き先を自由に指定できる転送用のパス（先頭セグメント、小文字） */
 const REDIRECT_PATH_SEGMENTS = ["redirect", "url"] as const;
 
 /** https URLをホスト名（小文字）とパス部分に分ける。ユーザー情報・ポートは除き、ホストが取り出せなければnull */
@@ -41,8 +50,8 @@ function splitHttpsUrl(url: string): { host: string; path: string } | null {
   return host === "" ? null : { host: host.toLowerCase(), path: match[2] };
 }
 
-/** パスを%復号し、「/」「\」で区切って空・「.」「..」を解決した先頭セグメントを小文字で返す。復号できなければnull */
-function firstPathSegment(path: string): string | null {
+/** パスを%復号し、「/」「\」で区切って空・「.」「..」を解決したセグメントを返す（大文字小文字はそのまま）。復号できなければnull */
+function resolvePathSegments(path: string): string[] | null {
   let decoded: string;
   try {
     decoded = decodeURIComponent(path);
@@ -55,20 +64,32 @@ function firstPathSegment(path: string): string | null {
     if (segment === "..") resolved.pop();
     else resolved.push(segment);
   }
-  return (resolved[0] ?? "").toLowerCase();
+  return resolved;
+}
+
+function isAllowedYouTubeSitePath(segments: string[]): boolean {
+  const first = segments[0]?.toLowerCase();
+  if (first === undefined) return true;
+  if (first.length > 1 && first.startsWith("@")) return true;
+  return (YOUTUBE_ALLOWED_FIRST_SEGMENTS as readonly string[]).includes(first);
 }
 
 /**
  * プレイヤーの外へ出るURLを外部で開いてよいか
- * httpsで、ホストがEXTERNAL_LINK_HOSTSのいずれかと完全一致し、パスが転送用（/redirect・/url）でないときだけ許可する
+ * httpsで、ホストがEXTERNAL_LINK_HOSTSのいずれかと完全一致し、さらにパスが次を満たすときだけ許可する。
+ * youtube.com系は動画・チャンネル・再生リスト・利用規約などの許可したパスだけ、youtu.beは動画IDだけ、
+ * Google系は転送用（/redirect・/url）以外
  * @param url - 開こうとしているURL
  */
 export function isAllowedExternalUrl(url: string): boolean {
   const parts = splitHttpsUrl(url);
   if (parts === null) return false;
   if (!(EXTERNAL_LINK_HOSTS as readonly string[]).includes(parts.host)) return false;
-  const segment = firstPathSegment(parts.path);
-  return segment !== null && !(REDIRECT_PATH_SEGMENTS as readonly string[]).includes(segment);
+  const segments = resolvePathSegments(parts.path);
+  if (segments === null) return false;
+  if ((YOUTUBE_SITE_HOSTS as readonly string[]).includes(parts.host)) return isAllowedYouTubeSitePath(segments);
+  if (parts.host === "youtu.be") return segments.length === 1 && YOUTU_BE_VIDEO_ID.test(segments[0]);
+  return !(REDIRECT_PATH_SEGMENTS as readonly string[]).includes((segments[0] ?? "").toLowerCase());
 }
 
 /**
