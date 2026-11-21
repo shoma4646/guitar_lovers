@@ -34,3 +34,13 @@ jobs:
         run: npx jest --forceExit
         env:
           TZ: UTC
+
+      - name: Test (TZ=Europe/Berlin)
+        run: npx jest --forceExit
+        env:
+          TZ: Europe/Berlin
+
+      - name: Test (TZ=America/New_York)
+        run: npx jest --forceExit
+        env:
+          TZ: America/New_York
