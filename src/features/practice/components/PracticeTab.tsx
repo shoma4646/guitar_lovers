@@ -617,6 +617,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           {playerError !== null ? (
             <VideoErrorCard
               code={playerError}
+              onOpenAddVideo={onOpenAddVideo}
               onStartNextPhrase={
                 nextMenuEntry
                   ? () => handleStartPhrase(nextMenuEntry.phrase, nextMenuEntry.today.targetBeforeToday)
