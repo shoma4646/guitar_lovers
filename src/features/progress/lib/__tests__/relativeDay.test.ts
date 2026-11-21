@@ -24,4 +24,29 @@ describe("formatRelativeDay", () => {
     const iso = local(2026, 10, 31, 22).toISOString();
     expect(formatRelativeDay(iso, local(2026, 11, 1, 7))).toBe("昨日");
   });
+
+  it.each([
+    [
+      "Europe/Berlin の夏時間が始まる日（23時間）",
+      local(2026, 3, 29, 21),
+      local(2026, 3, 30, 0, 30),
+    ],
+    [
+      "America/New_York の夏時間が始まる日（23時間）",
+      local(2026, 3, 8, 21),
+      local(2026, 3, 9, 0, 30),
+    ],
+    [
+      "Europe/Berlin の冬時間に戻る日（25時間）",
+      local(2026, 10, 24, 21),
+      local(2026, 10, 25, 23, 30),
+    ],
+    [
+      "America/New_York の冬時間に戻る日（25時間）",
+      local(2026, 10, 31, 21),
+      local(2026, 11, 1, 23, 30),
+    ],
+  ])("%s をまたいだ前日の記録も「昨日」", (_label, recordedAt, now) => {
+    expect(formatRelativeDay(recordedAt.toISOString(), now)).toBe("昨日");
+  });
 });

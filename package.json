@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "jest && npm run test:tz",
-    "test:tz": "TZ=Europe/Berlin jest --testPathPattern \"(localDay|calcStats|relativeVideoDate|FavoritesTab|sameLocalDay)\""
+    "test:tz": "TZ=Europe/Berlin jest && TZ=America/New_York jest"
   },
   "expo": {
     "install": {
