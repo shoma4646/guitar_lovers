@@ -45,7 +45,7 @@ describe("FavoritesTab の読み上げ", () => {
     const recent = screen.getByRole("button", { name: /最近の動画/ });
     fireEvent(recent, "accessibilityAction", { nativeEvent: { actionName: "toggleFavorite" } });
     expect(mockToggleFavorite).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "add", video: expect.objectContaining({ videoId: "rec1" }) }),
+      expect.objectContaining({ type: "add", video: expect.objectContaining({ videoId: "rec1", title: "最近の動画" }) }),
     );
   });
 

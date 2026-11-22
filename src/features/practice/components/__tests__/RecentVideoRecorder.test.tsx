@@ -173,3 +173,16 @@ describe("同じ動画のまま切り替えたとき", () => {
     await expectRecentHead(TARGET, since);
   });
 });
+
+describe("最近見た動画に記録する内容", () => {
+  it("読み込んだときの動画名で記録する", async () => {
+    renderWithRecorder();
+
+    usePracticeStore.getState().loadVideo(OTHER, "名前が変わった動画");
+
+    await waitFor(async () => {
+      const [head] = await getRecentVideos();
+      expect(head).toMatchObject({ videoId: OTHER, title: "名前が変わった動画" });
+    });
+  });
+});

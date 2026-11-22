@@ -111,6 +111,53 @@ function alertButtons(title: string): AlertButton[] {
   return call[2] as AlertButton[];
 }
 
+describe("PracticeTab でフレーズとして保存するデータ", () => {
+  function prepareDecimalLoop(videoTitle: string) {
+    act(() => {
+      const store = usePracticeStore.getState();
+      store.loadVideo(PHRASE.videoId, videoTitle);
+      store.setDuration(120);
+      store.setPlaybackRate(0.75);
+      store.setABLoop({ pointA: 30.4, pointB: 41.7, enabled: true });
+    });
+  }
+
+  it("小数の区間・0.75倍・保存時BPMをそのまま保存する", async () => {
+    jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    prepareDecimalLoop(PHRASE.videoTitle);
+    render(<PracticeTab onOpenAddVideo={jest.fn()} />);
+
+    await save();
+
+    expect(mockSavePhraseAsync).toHaveBeenCalledTimes(1);
+    const saved = mockSavePhraseAsync.mock.calls[0][0];
+    expect(saved).toEqual({
+      id: "uuid",
+      videoId: PHRASE.videoId,
+      videoTitle: "テスト動画",
+      name: "サビ",
+      startSec: 30.4,
+      endSec: 41.7,
+      currentBpm: 90,
+      initialBpm: 90,
+      targetBpm: 130,
+      playbackRate: 0.75,
+      createdAt: expect.any(String),
+      updatedAt: saved.createdAt,
+    });
+  });
+
+  it("動画名が取れていないときは動画IDを含む代替名で保存する", async () => {
+    jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    prepareDecimalLoop("");
+    render(<PracticeTab onOpenAddVideo={jest.fn()} />);
+
+    await save();
+
+    expect(mockSavePhraseAsync.mock.calls[0][0].videoTitle).toBe(`YouTube動画 (${PHRASE.videoId})`);
+  });
+});
+
 describe("PracticeTab で区間をフレーズとして保存した直後", () => {
   it("そのまま練習中になり、回数0・目標BPMが保存時の現在BPMの練習中バーが出る", async () => {
     jest.spyOn(Alert, "alert").mockImplementation(() => {});
