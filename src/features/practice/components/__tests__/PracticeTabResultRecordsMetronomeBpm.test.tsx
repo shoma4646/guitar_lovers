@@ -141,3 +141,40 @@ describe("PracticeTab の記録するBPM", () => {
     expect((await getPracticePhrases())[0].currentBpm).toBe(MOCK_METRONOME_BPM);
   });
 });
+
+describe("PracticeTab の記録する回数", () => {
+  async function recordAfterReps(reps: number) {
+    await savePracticePhrase(PHRASE);
+    act(() => {
+      const store = usePracticeStore.getState();
+      store.startPhrasePractice(PHRASE, GOAL_BPM);
+      for (let i = 0; i < reps; i++) store.incrementCompletedReps();
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PracticeTab onOpenAddVideo={jest.fn()} />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+
+    act(() => sessionBar().onFinish());
+    await act(async () => {
+      await resultSheet().onSubmit({ result: "partial" }, "finish");
+    });
+    return getPhraseAttempts();
+  }
+
+  it("2回弾いてから記録すると、記録に回数2が入る", async () => {
+    const attempts = await recordAfterReps(2);
+
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({ phraseId: PHRASE.id, result: "partial", reps: 2 });
+  });
+
+  it("1回も弾かずに記録すると、記録に回数を入れない", async () => {
+    const attempts = await recordAfterReps(0);
+
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).not.toHaveProperty("reps");
+  });
+});

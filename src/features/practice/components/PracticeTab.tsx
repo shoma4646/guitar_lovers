@@ -19,7 +19,7 @@ import * as Haptics from "expo-haptics";
 import { usePracticeStore, type PlaybackRate } from "@/stores/practice";
 import { colors, radius } from "@/shared/theme";
 import { IconButton } from "@/shared/components/atoms/IconButton";
-import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
+import type { PracticePhrase } from "@/shared/types/models";
 import { useSavePracticePhrase } from "@/features/practice/api/useSavePracticePhrase";
 import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseResult";
 import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePracticePhrase";
@@ -30,6 +30,7 @@ import { useRunAfterDismiss } from "@/shared/hooks/useRunAfterDismiss";
 import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { useReminderPermissionPrompt } from "@/features/reminder/hooks/useReminderPermissionPrompt";
 import { resolveCurrentBpm } from "@/features/practice/lib/progression";
+import { buildPhraseAttempt, buildPracticePhrase } from "@/features/practice/lib/practiceRecords";
 import { filterOpenMenuEntries, pickNextMenuEntry, planAfterResult } from "@/features/practice/lib/afterResult";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
 import { formatDuration, formatSpokenDuration } from "@/features/practice/lib/formatters";
@@ -254,21 +255,14 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         Alert.alert("エラー", "B点はA点より後に設定してください");
         throw new Error("区間が不正");
       }
-      const now = new Date().toISOString();
-      const phrase: PracticePhrase = {
+      const phrase = buildPracticePhrase({
         id: randomUUID(),
-        videoId: loadedVideoId,
-        videoTitle: videoTitle || `YouTube動画 (${loadedVideoId})`,
-        name: input.name,
-        startSec: abLoop.pointA,
-        endSec: abLoop.pointB,
-        currentBpm: input.currentBpm,
-        initialBpm: input.currentBpm,
-        targetBpm: input.targetBpm,
+        input,
+        range: { pointA: abLoop.pointA, pointB: abLoop.pointB },
+        video: { videoId: loadedVideoId, title: videoTitle },
         playbackRate,
-        createdAt: now,
-        updatedAt: now,
-      };
+        now: new Date().toISOString(),
+      });
       await savePhraseAsync(phrase);
       setShowSavePhrase(false);
       const announceSaved = () =>
@@ -359,17 +353,14 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       isSubmittingResultRef.current = true;
       setIsSubmittingResult(true);
       try {
-        const date = new Date().toISOString();
-        const bpm = metronomeBpm;
-        const attempt: PhraseAttempt = {
+        const attempt = buildPhraseAttempt({
           id: pendingAttemptId ?? randomUUID(),
           phraseId: activePractice.phrase.id,
-          date,
-          bpm,
+          date: new Date().toISOString(),
+          bpm: metronomeBpm,
           result,
-          // repsは正の整数のみ保存できる（0を渡すと記録の保存自体が失敗する）
-          ...(activePractice.completedReps > 0 ? { reps: activePractice.completedReps } : {}),
-        };
+          completedReps: activePractice.completedReps,
+        });
         try {
           await recordResultAsync(attempt);
         } catch (error) {
