@@ -86,6 +86,8 @@ export const VideoPlayerCard = memo(
           domStorageEnabled
           originWhitelist={PLAYER_ORIGIN_WHITELIST}
           onShouldStartLoadWithRequest={handlePlayerNavigationRequest}
+          // iOSの長押しプレビューはonShouldStartLoadWithRequestを通らずにリンク先を読み込む
+          allowsLinkPreview={false}
           // AndroidのWebViewは遷移判定の返事を250msしか待たず、間に合わなければ許可して進むため事後にも止める
           onLoadStart={(event) => {
             if (!isUnexpectedTopNavigation(event.nativeEvent.url)) return;
