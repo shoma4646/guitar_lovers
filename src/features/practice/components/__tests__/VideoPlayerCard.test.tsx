@@ -5,6 +5,7 @@ import { YOUTUBE_EMBED_ORIGIN } from "@/features/practice/lib/youtubeHtml";
 import { VideoPlayerCard } from "../VideoPlayerCard";
 
 type MockWebViewProps = {
+  allowsLinkPreview?: boolean;
   onLoadStart?: (event: { nativeEvent: { url: string } }) => void;
 };
 const mockWebView: { props: MockWebViewProps | null; stopLoading: jest.Mock } = {
@@ -48,6 +49,14 @@ function loadStart(url: string) {
 beforeEach(() => {
   mockWebView.props = null;
   mockWebView.stopLoading.mockClear();
+});
+
+describe("VideoPlayerCard の長押しの守り", () => {
+  it("リンクの長押しでOS標準のプレビューを出さない（許可リストを通らずに読み込まれるため）", () => {
+    renderCard();
+
+    expect(mockWebView.props?.allowsLinkPreview).toBe(false);
+  });
 });
 
 describe("VideoPlayerCard の事後の遷移の守り", () => {
