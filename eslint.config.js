@@ -14,6 +14,23 @@ module.exports = defineConfig([
     },
   },
   {
+    files: ["src/**/*.{ts,tsx}", "jest.setup.js"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@expo/vector-icons",
+              message:
+                "入口から読み込むと全アイコンセットのフォントが同梱される。@expo/vector-icons/MaterialIcons のようにセットごとのパスから読み込む",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["src/**/*.tsx"],
     rules: {
       "no-restricted-syntax": [

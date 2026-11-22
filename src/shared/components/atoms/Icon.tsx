@@ -8,7 +8,8 @@
  * デザインからの命名差異は本ファイルの `ICON_MAP` で吸収し、画面側は Stitch 命名のまま使える。
  */
 
-import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ComponentProps } from "react";
 import { colors } from "@/shared/theme";
 
