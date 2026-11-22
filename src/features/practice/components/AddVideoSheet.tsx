@@ -7,11 +7,12 @@
  */
 
 import { useState } from "react";
-import { View, Text, TextInput, Pressable } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
 import { Button } from "@/shared/components/atoms/Button";
 import { Icon } from "@/shared/components/atoms/Icon";
+import { TextField } from "@/shared/components/atoms/TextField";
 import { colors, radius } from "@/shared/theme";
 import { useAnnounceOnChange } from "@/shared/hooks/useAnnounceOnChange";
 import { usePracticeStore, extractVideoId } from "@/stores/practice";
@@ -126,29 +127,20 @@ export function AddVideoSheet({ visible, onClose }: Props) {
         )}
 
         <View style={{ flexDirection: "row", gap: 8 }}>
-          <TextInput
+          <TextField
             value={url}
             onChangeText={(text) => {
               setUrl(text);
               setError(null);
             }}
             placeholder="https://youtube.com/watch?v=..."
-            placeholderTextColor={colors.onSurfaceVariant}
             keyboardType="url"
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="go"
             autoFocus
             onSubmitEditing={() => handleSubmit(url)}
-            style={{
-              flex: 1,
-              height: 44,
-              borderRadius: radius.md,
-              paddingHorizontal: 16,
-              backgroundColor: colors.surfaceContainerLow,
-              color: colors.onSurface,
-              fontSize: 16,
-            }}
+            style={{ flex: 1 }}
             accessibilityLabel="YouTube URL入力"
           />
           <Button label="読み込む" onPress={() => handleSubmit(url)} />

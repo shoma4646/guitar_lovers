@@ -6,10 +6,11 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Alert, Text, TextInput, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
 import { Button } from "@/shared/components/atoms/Button";
-import { colors, radius } from "@/shared/theme";
+import { TextField } from "@/shared/components/atoms/TextField";
+import { colors } from "@/shared/theme";
 import { clampBpm } from "@/shared/constants/bpm";
 import { parsePhraseDraft, type SavePhraseInput } from "@/features/practice/lib/parsePhraseDraft";
 
@@ -64,19 +65,10 @@ export function SavePhraseSheet({ visible, onClose, defaultBpm, onSave }: Props)
       <View style={{ gap: 12, paddingTop: 8, paddingBottom: 8 }}>
         <View style={{ gap: 4 }}>
           <Text style={{ fontSize: 12, fontWeight: "600", color: colors.onSurfaceVariant }}>名前</Text>
-          <TextInput
-            style={{
-              height: 44,
-              borderRadius: radius.md,
-              paddingHorizontal: 16,
-              fontSize: 16,
-              backgroundColor: colors.surfaceContainerLow,
-              color: colors.onSurface,
-            }}
+          <TextField
             value={name}
             onChangeText={setName}
             placeholder="例: 速弾きフレーズ1"
-            placeholderTextColor={colors.onSurfaceVariant}
             accessibilityLabel="フレーズ名入力"
           />
         </View>
@@ -84,15 +76,7 @@ export function SavePhraseSheet({ visible, onClose, defaultBpm, onSave }: Props)
         <View style={{ flexDirection: "row", gap: 12 }}>
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={{ fontSize: 12, fontWeight: "600", color: colors.onSurfaceVariant }}>現在BPM</Text>
-            <TextInput
-              style={{
-                height: 44,
-                borderRadius: radius.md,
-                paddingHorizontal: 16,
-                fontSize: 16,
-                backgroundColor: colors.surfaceContainerLow,
-                color: colors.onSurface,
-              }}
+            <TextField
               value={currentBpm}
               onChangeText={setCurrentBpm}
               keyboardType="number-pad"
@@ -101,15 +85,7 @@ export function SavePhraseSheet({ visible, onClose, defaultBpm, onSave }: Props)
           </View>
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={{ fontSize: 12, fontWeight: "600", color: colors.onSurfaceVariant }}>目標BPM</Text>
-            <TextInput
-              style={{
-                height: 44,
-                borderRadius: radius.md,
-                paddingHorizontal: 16,
-                fontSize: 16,
-                backgroundColor: colors.surfaceContainerLow,
-                color: colors.onSurface,
-              }}
+            <TextField
               value={targetBpm}
               onChangeText={setTargetBpm}
               keyboardType="number-pad"
