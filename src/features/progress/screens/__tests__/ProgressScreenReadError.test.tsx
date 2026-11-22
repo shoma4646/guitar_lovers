@@ -10,7 +10,8 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("@/shared/components/molecules/ScreenFrame", () => ({
   ScreenFrame: ({ children }: { children: React.ReactNode }) => children,
 }));
-jest.mock("@expo/vector-icons", () => new Proxy({}, { get: () => () => null }));
+jest.mock("@expo/vector-icons/MaterialIcons", () => () => null);
+jest.mock("@expo/vector-icons/MaterialCommunityIcons", () => () => null);
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock("@/shared/services/storage", () => ({
   getPracticeSessions: jest.fn(),

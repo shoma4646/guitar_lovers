@@ -36,7 +36,5 @@ jest.mock("react-native-reanimated", () => {
 });
 
 // アイコンフォントの解決はネイティブ依存なので、テストでは表示なしの箱に置き換える
-jest.mock("@expo/vector-icons", () => {
-  const { View } = require("react-native");
-  return { MaterialIcons: View, MaterialCommunityIcons: View };
-});
+jest.mock("@expo/vector-icons/MaterialIcons", () => require("react-native").View);
+jest.mock("@expo/vector-icons/MaterialCommunityIcons", () => require("react-native").View);
