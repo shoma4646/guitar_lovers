@@ -1,4 +1,6 @@
-import { render, screen } from "@testing-library/react-native";
+import { render, screen, within } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
+import { colors } from "@/shared/theme";
 import tailwindConfig from "../../../../../tailwind.config.js";
 import { ReminderSettingsSection } from "../ReminderSettingsSection";
 
@@ -59,5 +61,16 @@ describe("ReminderSettingsSection", () => {
     render(<ReminderSettingsSection />);
 
     expect(lineHeightRatioOf(screen.getByText(text).props.className)).toBeGreaterThanOrEqual(1.3);
+  });
+});
+
+describe("ReminderSettingsSection の通知スイッチ", () => {
+  it("共通トグルを使い、ONのトラックは primary・つまみの色は白を明示して渡す", () => {
+    render(<ReminderSettingsSection />);
+    const toggle = screen.getByRole("switch", { name: "練習リマインド" });
+    expect(toggle.props.accessibilityState).toMatchObject({ checked: true });
+    expect(StyleSheet.flatten(toggle.props.style).backgroundColor).toBe(colors.primary);
+    const thumb = within(toggle).getByTestId("toggle-thumb");
+    expect(StyleSheet.flatten(thumb.props.style).backgroundColor).toBe(colors.surfaceContainerLowest);
   });
 });

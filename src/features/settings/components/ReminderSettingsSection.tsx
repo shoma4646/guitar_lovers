@@ -5,9 +5,10 @@
  * OSで通知が拒否されている場合は端末の設定への導線を出す
  */
 
-import { View, Text, Pressable, Switch, Linking, type AccessibilityActionEvent } from "react-native";
+import { View, Text, Pressable, Linking, type AccessibilityActionEvent } from "react-native";
 import { colors, spacing } from "@/shared/theme";
 import { Icon } from "@/shared/components/atoms/Icon";
+import { Toggle } from "@/shared/components/atoms/Toggle";
 import { ReadErrorCard } from "@/shared/components/molecules/ReadErrorCard";
 import { hasReadFailure, refetchAll } from "@/shared/lib/readFailure";
 import { useHoldRepeat } from "@/shared/hooks/useHoldRepeat";
@@ -139,10 +140,9 @@ export function ReminderSettingsSection() {
             前回のBPMと今日の目標をお知らせします。次回の予約はアプリを開いたときに更新されます
           </Text>
         </View>
-        <Switch
+        <Toggle
           value={isActive}
           onValueChange={(value) => void handleToggle(value)}
-          trackColor={{ true: colors.primary, false: colors.outlineVariant }}
           accessibilityLabel="練習リマインド"
         />
       </View>
