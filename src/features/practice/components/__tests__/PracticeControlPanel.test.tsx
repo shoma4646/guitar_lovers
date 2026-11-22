@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, within } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
+import { colors } from "@/shared/theme";
 import type { ABLoop } from "@/shared/types/models";
 import { PracticeControlPanel } from "../PracticeControlPanel";
 
@@ -13,10 +14,12 @@ function renderPanel({
   abLoop,
   hasNoPhrases,
   isAtActivePhraseRange = false,
+  onToggleLoop = jest.fn(),
 }: {
   abLoop: ABLoop;
   hasNoPhrases: boolean;
   isAtActivePhraseRange?: boolean;
+  onToggleLoop?: () => void;
 }) {
   const onOpenSavePhrase = jest.fn();
   render(
@@ -24,7 +27,7 @@ function renderPanel({
       abLoop={abLoop}
       currentTimeShared={{ value: 0 } as never}
       duration={120}
-      onToggleLoop={jest.fn()}
+      onToggleLoop={onToggleLoop}
       onClearLoop={jest.fn()}
       isAtActivePhraseRange={isAtActivePhraseRange}
       onTapPoint={jest.fn()}
@@ -93,5 +96,34 @@ describe("PracticeControlPanel の見出し", () => {
 
     expect(screen.getByRole("header", { name: "ABループ" })).toBeTruthy();
     expect(screen.getAllByRole("header")).toHaveLength(1);
+  });
+});
+
+describe("PracticeControlPanel のABループスイッチ", () => {
+  it.each([
+    [false, colors.outline],
+    [true, colors.primary],
+  ])("enabled=%s のトラックは共通トグルの色（%s）で、つまみは白", (enabled, trackColor) => {
+    renderPanel({ abLoop: { ...VALID_LOOP, enabled }, hasNoPhrases: false });
+    const toggle = screen.getByRole("switch", { name: "ABループの有効・無効" });
+    expect(StyleSheet.flatten(toggle.props.style).backgroundColor).toBe(trackColor);
+    const thumb = within(toggle).getByTestId("toggle-thumb");
+    expect(StyleSheet.flatten(thumb.props.style).backgroundColor).toBe(colors.surfaceContainerLowest);
+  });
+
+  it("押すと onToggleLoop を呼ぶ", () => {
+    const onToggleLoop = jest.fn();
+    renderPanel({ abLoop: VALID_LOOP, hasNoPhrases: false, onToggleLoop });
+    fireEvent.press(screen.getByRole("switch", { name: "ABループの有効・無効" }));
+    expect(onToggleLoop).toHaveBeenCalledTimes(1);
+  });
+
+  it("区間が有効でなければ押せない", () => {
+    const onToggleLoop = jest.fn();
+    renderPanel({ abLoop: { pointA: 10, pointB: null, enabled: false }, hasNoPhrases: false, onToggleLoop });
+    const toggle = screen.getByRole("switch", { name: "ABループの有効・無効" });
+    fireEvent.press(toggle);
+    expect(onToggleLoop).not.toHaveBeenCalled();
+    expect(toggle.props.accessibilityState).toMatchObject({ disabled: true });
   });
 });

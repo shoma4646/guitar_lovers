@@ -12,6 +12,7 @@ import { Card } from "@/shared/components/molecules/Card";
 import { Divider } from "@/shared/components/atoms/Divider";
 import { Icon } from "@/shared/components/atoms/Icon";
 import { IconButton } from "@/shared/components/atoms/IconButton";
+import { Toggle } from "@/shared/components/atoms/Toggle";
 import { colors, radius } from "@/shared/theme";
 import { formatDuration } from "@/features/practice/lib/formatters";
 import { isValidLoopRange } from "@/features/practice/lib/abLoop";
@@ -95,32 +96,13 @@ export function PracticeControlPanel({
           {showClearLoop && (
             <IconButton name="close" size={18} accessibilityLabel="ABループを解除" onPress={onClearLoop} />
           )}
-          <Pressable
-            onPress={onToggleLoop}
+          <Toggle
+            value={abLoop.enabled}
+            onValueChange={onToggleLoop}
             disabled={!canToggleLoop}
             hitSlop={{ top: 10, bottom: 10, left: 0, right: 8 }}
-            accessibilityRole="switch"
-            accessibilityState={{ checked: abLoop.enabled, disabled: !canToggleLoop }}
             accessibilityLabel="ABループの有効・無効"
-            style={{
-              width: 44,
-              height: 24,
-              borderRadius: radius.full,
-              padding: 2,
-              opacity: canToggleLoop ? 1 : 0.4,
-              backgroundColor: abLoop.enabled ? colors.primary : colors.surfaceContainer,
-              alignItems: abLoop.enabled ? "flex-end" : "flex-start",
-            }}
-          >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                backgroundColor: colors.surfaceContainerLowest,
-              }}
-            />
-          </Pressable>
+          />
         </View>
       </View>
 
