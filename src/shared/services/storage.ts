@@ -1,6 +1,6 @@
 /**
  * AsyncStorageを使用したローカルストレージサービス
- * 練習セッション・お気に入り・最近視聴した動画・練習フレーズ・練習結果の永続化を担当する
+ * 練習セッション・お気に入り・最近視聴した動画・練習フレーズ・練習結果・各種設定の永続化を担当する
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -22,6 +22,11 @@ import {
   reminderSettingsSchema,
   type ReminderSettings,
 } from "@/shared/lib/schemas/reminderSettings";
+import {
+  DEFAULT_TUNER_SETTINGS,
+  tunerSettingsSchema,
+  type TunerSettings,
+} from "@/shared/lib/schemas/tunerSettings";
 import { isYouTubeVideoId } from "@/shared/lib/schemas/youtubeVideoId";
 import { clampBpm } from "@/shared/constants/bpm";
 import { PLAYBACK_RATES } from "@/shared/constants/playback";
@@ -34,6 +39,7 @@ export const STORAGE_KEYS = {
   PRACTICE_PHRASES: "@guitar_lovers/practice_phrases",
   PHRASE_ATTEMPTS: "@guitar_lovers/phrase_attempts",
   REMINDER_SETTINGS: "@guitar_lovers/reminder_settings",
+  TUNER_SETTINGS: "@guitar_lovers/tuner_settings",
   SCHEMA_VERSION: "@guitar_lovers/schema_version",
 } as const;
 
@@ -468,6 +474,31 @@ export function updateReminderSettings(
     );
     await writeObject(STORAGE_KEYS.REMINDER_SETTINGS, next);
     return next;
+  });
+}
+
+// ============================================================
+// チューナー設定
+// ============================================================
+
+/**
+ * チューナー設定を取得する。未保存・内容が壊れているときは既定値を返す
+ */
+export function getTunerSettings(): Promise<TunerSettings> {
+  return serialized(() =>
+    readObject(STORAGE_KEYS.TUNER_SETTINGS, tunerSettingsSchema, DEFAULT_TUNER_SETTINGS)
+  );
+}
+
+/**
+ * チューナー設定を保存し、保存した設定を返す
+ * @param settings - 保存する設定
+ */
+export function saveTunerSettings(settings: TunerSettings): Promise<TunerSettings> {
+  return serialized(async () => {
+    const valid = parseForWrite(STORAGE_KEYS.TUNER_SETTINGS, tunerSettingsSchema, settings);
+    await writeObject(STORAGE_KEYS.TUNER_SETTINGS, valid);
+    return valid;
   });
 }
 

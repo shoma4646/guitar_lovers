@@ -8,6 +8,14 @@ jest.mock("@/shared/components/molecules/ScreenFrame", () => ({
 jest.mock("@/shared/hooks/useKeepAwakeWhileFocused", () => ({
   useKeepAwakeWhileFocused: () => {},
 }));
+jest.mock("@/features/tuner/api/useTunerSettings", () => {
+  const loaded = { data: { preset: "standard" }, isPending: false };
+  return { useTunerSettings: () => loaded };
+});
+jest.mock("@/features/tuner/api/useSaveTunerSettings", () => {
+  const save = { mutate: jest.fn() };
+  return { useSaveTunerSettings: () => save };
+});
 
 const mockFocusEffects = new Set<() => void | (() => void)>();
 jest.mock("expo-router", () => {

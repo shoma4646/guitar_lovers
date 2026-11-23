@@ -3,8 +3,11 @@
  * 各チューニングプリセット・弦のノート名・判定閾値を管理する
  */
 
+/** チューニングプリセットの種類の一覧 */
+export const TUNING_PRESET_KEYS = ["standard", "halfStepDown", "dropD"] as const;
+
 /** チューニングプリセットの種類 */
-export type TuningPresetKey = "standard" | "halfStepDown" | "dropD";
+export type TuningPresetKey = (typeof TUNING_PRESET_KEYS)[number];
 
 /** チューニングプリセット定義 */
 export interface TuningPreset {

@@ -9,6 +9,7 @@ import { phraseAttemptSchema } from "@/shared/lib/schemas/phraseAttempt";
 import { favoriteVideoSchema } from "@/shared/lib/schemas/favoriteVideo";
 import { recentVideoSchema } from "@/shared/lib/schemas/recentVideo";
 import { reminderSettingsSchema } from "@/shared/lib/schemas/reminderSettings";
+import { tunerSettingsSchema } from "@/shared/lib/schemas/tunerSettings";
 
 jest.mock("@react-native-async-storage/async-storage", () => mockAsyncStorage);
 
@@ -21,6 +22,7 @@ describe("保存データの形式とスキーマバージョン", () => {
       favoriteVideo: z.toJSONSchema(favoriteVideoSchema),
       recentVideo: z.toJSONSchema(recentVideoSchema),
       reminderSettings: z.toJSONSchema(reminderSettingsSchema),
+      tunerSettings: z.toJSONSchema(tunerSettingsSchema),
     };
 
     expect({ SCHEMA_VERSION, schemas }).toMatchSnapshot(`schema v${SCHEMA_VERSION}`);

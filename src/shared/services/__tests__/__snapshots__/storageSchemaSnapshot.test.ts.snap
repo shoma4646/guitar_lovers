@@ -304,6 +304,24 @@ exports[`保存データの形式とスキーマバージョン 形式を変え�
       ],
       "type": "object",
     },
+    "tunerSettings": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "preset": {
+          "enum": [
+            "standard",
+            "halfStepDown",
+            "dropD",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "preset",
+      ],
+      "type": "object",
+    },
   },
 }
 `;
