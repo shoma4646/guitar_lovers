@@ -36,8 +36,10 @@ import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress"
 import { formatDuration, formatSpokenDuration } from "@/features/practice/lib/formatters";
 import {
   applyPoint,
+  didClearOppositePoint,
   isAtPhraseRange,
   isValidLoopRange,
+  pointSetAnnouncement,
   resolvePointTime,
 } from "@/features/practice/lib/abLoop";
 import { stepBpm } from "@/features/practice/lib/tempo";
@@ -467,9 +469,16 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       const playbackTime =
         at === "pressIn" ? (pointPressInTimeRef.current ?? currentTimeRef.current) : currentTimeRef.current;
       const time = resolvePointTime(point, playbackTime, duration);
-      setABLoop(applyPoint(abLoop, point, time));
-      void Haptics.selectionAsync();
-      AccessibilityInfo.announceForAccessibility(`${point}点を${formatSpokenDuration(time)}に設定`);
+      const next = applyPoint(abLoop, point, time);
+      setABLoop(next);
+      if (didClearOppositePoint(abLoop, next, point)) {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      } else {
+        void Haptics.selectionAsync();
+      }
+      AccessibilityInfo.announceForAccessibility(
+        pointSetAnnouncement(abLoop, next, point, formatSpokenDuration(time)),
+      );
     },
     [abLoop, duration, setABLoop],
   );

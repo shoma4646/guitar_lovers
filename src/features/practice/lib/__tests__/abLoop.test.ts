@@ -1,5 +1,12 @@
 import * as fc from "fast-check";
-import { applyPoint, isAtPhraseRange, isValidLoopRange, resolvePointTime } from "../abLoop";
+import {
+  applyPoint,
+  didClearOppositePoint,
+  isAtPhraseRange,
+  isValidLoopRange,
+  pointSetAnnouncement,
+  resolvePointTime,
+} from "../abLoop";
 import { markerRatios } from "../seekBar";
 import type { ABLoop } from "@/shared/types/models";
 
@@ -108,6 +115,74 @@ describe("resolvePointTime", () => {
           if (markers.length === 2) expect(markers[0].ratio).toBeLessThanOrEqual(markers[1].ratio);
         }
       }),
+    );
+  });
+});
+
+describe("didClearOppositePoint", () => {
+  it("A点がB点を追い越したときだけtrue", () => {
+    const before = loop({ pointA: 10, pointB: 20, enabled: true });
+    expect(didClearOppositePoint(before, applyPoint(before, "A", 25), "A")).toBe(true);
+    expect(didClearOppositePoint(before, applyPoint(before, "A", 15), "A")).toBe(false);
+  });
+
+  it("B点がA点より前に来たときだけtrue", () => {
+    const before = loop({ pointA: 10, pointB: 20, enabled: true });
+    expect(didClearOppositePoint(before, applyPoint(before, "B", 5), "B")).toBe(true);
+    expect(didClearOppositePoint(before, applyPoint(before, "B", 30), "B")).toBe(false);
+  });
+
+  it("反対側が未設定なら、どこに設定してもfalse", () => {
+    expect(didClearOppositePoint(loop(), applyPoint(loop(), "A", 25), "A")).toBe(false);
+    expect(didClearOppositePoint(loop(), applyPoint(loop(), "B", 5), "B")).toBe(false);
+  });
+
+  it("任意の区間と設定で、trueになるのは反対側が設定済みから未設定に変わったときと一致する", () => {
+    const point = fc.option(fc.double({ min: 0, max: 600, noNaN: true }), { nil: null });
+    fc.assert(
+      fc.property(
+        point,
+        point,
+        fc.boolean(),
+        fc.constantFrom<"A" | "B">("A", "B"),
+        fc.double({ min: 0, max: 600, noNaN: true }),
+        (pointA, pointB, enabled, which, time) => {
+          const before = loop({ pointA, pointB, enabled });
+          const after = applyPoint(before, which, time);
+          const opposite = which === "A" ? "pointB" : "pointA";
+          expect(didClearOppositePoint(before, after, which)).toBe(
+            before[opposite] !== null && after[opposite] === null,
+          );
+        },
+      ),
+    );
+  });
+});
+
+describe("pointSetAnnouncement", () => {
+  it("反対側を消さないときは「A点を◯に設定」だけ", () => {
+    const before = loop({ pointA: 10, pointB: 20, enabled: true });
+    expect(pointSetAnnouncement(before, applyPoint(before, "A", 15), "A", "15秒")).toBe("A点を15秒に設定");
+  });
+
+  it("ループ中にA点がB点を追い越すと、B点の解除とループOFFを1文で伝える", () => {
+    const before = loop({ pointA: 10, pointB: 20, enabled: true });
+    expect(pointSetAnnouncement(before, applyPoint(before, "A", 25), "A", "25秒")).toBe(
+      "A点を25秒に設定。B点を解除し、ABループをオフにしました",
+    );
+  });
+
+  it("B点をA点より前にすると、A点の解除を伝える", () => {
+    const before = loop({ pointA: 10, pointB: 20, enabled: true });
+    expect(pointSetAnnouncement(before, applyPoint(before, "B", 5), "B", "5秒")).toBe(
+      "B点を5秒に設定。A点を解除し、ABループをオフにしました",
+    );
+  });
+
+  it("ループがもともとOFFなら「ABループをオフ」とは言わない", () => {
+    const before = loop({ pointA: 10, pointB: 20, enabled: false });
+    expect(pointSetAnnouncement(before, applyPoint(before, "A", 25), "A", "25秒")).toBe(
+      "A点を25秒に設定。B点を解除しました",
     );
   });
 });
