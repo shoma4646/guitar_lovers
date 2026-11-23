@@ -7,6 +7,7 @@ import type { PitchDetectorState } from "@/features/tuner/hooks/usePitchDetector
 import { SCHEMA_VERSION, STORAGE_KEYS, saveTunerSettings } from "@/shared/services/storage";
 import { tunerQueryKeys } from "@/features/tuner/api/useTunerSettings";
 import { createTestQueryClient } from "@/shared/testing/createTestQueryClient";
+import { createAppQueryClient } from "@/shared/lib/createAppQueryClient";
 import { TunerScreen } from "../TunerScreen";
 
 jest.mock("@react-native-async-storage/async-storage", () =>
@@ -173,6 +174,32 @@ describe("TunerScreen の保存値が使えないときはスタンダードで�
 });
 
 describe("TunerScreen は保存したプリセットを読み終えるまで判定を出さない", () => {
+  it("読み出しに失敗したら、アプリと同じ再試行設定のままでもすぐスタンダードで判定を出す", async () => {
+    const getItem = AsyncStorage.getItem as jest.Mock;
+    const originalImpl = getItem.getMockImplementation()!;
+    getItem.mockImplementation(async (key: string) => {
+      if (key === STORAGE_KEYS.TUNER_SETTINGS) throw new Error("read failed");
+      return originalImpl(key);
+    });
+    mockDetector = listening(110);
+    const client = createAppQueryClient();
+
+    try {
+      const view = render(
+        <QueryClientProvider client={client}>
+          <TunerScreen />
+        </QueryClientProvider>,
+      );
+
+      await waitFor(() => expect(screen.getByTestId("tuner-note").props.children).toBe("A2"));
+      expect(checkedPresetLabel()).toBe("スタンダード");
+      view.unmount();
+    } finally {
+      client.clear();
+      getItem.mockImplementation(originalImpl);
+    }
+  });
+
   it("半音下げを保存済みでEb2を鳴らしても、読み込み前に「締める」と出さず、読み込み後は合っていると出す", async () => {
     await AsyncStorage.setItem(STORAGE_KEYS.TUNER_SETTINGS, JSON.stringify({ preset: "halfStepDown" }));
     mockDetector = listening(77.78);

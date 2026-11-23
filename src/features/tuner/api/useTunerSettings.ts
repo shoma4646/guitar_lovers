@@ -14,5 +14,7 @@ export function useTunerSettings() {
     queryFn: getTunerSettings,
     // 端末内の読み出しなので、オフライン扱いでも止めない（止まるとチューナーが判定を出せなくなる）
     networkMode: "always",
+    // 再試行の間（既定で約7秒）は判定を出せないため、失敗したらすぐ既定のプリセットで始める
+    retry: false,
   });
 }
