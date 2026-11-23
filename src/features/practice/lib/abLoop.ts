@@ -64,3 +64,34 @@ export function applyPoint(abLoop: ABLoop, point: "A" | "B", time: number): ABLo
     enabled: invalidatesA ? false : abLoop.enabled,
   };
 }
+
+/**
+ * 点の設定で反対側の点が解除されたか（設定前は反対側があり、設定後に無くなったか）
+ * @param before - 設定前のABループ
+ * @param after - applyPoint で設定した後のABループ
+ * @param point - 設定した点
+ */
+export function didClearOppositePoint(before: ABLoop, after: ABLoop, point: "A" | "B"): boolean {
+  const opposite = point === "A" ? "pointB" : "pointA";
+  return before[opposite] !== null && after[opposite] === null;
+}
+
+/**
+ * 点を設定したときの読み上げ文。反対側を解除したときは、その旨とループOFFも1文にまとめる
+ * @param before - 設定前のABループ
+ * @param after - applyPoint で設定した後のABループ
+ * @param point - 設定した点
+ * @param spokenTime - 設定した時刻の読み上げ表記（例: "25秒"）
+ */
+export function pointSetAnnouncement(
+  before: ABLoop,
+  after: ABLoop,
+  point: "A" | "B",
+  spokenTime: string,
+): string {
+  const setText = `${point}点を${spokenTime}に設定`;
+  if (!didClearOppositePoint(before, after, point)) return setText;
+  const opposite = point === "A" ? "B" : "A";
+  const loopTurnedOff = before.enabled && !after.enabled;
+  return `${setText}。${opposite}点を解除${loopTurnedOff ? "し、ABループをオフにしました" : "しました"}`;
+}

@@ -16,6 +16,8 @@ jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock("expo-crypto", () => ({ randomUUID: () => "uuid" }));
 jest.mock("expo-haptics", () => ({
   selectionAsync: jest.fn(async () => {}),
+  notificationAsync: jest.fn(async () => {}),
+  NotificationFeedbackType: { Success: "success", Warning: "warning", Error: "error" },
 }));
 jest.mock("@/features/practice/api/useSavePracticePhrase", () => ({
   useSavePracticePhrase: () => ({ mutateAsync: jest.fn() }),
@@ -82,6 +84,7 @@ beforeEach(() => {
   mockPlayer.onTimeUpdate = null;
   mockPlayer.onDurationReady = null;
   jest.mocked(Haptics.selectionAsync).mockClear();
+  jest.mocked(Haptics.notificationAsync).mockClear();
   announceSpy = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => {});
 });
 
@@ -89,10 +92,10 @@ afterEach(() => {
   announceSpy.mockRestore();
 });
 
-function renderLoadedVideo(abLoop: { pointA: number | null; pointB: number | null }) {
+function renderLoadedVideo(abLoop: { pointA: number | null; pointB: number | null; enabled?: boolean }) {
   act(() => {
     usePracticeStore.getState().loadVideo("abc123def45", "テスト動画");
-    usePracticeStore.getState().setABLoop({ ...abLoop, enabled: false });
+    usePracticeStore.getState().setABLoop({ enabled: false, ...abLoop });
   });
   render(<PracticeTab onOpenAddVideo={jest.fn()} />);
   act(() => {
@@ -177,5 +180,62 @@ describe("PracticeTab のA点・B点を設定したときの手応え", () => {
     expect(usePracticeStore.getState().abLoop.pointA).toBe(10);
     expect(Haptics.selectionAsync).not.toHaveBeenCalled();
     expect(announceSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("PracticeTab で反対側の点を解除したときの知らせ", () => {
+  function longPressAt(point: "A" | "B", time: number) {
+    playTo(time);
+    fireEvent(pointButton(point), "pressIn");
+    fireEvent(pointButton(point), "longPress");
+  }
+
+  it("ループ中にA点をB点より後ろへ設定すると、注意の振動と「B点を解除・ABループをオフ」の読み上げを1回ずつ行う", () => {
+    renderLoadedVideo({ pointA: 10, pointB: 20, enabled: true });
+
+    longPressAt("A", 25);
+
+    expect(usePracticeStore.getState().abLoop).toEqual({ pointA: 25, pointB: null, enabled: false });
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+    expect(announceSpy.mock.calls[0][0]).toContain("B点を解除");
+    expect(announceSpy.mock.calls[0][0]).toContain("ABループをオフ");
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+    expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Warning);
+    expect(Haptics.selectionAsync).not.toHaveBeenCalled();
+  });
+
+  it("B点をA点より前へ設定すると、対称に「A点を解除」の読み上げと注意の振動になる", () => {
+    renderLoadedVideo({ pointA: 10, pointB: 20, enabled: true });
+
+    longPressAt("B", 5);
+
+    expect(usePracticeStore.getState().abLoop).toEqual({ pointA: null, pointB: 5, enabled: false });
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+    expect(announceSpy.mock.calls[0][0]).toContain("A点を解除");
+    expect(announceSpy.mock.calls[0][0]).toContain("ABループをオフ");
+    expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Warning);
+    expect(Haptics.selectionAsync).not.toHaveBeenCalled();
+  });
+
+  it("反対側を消さない設定は、これまでどおり軽い振動と「A点を◯に設定」だけ", () => {
+    renderLoadedVideo({ pointA: 10, pointB: 20, enabled: true });
+
+    longPressAt("A", 15);
+
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+    expect(announceSpy).toHaveBeenCalledWith("A点を15秒に設定");
+    expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1);
+    expect(Haptics.notificationAsync).not.toHaveBeenCalled();
+  });
+
+  it("B点が未設定のときにA点を設定しても「解除」の知らせは出ない", () => {
+    renderLoadedVideo({ pointA: 10, pointB: null });
+
+    longPressAt("A", 25);
+
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+    expect(announceSpy.mock.calls[0][0]).not.toContain("解除");
+    expect(Haptics.selectionAsync).toHaveBeenCalledTimes(1);
+    expect(Haptics.notificationAsync).not.toHaveBeenCalled();
   });
 });
