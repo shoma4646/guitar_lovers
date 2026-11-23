@@ -24,6 +24,9 @@ import { colors, radius } from "@/shared/theme";
 import { semantic } from "@/shared/theme/semantic";
 import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import { tuningPresets, TuningPresetKey } from "@/shared/constants/tuning";
+import { DEFAULT_TUNER_SETTINGS } from "@/shared/lib/schemas/tunerSettings";
+import { useTunerSettings } from "@/features/tuner/api/useTunerSettings";
+import { useSaveTunerSettings } from "@/features/tuner/api/useSaveTunerSettings";
 import { ErrorBoundary } from "@/shared/components/molecules/ErrorBoundary";
 import { useReducedMotion } from "@/shared/hooks/useReducedMotion";
 import { useKeepAwakeWhileFocused } from "@/shared/hooks/useKeepAwakeWhileFocused";
@@ -138,14 +141,21 @@ const BADGE_STYLE: Record<BadgeTone, { bg: string; fg: string }> = {
 
 export function TunerScreen() {
   const router = useRouter();
-  const [selectedPreset, setSelectedPreset] = useState<TuningPresetKey>("standard");
+  const tunerSettings = useTunerSettings();
+  const { mutate: saveTunerSettings } = useSaveTunerSettings();
+  const [chosenPreset, setChosenPreset] = useState<TuningPresetKey | null>(null);
+  const isPresetLoading = chosenPreset === null && tunerSettings.isPending;
+  const selectedPreset =
+    chosenPreset ?? tunerSettings.data?.preset ?? DEFAULT_TUNER_SETTINGS.preset;
   const preset = tuningPresets[selectedPreset];
   const hzDisplayKey = useCallback(
     (detectedHz: number | null) => tunerDisplayKey(detectedHz, preset.notes),
     [preset],
   );
-  const { status, hz, inputLevelDb, pausedByUser, pause, resume } =
+  const { status, hz: detectedHz, inputLevelDb, pausedByUser, pause, resume } =
     usePitchDetector(hzDisplayKey);
+  // 保存したプリセットを読み終えるまでは、既定のスタンダードで「締める/緩める」を出さない
+  const hz = isPresetLoading ? null : detectedHz;
   useKeepAwakeWhileFocused(shouldKeepAwakeWhileTuning(status), TUNER_KEEP_AWAKE_TAG);
 
   const reducedMotion = useReducedMotion();
@@ -183,11 +193,12 @@ export function TunerScreen() {
 
   const handleSelectPreset = useCallback(
     (key: TuningPresetKey) => {
-      setSelectedPreset(key);
+      if (isPresetLoading || key !== selectedPreset) saveTunerSettings({ preset: key });
+      setChosenPreset(key);
       resetTunedStrings();
       lastNoteRef.current = null;
     },
-    [resetTunedStrings],
+    [isPresetLoading, resetTunedStrings, saveTunerSettings, selectedPreset],
   );
 
   const currentState = tuningState(cents);

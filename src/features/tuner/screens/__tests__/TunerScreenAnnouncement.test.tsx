@@ -15,6 +15,14 @@ let mockDetector: PitchDetectorState;
 jest.mock("@/features/tuner/hooks/usePitchDetector", () => ({
   usePitchDetector: () => mockDetector,
 }));
+jest.mock("@/features/tuner/api/useTunerSettings", () => {
+  const loaded = { data: { preset: "standard" }, isPending: false };
+  return { useTunerSettings: () => loaded };
+});
+jest.mock("@/features/tuner/api/useSaveTunerSettings", () => {
+  const save = { mutate: jest.fn() };
+  return { useSaveTunerSettings: () => save };
+});
 
 function detector(hz: number | null): PitchDetectorState {
   return {
