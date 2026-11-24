@@ -383,3 +383,25 @@ describe("プレイヤーHTMLからアプリへのエラーの知らせ", () => 
     expect(posted).toEqual([{ type: "error", code: -1 }]);
   });
 });
+
+describe("プレイヤーHTMLの大きさ", () => {
+  function styleRules(): string {
+    const html = buildYouTubeHtml("abc123def45");
+    const style = /<style>([\s\S]*?)<\/style>/.exec(html)?.[1] ?? "";
+    return style.replace(/\s+/g, " ");
+  }
+
+  it("html・body をWebViewの高さいっぱいにする（無いとiframeが既定の150pxになり枠より小さく表示される）", () => {
+    expect(styleRules()).toMatch(/html, body \{[^}]*height: 100%;[^}]*\}/);
+  });
+
+  it("html・body の余白を0にし、はみ出しでスクロールさせない", () => {
+    const rules = styleRules();
+    expect(rules).toMatch(/\* \{[^}]*margin: 0;[^}]*\}/);
+    expect(rules).toMatch(/html, body \{[^}]*overflow: hidden;[^}]*\}/);
+  });
+
+  it("プレイヤー（iframe）をブロック表示で枠いっぱいに広げる", () => {
+    expect(styleRules()).toMatch(/#player \{[^}]*display: block;[^}]*width: 100%;[^}]*height: 100%;[^}]*\}/);
+  });
+});
