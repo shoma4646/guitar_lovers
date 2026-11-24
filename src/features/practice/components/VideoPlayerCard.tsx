@@ -33,6 +33,9 @@ type Props = {
   onUnexpectedNavigation: () => void;
 };
 
+/** YouTube API の Required Minimum Functionality が定める埋め込みプレイヤーの最小の縦横（200×200） */
+const YOUTUBE_MIN_PLAYER_SIZE = 200;
+
 /** forwardRefで受け取ったref（関数・オブジェクトのどちらでも）へWebViewを渡す */
 function assignRef(ref: ForwardedRef<WebView>, value: WebView | null): void {
   if (typeof ref === "function") ref(value);
@@ -68,10 +71,11 @@ export const VideoPlayerCard = memo(
     );
     return (
       <View
+        testID="video-player-frame"
         className="bg-surface-container-highest overflow-hidden"
         style={{
           width: screenWidth,
-          height: Math.round(screenWidth * (9 / 16)),
+          height: Math.max(YOUTUBE_MIN_PLAYER_SIZE, Math.round(screenWidth * (9 / 16))),
           marginHorizontal: -SCREEN_HORIZONTAL_PADDING,
         }}
       >
