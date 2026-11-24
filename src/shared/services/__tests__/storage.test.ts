@@ -992,6 +992,51 @@ describe("複数件ある状態での削除・追加・先頭への移動", () =
     expect(recents.map((r) => r.videoId)).toEqual([VIDEO_IDS[0], VIDEO_IDS[2], VIDEO_IDS[1]]);
     expect(recents[0].lastWatchedAt).toBe("2026-09-04T00:00:00.000Z");
   });
+
+  describe("フレーズが2本ある状態で片方だけを書き換える", () => {
+    const phraseA: PracticePhrase = { ...makePhrase("A"), currentBpm: 80, targetBpm: 140 };
+    const phraseB: PracticePhrase = {
+      ...makePhrase("B"),
+      videoId: "zzzzzzzzzz9",
+      startSec: 30,
+      endSec: 45,
+      currentBpm: 100,
+      targetBpm: 120,
+      updatedAt: "2026-09-01T12:00:00.000Z",
+    };
+
+    beforeEach(async () => {
+      await savePracticePhrase(phraseA);
+      await savePracticePhrase(phraseB);
+    });
+
+    async function storedPhrase(id: string): Promise<PracticePhrase | undefined> {
+      return (await getPracticePhrases()).find((p) => p.id === id);
+    }
+
+    it.each<[string, () => Promise<void>]>([
+      ["archivePracticePhrase", () => archivePracticePhrase("A")],
+      ["updatePracticePhrase（卒業日時）", () => updatePracticePhrase("A", { graduatedAt: "2026-09-03T00:00:00.000Z" })],
+      ["updatePracticePhrase（目標BPM）", () => updatePracticePhrase("A", { targetBpm: 160 })],
+      [
+        "recordPhraseResult（Bの到達BPMより高い値で弾けた）",
+        () => recordPhraseResult({ ...makeAttempt("a1", "A"), date: "2026-09-05T00:00:00.000Z", bpm: 130, result: "ok" }),
+      ],
+    ])("%s でAを書き換えても、Bは保存前のまま残る", async (_label, mutateA) => {
+      await mutateA();
+
+      expect(await storedPhrase("B")).toEqual(phraseB);
+      expect(await storedPhrase("A")).not.toEqual(phraseA);
+    });
+
+    it("recordPhraseResult で到達BPMが上がると、Aの更新日時が記録の日時になる", async () => {
+      await recordPhraseResult({ ...makeAttempt("a1", "A"), date: "2026-09-05T00:00:00.000Z", bpm: 130, result: "ok" });
+
+      const a = await storedPhrase("A");
+      expect(a?.currentBpm).toBe(130);
+      expect(a?.updatedAt).toBe("2026-09-05T00:00:00.000Z");
+    });
+  });
 });
 
 describe("お気に入りの重複防止と最近の動画の件数上限", () => {
