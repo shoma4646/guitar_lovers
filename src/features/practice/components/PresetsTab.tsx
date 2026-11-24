@@ -23,11 +23,13 @@ import { useVideoPresets } from "@/features/practice/api/useVideoPresets";
 import { CATEGORY_LABELS } from "@/features/practice/lib/formatters";
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { youtubeThumbnail } from "@/features/practice/lib/youtubeThumbnail";
+import { useVideoCardMetrics } from "@/features/practice/hooks/useVideoCardMetrics";
 
 export function PresetsTab() {
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const { data: presets = [] } = useVideoPresets();
   const confirmSwitch = useConfirmPhraseSwitch();
+  const metrics = useVideoCardMetrics();
 
   const grouped = useMemo(
     () =>
@@ -65,16 +67,16 @@ export function PresetsTab() {
                 key={preset.id}
                 onPress={() => handlePlay(preset)}
                 className="bg-surface-container-lowest active:opacity-90"
-                style={[styles.card, shadowStyle]}
+                style={[styles.card, metrics.card, shadowStyle]}
                 accessibilityRole="button"
                 accessibilityLabel={`${preset.title}を再生`}
               >
-                <Image source={{ uri: youtubeThumbnail(preset.videoId) }} style={styles.thumb} />
+                <Image source={{ uri: youtubeThumbnail(preset.videoId) }} style={[styles.thumb, metrics.thumb]} />
                 <View className="flex-1 min-w-0">
                   <Text
                     testID="preset-title"
                     className="text-on-surface"
-                    style={styles.title}
+                    style={metrics.title}
                     numberOfLines={2}
                   >
                     {preset.title}
@@ -108,20 +110,11 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
     borderRadius: radius.xl,
-    gap: 16,
   },
   thumb: {
-    width: 80,
-    height: 80,
     borderRadius: 12,
     backgroundColor: colors.surfaceContainer,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    lineHeight: 22,
   },
   playBadge: {
     width: 40,
