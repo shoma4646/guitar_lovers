@@ -28,6 +28,7 @@ import { useToggleFavoriteVideo } from "@/features/practice/api/useToggleFavorit
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { formatRelativeVideoDate } from "@/features/practice/lib/relativeVideoDate";
 import { youtubeThumbnail } from "@/features/practice/lib/youtubeThumbnail";
+import { useVideoCardMetrics } from "@/features/practice/hooks/useVideoCardMetrics";
 import { useLocalDay } from "@/shared/hooks/useLocalDay";
 import { localDayToDate } from "@/shared/lib/localDay";
 
@@ -52,6 +53,7 @@ export function FavoritesTab() {
   const { data: recents = [] } = recentsQuery;
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const { mutate: toggleFavorite } = useToggleFavoriteVideo();
+  const metrics = useVideoCardMetrics();
   const confirmSwitch = useConfirmPhraseSwitch();
   const localDay = useLocalDay();
   const today = useMemo(() => localDayToDate(localDay), [localDay]);
@@ -118,7 +120,7 @@ export function FavoritesTab() {
                 key={video.videoId}
                 onPress={() => handlePlayRecent(video)}
                 className="bg-surface-container-lowest active:opacity-90"
-                style={[styles.songCard, shadowStyle]}
+                style={[styles.songCard, metrics.card, shadowStyle]}
                 accessibilityRole="button"
                 accessibilityLabel={`${video.title}を再生、${formatRelativeVideoDate(video.lastWatchedAt, today)}`}
                 accessibilityActions={favoriteActions(isFav)}
@@ -126,12 +128,12 @@ export function FavoritesTab() {
               >
                 <Image
                   source={{ uri: youtubeThumbnail(video.videoId) }}
-                  style={styles.thumb}
+                  style={[styles.thumb, metrics.thumb]}
                 />
                 <View className="flex-1 min-w-0 pr-xl">
                   <Text
                     className="text-on-surface"
-                    style={{ fontSize: 18, fontWeight: "700", lineHeight: 22 }}
+                    style={metrics.title}
                     numberOfLines={2}
                   >
                     {video.title}
@@ -182,7 +184,7 @@ export function FavoritesTab() {
               key={video.videoId}
               onPress={() => handlePlayFavorite(video)}
               className="bg-surface-container-lowest active:opacity-90"
-              style={[styles.songCard, shadowStyle]}
+              style={[styles.songCard, metrics.card, shadowStyle]}
               accessibilityRole="button"
               accessibilityLabel={`${video.title}を再生、${formatRelativeVideoDate(video.addedAt, today)}`}
               accessibilityActions={favoriteActions(true)}
@@ -192,12 +194,12 @@ export function FavoritesTab() {
             >
               <Image
                 source={{ uri: youtubeThumbnail(video.videoId) }}
-                style={styles.thumb}
+                style={[styles.thumb, metrics.thumb]}
               />
               <View className="flex-1 min-w-0 pr-xl">
                 <Text
                   className="text-on-surface"
-                  style={{ fontSize: 18, fontWeight: "700", lineHeight: 22 }}
+                  style={metrics.title}
                   numberOfLines={2}
                 >
                   {video.title}
@@ -240,14 +242,10 @@ const styles = StyleSheet.create({
   songCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
     borderRadius: radius.xl,
-    gap: 16,
     position: "relative",
   },
   thumb: {
-    width: 80,
-    height: 80,
     borderRadius: 12,
     backgroundColor: colors.surfaceContainer,
   },
