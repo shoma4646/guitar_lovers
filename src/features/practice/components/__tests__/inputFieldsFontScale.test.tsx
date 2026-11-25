@@ -9,6 +9,9 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("@/features/practice/api/useRecentVideos", () => ({
   useRecentVideos: () => ({ data: [] }),
 }));
+jest.mock("@/features/practice/api/usePracticePhrases", () => ({
+  usePracticePhrases: () => ({ data: [] }),
+}));
 jest.mock("expo-clipboard", () => ({
   isPasteButtonAvailable: false,
   getStringAsync: () => Promise.resolve(""),

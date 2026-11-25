@@ -12,6 +12,9 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("@/features/practice/api/useRecentVideos", () => ({
   useRecentVideos: () => ({ data: [] }),
 }));
+jest.mock("@/features/practice/api/usePracticePhrases", () => ({
+  usePracticePhrases: () => ({ data: [] }),
+}));
 jest.mock("@/features/practice/api/useArchivePracticePhrase", () => ({
   useArchivePracticePhrase: () => ({ mutate: jest.fn() }),
 }));

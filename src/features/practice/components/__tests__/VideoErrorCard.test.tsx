@@ -24,6 +24,9 @@ jest.mock("@/features/practice/api/useArchivePracticePhrase", () => ({
 jest.mock("@/features/practice/api/useDeletePracticePhrase", () => ({
   useDeletePracticePhrase: () => ({ mutate: jest.fn() }),
 }));
+jest.mock("@/features/practice/api/usePracticePhrases", () => ({
+  usePracticePhrases: () => ({ data: [] }),
+}));
 
 const initialState = usePracticeStore.getState();
 
