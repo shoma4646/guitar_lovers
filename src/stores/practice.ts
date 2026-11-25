@@ -150,7 +150,6 @@ interface PracticeState {
   startPracticeTimer: () => void;
   stopPracticeTimer: () => void;
   resetPracticeTimer: () => void;
-  updateElapsedSeconds: () => void;
   setABLoop: (loop: Partial<ABLoop>) => void;
   clearABLoop: () => void;
   addBookmark: (bookmark: Bookmark) => void;
@@ -167,11 +166,6 @@ interface PracticeState {
   /** 結果記録を開始し、未発番なら新しいattempt IDを発番して返す（再送時は同じIDを返す） */
   beginResultEntry: (newId: string) => string;
   setPlayerError: (code: number | null) => void;
-  /**
-   * 現在の累計練習時間を分単位で返す
-   * タイマー計測中の場合は経過時間も含めて計算する
-   */
-  getPracticeMinutes: () => number;
 }
 
 // RNのURLクラスは正規表現による簡易実装でJest(Node)と解析結果が異なるため、new URL()を使わず自前で分解する
@@ -358,14 +352,6 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   resetPracticeTimer: () =>
     set({ practiceStartTime: null, elapsedSeconds: 0 }),
 
-  updateElapsedSeconds: () => {
-    const { practiceStartTime, elapsedSeconds } = get();
-    if (practiceStartTime) {
-      const additional = Math.floor((Date.now() - practiceStartTime) / 1000);
-      set({ elapsedSeconds: elapsedSeconds + additional, practiceStartTime: Date.now() });
-    }
-  },
-
   setABLoop: (loop) =>
     set((state) => ({ abLoop: { ...state.abLoop, ...loop } })),
 
@@ -412,15 +398,6 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     return completedReps;
   },
   setPlayerError: (code) => set({ playerError: code }),
-
-  getPracticeMinutes: () => {
-    const { practiceStartTime, elapsedSeconds } = get();
-    const currentElapsed =
-      practiceStartTime !== null
-        ? Math.floor((Date.now() - practiceStartTime) / 1000)
-        : 0;
-    return Math.floor((elapsedSeconds + currentElapsed) / 60);
-  },
 }));
 
 /** URLからYouTube動画IDを抽出するユーティリティ（外部公開） */

@@ -404,3 +404,76 @@ describe("loadVideo のプレイヤー再利用", () => {
     expect(after.duration).toBe(0);
   });
 });
+
+describe("練習タイマー", () => {
+  it("開始と停止を繰り返すと、停止ごとの経過秒が足し合わされる", () => {
+    const nowSpy = jest.spyOn(Date, "now");
+    const { startPracticeTimer, stopPracticeTimer } = usePracticeStore.getState();
+
+    nowSpy.mockReturnValue(1_000_000);
+    startPracticeTimer();
+    nowSpy.mockReturnValue(1_010_900);
+    stopPracticeTimer();
+    expect(usePracticeStore.getState()).toMatchObject({ elapsedSeconds: 10, practiceStartTime: null });
+
+    nowSpy.mockReturnValue(2_000_000);
+    startPracticeTimer();
+    nowSpy.mockReturnValue(2_005_000);
+    stopPracticeTimer();
+
+    expect(usePracticeStore.getState()).toMatchObject({ elapsedSeconds: 15, practiceStartTime: null });
+    nowSpy.mockRestore();
+  });
+
+  it("計測していないときに停止しても経過秒は変わらない", () => {
+    usePracticeStore.setState({ elapsedSeconds: 12 });
+
+    usePracticeStore.getState().stopPracticeTimer();
+
+    expect(usePracticeStore.getState().elapsedSeconds).toBe(12);
+  });
+
+  it("リセットすると経過秒が0になり、計測も止まる", () => {
+    usePracticeStore.setState({ elapsedSeconds: 30, practiceStartTime: 1_000_000 });
+
+    usePracticeStore.getState().resetPracticeTimer();
+
+    expect(usePracticeStore.getState()).toMatchObject({ elapsedSeconds: 0, practiceStartTime: null });
+  });
+});
+
+describe("ブックマーク", () => {
+  function bookmark(id: string, time: number) {
+    return { id, time, label: id, createdAt: "2026-09-01T00:00:00.000Z" };
+  }
+
+  it("順不同で追加しても時刻の昇順に並ぶ", () => {
+    const { addBookmark } = usePracticeStore.getState();
+    addBookmark(bookmark("b1", 50));
+    addBookmark(bookmark("b2", 10));
+    addBookmark(bookmark("b3", 30));
+
+    expect(usePracticeStore.getState().bookmarks.map((b) => b.id)).toEqual(["b2", "b3", "b1"]);
+  });
+
+  it("削除すると指定した1件だけが消え、残りは順序を保つ", () => {
+    const { addBookmark, removeBookmark } = usePracticeStore.getState();
+    addBookmark(bookmark("b1", 10));
+    addBookmark(bookmark("b2", 20));
+    addBookmark(bookmark("b3", 30));
+
+    removeBookmark("b2");
+
+    expect(usePracticeStore.getState().bookmarks.map((b) => b.id)).toEqual(["b1", "b3"]);
+  });
+
+  it("動画を閉じるとブックマークは空になる", () => {
+    const { loadVideo, addBookmark, clearVideo } = usePracticeStore.getState();
+    loadVideo("abc123def45", "テスト動画");
+    addBookmark(bookmark("b1", 10));
+
+    clearVideo();
+
+    expect(usePracticeStore.getState().bookmarks).toEqual([]);
+  });
+});
