@@ -132,6 +132,11 @@ describe("isAllowedExternalUrl", () => {
     "https://www.youtube.com/watch/../redirect?q=https://example.com",
     "https://www.youtube.com/%2Fredirect?q=https://example.com",
     "https://www.youtube.com/%E0%A4%A",
+    "https://support.google.com/%75rl?q=https://example.com",
+    "https://policies.google.com/%55RL?q=https://example.com",
+    "https://support.google.com/youtube/%2e%2e/url?q=https://example.com",
+    "https://support.google.com/youtube\\..\\url?q=https://example.com",
+    "https://policies.google.com\\url?q=https://example.com",
   ])("許可ホストでも転送パスの %s は外部で開かない", (url) => {
     expect(isAllowedExternalUrl(url)).toBe(false);
   });
@@ -185,6 +190,42 @@ describe("isAllowedExternalUrl", () => {
       fc.property(fc.oneof(blockedHost, blockedPath), ({ h, path }) => {
         expect(isAllowedExternalUrl(`https://${h}${path}`)).toBe(false);
       }),
+    );
+  });
+
+  it("Google系の許可ホストでは、転送パスを%エンコード・大文字・「x/..」前置・「\\」区切りで変形しても開かない", () => {
+    const disguisedChar = (ch: string) =>
+      fc.oneof(
+        fc.constantFrom(ch.toLowerCase(), ch.toUpperCase()),
+        fc
+          .constantFrom(ch.toLowerCase(), ch.toUpperCase())
+          .chain((c) => {
+            const hex = c.charCodeAt(0).toString(16);
+            return fc.constantFrom(`%${hex}`, `%${hex.toUpperCase()}`);
+          }),
+      );
+    const disguisedWord = fc
+      .constantFrom(...["url", "redirect"])
+      .chain((word) => fc.tuple(...[...word].map(disguisedChar)).map((chars) => chars.join("")));
+    const separator = fc.constantFrom("/", "\\", "%2f", "%2F", "%5c", "%5C");
+    const dotDot = fc.constantFrom("..", "%2e%2e", "%2E%2E", ".%2e");
+    const detour = fc
+      .tuple(fc.stringMatching(/^[a-z0-9]{1,8}$/), separator, dotDot)
+      .map(([seg, sep, dots]) => `${seg}${sep}${dots}`);
+    const prefix = fc
+      .array(fc.tuple(fc.oneof(detour, fc.constant(".")), separator), { maxLength: 3 })
+      .map((parts) => parts.map(([p, sep]) => `${p}${sep}`).join(""));
+    fc.assert(
+      fc.property(
+        fc.constantFrom("policies.google.com", "support.google.com"),
+        fc.constantFrom("/", "\\"),
+        prefix,
+        disguisedWord,
+        fc.constantFrom("", "/", "?q=https://example.com", "#x"),
+        (h, lead, pre, word, rest) => {
+          expect(isAllowedExternalUrl(`https://${h}${lead}${pre}${word}${rest}`)).toBe(false);
+        },
+      ),
     );
   });
 
