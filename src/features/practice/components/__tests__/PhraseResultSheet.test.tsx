@@ -29,7 +29,7 @@ function getResultGroup() {
   return group;
 }
 
-function setup(onSubmit = jest.fn(), completedReps = 2, hasNextPhrase = true) {
+function setup(onSubmit = jest.fn(), completedReps = 2, hasNextPhrase = true, phraseElapsedSeconds = 60) {
   const onChangeCompletedReps = jest.fn();
   render(
     <PhraseResultSheet
@@ -37,7 +37,7 @@ function setup(onSubmit = jest.fn(), completedReps = 2, hasNextPhrase = true) {
       phrase={phrase}
       bpm={85}
       progress={null}
-      phraseElapsedSeconds={60}
+      phraseElapsedSeconds={phraseElapsedSeconds}
       completedReps={completedReps}
       onChangeCompletedReps={onChangeCompletedReps}
       hasNextPhrase={hasNextPhrase}
@@ -157,5 +157,12 @@ describe("PhraseResultSheet の記録ボタン", () => {
 
     expect(backgroundOf("記録して次の1本へ")).toBe(colors.primary);
     expect(backgroundOf("記録して今日は終わる")).not.toBe(colors.primary);
+  });
+});
+
+describe("PhraseResultSheet の練習時間", () => {
+  it("60分を超えると時:分:秒で表示する", () => {
+    setup(jest.fn(), 2, true, 4500);
+    expect(screen.getByText(/練習時間 1:15:00/)).toBeTruthy();
   });
 });

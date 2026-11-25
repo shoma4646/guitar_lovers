@@ -1,6 +1,6 @@
 import type { ABLoop, Bookmark, PracticePhrase } from "@/shared/types/models";
 import { isAtPhraseRange, isValidLoopRange } from "./abLoop";
-import { formatDuration } from "./formatters";
+import { formatDuration, shouldShowHours } from "./formatters";
 
 /** 動画を切り替えると失われる、まだ保存していない区間とブックマーク */
 export type UnsavedWork = {
@@ -29,7 +29,8 @@ export function findUnsavedWork(input: {
 
 /** 区間の表示（例: 「区間 01:23〜01:41」） */
 export function formatUnsavedRange(range: { startSec: number; endSec: number }): string {
-  return `区間 ${formatDuration(range.startSec)}〜${formatDuration(range.endSec)}`;
+  const withHours = shouldShowHours(range.startSec, range.endSec);
+  return `区間 ${formatDuration(range.startSec, { withHours })}〜${formatDuration(range.endSec, { withHours })}`;
 }
 
 function joinItems(items: string[]): string {

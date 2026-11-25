@@ -14,7 +14,7 @@ import { Icon } from "@/shared/components/atoms/Icon";
 import { IconButton } from "@/shared/components/atoms/IconButton";
 import { Toggle } from "@/shared/components/atoms/Toggle";
 import { colors, radius } from "@/shared/theme";
-import { formatDuration } from "@/features/practice/lib/formatters";
+import { formatDuration, shouldShowHours } from "@/features/practice/lib/formatters";
 import { isValidLoopRange } from "@/features/practice/lib/abLoop";
 import { PracticeSeekBar } from "./PracticeSeekBar";
 import { MetronomeControls } from "./MetronomeControls";
@@ -81,6 +81,7 @@ export function PracticeControlPanel({
   onToggleMetronome,
   phraseProgress,
 }: Props) {
+  const pointsWithHours = shouldShowHours(duration, abLoop.pointA ?? 0, abLoop.pointB ?? 0);
   const canSavePhrase = isValidLoopRange(abLoop);
   const showSavePhraseLabel = hasNoPhrases && canSavePhrase;
   const canToggleLoop = isValidLoopRange(abLoop);
@@ -119,6 +120,7 @@ export function PracticeControlPanel({
         <PointButton
           label="A"
           time={abLoop.pointA}
+          withHours={pointsWithHours}
           onTap={() => onTapPoint("A")}
           onPressIn={onPressInPoint}
           onSetPoint={(at) => onSetPoint("A", at)}
@@ -126,6 +128,7 @@ export function PracticeControlPanel({
         <PointButton
           label="B"
           time={abLoop.pointB}
+          withHours={pointsWithHours}
           onTap={() => onTapPoint("B")}
           onPressIn={onPressInPoint}
           onSetPoint={(at) => onSetPoint("B", at)}
@@ -204,6 +207,8 @@ export function PracticeControlPanel({
 type PointButtonProps = {
   label: "A" | "B";
   time: number | null;
+  /** 時の桁を付けて表示するか（A/B両方で揃える） */
+  withHours: boolean;
   /** タップ（設定済みのみ）: 位置へ移動 */
   onTap: () => void;
   onPressIn: () => void;
@@ -211,7 +216,7 @@ type PointButtonProps = {
   onSetPoint: (at: PointTimeSource) => void;
 };
 
-function PointButton({ label, time, onTap, onPressIn, onSetPoint }: PointButtonProps) {
+function PointButton({ label, time, withHours, onTap, onPressIn, onSetPoint }: PointButtonProps) {
   const set = time !== null;
 
   const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
@@ -232,7 +237,7 @@ function PointButton({ label, time, onTap, onPressIn, onSetPoint }: PointButtonP
         backgroundColor: set ? colors.primaryFixed : colors.surfaceContainer,
       }}
       accessibilityRole="button"
-      accessibilityLabel={`${label}点${set ? `、${formatDuration(time)}へ移動` : "、未設定"}`}
+      accessibilityLabel={`${label}点${set ? `、${formatDuration(time, { withHours })}へ移動` : "、未設定"}`}
       accessibilityHint={set ? "長押しで現在位置に設定し直す" : "タップでこの位置を設定"}
       accessibilityActions={[{ name: "longpress", label: `${label}点を設定` }]}
       onAccessibilityAction={handleAccessibilityAction}
@@ -245,7 +250,7 @@ function PointButton({ label, time, onTap, onPressIn, onSetPoint }: PointButtonP
           fontVariant: ["tabular-nums"],
         }}
       >
-        {label} {set ? formatDuration(time) : "未設定"}
+        {label} {set ? formatDuration(time, { withHours }) : "未設定"}
       </Text>
     </Pressable>
   );

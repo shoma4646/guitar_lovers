@@ -1,5 +1,5 @@
 import * as fc from "fast-check";
-import { buildSwitchConfirmation, findUnsavedWork } from "../unsavedWork";
+import { buildSwitchConfirmation, findUnsavedWork, formatUnsavedRange } from "../unsavedWork";
 import type { ABLoop, Bookmark, PracticePhrase } from "@/shared/types/models";
 
 const VIDEO_ID = "abc123def45";
@@ -141,5 +141,15 @@ describe("buildSwitchConfirmation", () => {
       message:
         "「イントロ」を1回弾いた記録、区間 00:05〜00:09とブックマーク1件はまだ保存されていません。切り替えると失われます。",
     });
+  });
+});
+
+describe("formatUnsavedRange", () => {
+  it("1時間未満の区間は mm:ss で表示する", () => {
+    expect(formatUnsavedRange({ startSec: 83, endSec: 101 })).toBe("区間 01:23〜01:41");
+  });
+
+  it("終了位置が1時間以上なら、開始位置も時の桁付きで揃える", () => {
+    expect(formatUnsavedRange({ startSec: 485, endSec: 4210 })).toBe("区間 0:08:05〜1:10:10");
   });
 });

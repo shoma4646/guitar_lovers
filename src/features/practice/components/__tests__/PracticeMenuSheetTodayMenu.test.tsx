@@ -57,6 +57,7 @@ function sheet(visible: boolean, displaySeconds: number) {
       isSavingSession={false}
       hasVideo={false}
       bookmarks={[]}
+      videoDuration={0}
       onAddBookmark={jest.fn()}
       onRemoveBookmark={jest.fn()}
       onOpenAddVideo={jest.fn()}

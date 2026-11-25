@@ -546,6 +546,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       isSavingSession={isSavingSession}
       hasVideo={loadedVideoId !== null}
       bookmarks={bookmarks}
+      videoDuration={duration}
       onAddBookmark={handleAddBookmark}
       onRemoveBookmark={removeBookmark}
       onSeekBookmark={handleSeekBookmark}
