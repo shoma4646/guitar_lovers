@@ -21,7 +21,7 @@ import {
   type TodayMenuPriority,
 } from "@/features/practice/lib/progression";
 import { summarizePhraseProgress } from "@/features/progress/lib/phraseProgress";
-import { formatDuration } from "@/features/practice/lib/formatters";
+import { formatDuration, shouldShowHours } from "@/features/practice/lib/formatters";
 import {
   PHRASE_ROW_HINT,
   phraseRowAccessibilityActionProps,
@@ -95,6 +95,7 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
 
   const { phrase, priority } = todayPick;
   const phraseAttempts = attempts.filter((a) => a.phraseId === phrase.id);
+  const rangeWithHours = shouldShowHours(phrase.startSec, phrase.endSec);
   const { targetBeforeToday } = todayPick.today;
   const progress = summarizePhraseProgress(phrase, phraseAttempts);
   const bpmToGoal = Math.max(0, phrase.targetBpm - targetBeforeToday);
@@ -142,7 +143,7 @@ export function TodayPickCard({ onStartPhrase, onTryPreset, onOpenAddVideo }: Pr
             </Text>
             <Text style={{ fontSize: 13, color: colors.onSurfaceVariant }}>・</Text>
             <Text style={{ fontSize: 13, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}>
-              {formatDuration(phrase.startSec)}-{formatDuration(phrase.endSec)}
+              {formatDuration(phrase.startSec, { withHours: rangeWithHours })}-{formatDuration(phrase.endSec, { withHours: rangeWithHours })}
             </Text>
           </View>
         </View>

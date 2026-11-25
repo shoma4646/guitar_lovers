@@ -26,7 +26,7 @@ import {
   phraseRowAccessibilityActionProps,
 } from "@/features/practice/lib/phraseRowLabel";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
-import { formatDuration } from "@/features/practice/lib/formatters";
+import { formatDuration, shouldShowHours } from "@/features/practice/lib/formatters";
 import { useLocalDay } from "@/shared/hooks/useLocalDay";
 import { localDayToDate } from "@/shared/lib/localDay";
 import { MetronomeControls } from "./MetronomeControls";
@@ -51,6 +51,8 @@ type Props = {
   /** 動画が読み込まれているか。ブックマーク・動画を閉じる、の表示可否を切り替える */
   hasVideo: boolean;
   bookmarks: Bookmark[];
+  /** 読み込み中の動画の長さ（秒）。1時間以上ならブックマークの位置を時の桁付きで揃えて表示する */
+  videoDuration: number;
   onAddBookmark: () => void;
   onRemoveBookmark: (id: string) => void;
   /** ブックマークの位置（秒）へ動画を移動する */
@@ -78,6 +80,7 @@ export function PracticeMenuSheet({
   isSavingSession,
   hasVideo,
   bookmarks,
+  videoDuration,
   onAddBookmark,
   onRemoveBookmark,
   onSeekBookmark,
@@ -90,6 +93,7 @@ export function PracticeMenuSheet({
   const { data: phrases } = phrasesQuery;
   const { data: attempts } = attemptsQuery;
   const handleLongPress = usePhraseLongPressActions();
+  const bookmarksWithHours = shouldShowHours(videoDuration, ...bookmarks.map((bm) => bm.time));
   const readFailed = hasReadFailure(phrasesQuery, attemptsQuery);
 
   const localDay = useLocalDay();
@@ -261,14 +265,14 @@ export function PracticeMenuSheet({
                           paddingHorizontal: 12,
                         }}
                         accessibilityRole="button"
-                        accessibilityLabel={`${bm.label ?? formatDuration(bm.time)}、${formatDuration(bm.time)}へ移動`}
+                        accessibilityLabel={`${bm.label ?? formatDuration(bm.time, { withHours: bookmarksWithHours })}、${formatDuration(bm.time, { withHours: bookmarksWithHours })}へ移動`}
                       >
                         <Icon name="bookmark" size={16} color={colors.primary} />
                         <Text style={{ flex: 1, fontSize: 14, color: colors.onSurface }} numberOfLines={1}>
-                          {bm.label ?? formatDuration(bm.time)}
+                          {bm.label ?? formatDuration(bm.time, { withHours: bookmarksWithHours })}
                         </Text>
                         <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}>
-                          {formatDuration(bm.time)}
+                          {formatDuration(bm.time, { withHours: bookmarksWithHours })}
                         </Text>
                       </Pressable>
                       <IconButton

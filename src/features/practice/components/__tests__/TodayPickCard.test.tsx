@@ -207,4 +207,11 @@ describe("TodayPickCard（理由の行と区間時刻が切れない）", () => 
     expect(range.props.numberOfLines).toBeUndefined();
     expect(screen.getByText(LONG_VIDEO_TITLE).props.numberOfLines).toBe(1);
   });
+
+  it("終了位置が1時間以上なら、両方の点を時の桁付きで揃えて表示する", () => {
+    mockPhrasesQuery.data = [{ ...(mockPhrasesQuery.data![0] as object), startSec: 485, endSec: 4210 }];
+    render(<TodayPickCard onStartPhrase={jest.fn()} onTryPreset={jest.fn()} onOpenAddVideo={jest.fn()} />);
+
+    expect(screen.getByText("0:08:05-1:10:10")).toBeTruthy();
+  });
 });

@@ -15,9 +15,11 @@ function renderPanel({
   hasNoPhrases,
   isAtActivePhraseRange = false,
   onToggleLoop = jest.fn(),
+  duration = 120,
 }: {
   abLoop: ABLoop;
   hasNoPhrases: boolean;
+  duration?: number;
   isAtActivePhraseRange?: boolean;
   onToggleLoop?: () => void;
 }) {
@@ -26,7 +28,7 @@ function renderPanel({
     <PracticeControlPanel
       abLoop={abLoop}
       currentTimeShared={{ value: 0 } as never}
-      duration={120}
+      duration={duration}
       onToggleLoop={onToggleLoop}
       onClearLoop={jest.fn()}
       isAtActivePhraseRange={isAtActivePhraseRange}
@@ -125,5 +127,26 @@ describe("PracticeControlPanel のABループスイッチ", () => {
     fireEvent.press(toggle);
     expect(onToggleLoop).not.toHaveBeenCalled();
     expect(toggle.props.accessibilityState).toMatchObject({ disabled: true });
+  });
+});
+
+describe("PracticeControlPanel のA/Bボタンの時刻表示", () => {
+  it("1時間未満の動画では mm:ss で表示する", () => {
+    renderPanel({ abLoop: VALID_LOOP, hasNoPhrases: false });
+    expect(screen.getByText("A 00:10")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "A点、00:10へ移動" })).toBeTruthy();
+  });
+
+  it("1時間以上の動画では、1時間未満の点も時の桁付きで揃え、読み上げも同じ表記にする", () => {
+    renderPanel({ abLoop: { pointA: 485, pointB: 4210, enabled: true }, hasNoPhrases: false, duration: 4500 });
+    expect(screen.getByText("A 0:08:05")).toBeTruthy();
+    expect(screen.getByText("B 1:10:10")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "A点、0:08:05へ移動" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "B点、1:10:10へ移動" })).toBeTruthy();
+  });
+
+  it("動画の長さが未取得（0）でも、点が1時間以上なら時の桁付きで揃える", () => {
+    renderPanel({ abLoop: { pointA: 485, pointB: 4210, enabled: true }, hasNoPhrases: false, duration: 0 });
+    expect(screen.getByText("A 0:08:05")).toBeTruthy();
   });
 });

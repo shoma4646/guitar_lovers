@@ -35,6 +35,7 @@ function renderSheet(isSavingSession: boolean, overrides: Partial<React.Componen
       isSavingSession={isSavingSession}
       hasVideo={false}
       bookmarks={[]}
+      videoDuration={0}
       onAddBookmark={jest.fn()}
       onRemoveBookmark={jest.fn()}
       onOpenAddVideo={jest.fn()}
@@ -92,6 +93,17 @@ describe("PracticeMenuSheet のブックマーク", () => {
     expect(onRemoveBookmark).toHaveBeenCalledWith("bm1");
     expect(onSeekBookmark).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("1時間以上の動画では、1時間未満のブックマークも時の桁付きで表示し、読み上げも揃える", () => {
+    renderSheet(false, { hasVideo: true, bookmarks: [{ ...bookmark, label: undefined }], videoDuration: 4500 });
+    expect(screen.getAllByText("0:01:23")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "0:01:23、0:01:23へ移動" })).toBeTruthy();
+  });
+
+  it("練習タイマーは60分を超えると時:分:秒で表示する", () => {
+    renderSheet(false, { displaySeconds: 4500 });
+    expect(screen.getByText("1:15:00")).toBeTruthy();
   });
 
   it("行のタップ領域の高さは44以上", () => {
