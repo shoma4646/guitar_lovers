@@ -47,6 +47,7 @@ import { useMetronomeEngine } from "@/features/practice/hooks/useMetronomeEngine
 import { useConfirmPhraseSwitch } from "@/features/practice/hooks/useConfirmPhraseSwitch";
 import { useSaveTimerSession } from "@/features/practice/hooks/useSaveTimerSession";
 import { useCloseVideo } from "@/features/practice/hooks/useCloseVideo";
+import { useClearLoopWithConfirm } from "@/features/practice/hooks/useClearLoopWithConfirm";
 import { usePausePlayerOnBlur } from "@/features/practice/hooks/usePausePlayerOnBlur";
 import type { SendToPlayer } from "@/features/practice/lib/playerFocus";
 import { useSyncPlayerLoop } from "@/features/practice/hooks/useSyncPlayerLoop";
@@ -96,7 +97,6 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
 
   const loadVideo = usePracticeStore((s) => s.loadVideo);
   const setABLoop = usePracticeStore((s) => s.setABLoop);
-  const clearABLoop = usePracticeStore((s) => s.clearABLoop);
   const addBookmark = usePracticeStore((s) => s.addBookmark);
   const removeBookmark = usePracticeStore((s) => s.removeBookmark);
   const setPlaybackRate = usePracticeStore((s) => s.setPlaybackRate);
@@ -271,10 +271,14 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
         Alert.alert("保存しました", `「${input.name}」を今日の練習メニューに追加しました`, [
           { text: "OK", onPress: () => void promptReminderPermission() },
         ]);
-      confirmSwitch(() => {
-        startPracticeOnLoadedVideo(phrase, input.currentBpm);
-        announceSaved();
-      }, announceSaved);
+      confirmSwitch(
+        () => {
+          startPracticeOnLoadedVideo(phrase, input.currentBpm);
+          announceSaved();
+        },
+        announceSaved,
+        { keepsLoopAndBookmarks: true },
+      );
     },
     [
       loadedVideoId,
@@ -436,6 +440,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   }, [presets, confirmSwitch, loadVideo]);
 
   const handleCloseVideo = useCloseVideo();
+  const handleClearLoop = useClearLoopWithConfirm();
 
   const handleTapPoint = useCallback(
     (point: "A" | "B") => {
@@ -651,7 +656,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
                 currentTimeShared={currentTimeShared}
                 duration={duration}
                 onToggleLoop={handleToggleLoop}
-                onClearLoop={clearABLoop}
+                onClearLoop={handleClearLoop}
                 isAtActivePhraseRange={
                   activePractice !== null && isAtPhraseRange(abLoop, activePractice.phrase)
                 }

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { AccessibilityInfo } from "react-native";
+import { AccessibilityInfo, Alert, type AlertButton } from "react-native";
 import { usePracticeStore } from "@/stores/practice";
 import { describePlayerError } from "@/features/practice/lib/playerError";
 import { AddVideoSheet } from "../AddVideoSheet";
@@ -9,6 +9,9 @@ jest.mock("react-native-safe-area-context", () => ({
 }));
 jest.mock("@/features/practice/api/useRecentVideos", () => ({
   useRecentVideos: () => ({ data: [] }),
+}));
+jest.mock("@/features/practice/api/usePracticePhrases", () => ({
+  usePracticePhrases: () => ({ data: [] }),
 }));
 
 let mockPasteButtonAvailable = false;
@@ -220,5 +223,37 @@ describe("AddVideoSheet のエラーの読み上げ", () => {
 
     expect(announceSpy).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("AddVideoSheet: 保存していない区間・ブックマークがある動画から別の動画を開く", () => {
+  beforeEach(() => {
+    usePracticeStore.setState(initialState, true);
+    const store = usePracticeStore.getState();
+    store.loadVideo("abc123def45", "練習中の動画");
+    store.setABLoop({ pointA: 83, pointB: 101, enabled: true });
+    store.addBookmark({ id: "b1", time: 90, createdAt: "2026-09-01T00:00:00.000Z" });
+  });
+
+  it("貼り付けたURLを読み込む前に確認を出し、キャンセルすると前の動画の区間とブックマークが残る", () => {
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const onClose = jest.fn();
+    render(<AddVideoSheet visible onClose={onClose} />);
+
+    fireEvent.changeText(screen.getByLabelText("YouTube URL入力"), "https://youtu.be/dQw4w9WgXcQ");
+    fireEvent.press(screen.getByRole("button", { name: "読み込む" }));
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      "保存していない内容が消えます",
+      "区間 01:23〜01:41とブックマーク1件はまだ保存されていません。切り替えると失われます。",
+      expect.any(Array),
+    );
+    (alertSpy.mock.calls[0][2] as AlertButton[]).find((b) => b.text === "キャンセル")?.onPress?.();
+    const state = usePracticeStore.getState();
+    expect(state.loadedVideoId).toBe("abc123def45");
+    expect(state.abLoop).toEqual({ pointA: 83, pointB: 101, enabled: true });
+    expect(state.bookmarks).toHaveLength(1);
+    expect(onClose).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
   });
 });
