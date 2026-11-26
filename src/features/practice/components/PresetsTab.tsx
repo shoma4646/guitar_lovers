@@ -71,7 +71,11 @@ export function PresetsTab() {
                 accessibilityRole="button"
                 accessibilityLabel={`${preset.title}を再生`}
               >
-                <Image source={{ uri: youtubeThumbnail(preset.videoId) }} style={[styles.thumb, metrics.thumb]} />
+                <Image
+                  source={{ uri: youtubeThumbnail(preset.videoId) }}
+                  resizeMode="cover"
+                  style={[styles.thumb, metrics.thumb]}
+                />
                 <View className="flex-1 min-w-0">
                   <Text
                     testID="preset-title"
