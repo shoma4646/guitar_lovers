@@ -2,7 +2,7 @@
  * 設定画面のリマインド通知セクション
  *
  * 通知のON/OFF、送信時刻（自動 or 30分刻みの手動指定）、次回の予定を表示する。
- * OSで通知が拒否されている場合は端末の設定への導線を出す
+ * OSで通知が許可されていない場合は、届かないことを伝え、許可の取り直しか端末の設定への導線を出す
  */
 
 import { View, Text, Pressable, Linking, type AccessibilityActionEvent } from "react-native";
@@ -88,9 +88,10 @@ export function ReminderSettingsSection() {
     return null;
   }
 
-  // トグルは設定値のみを表す。OS許可の有無は別行（isBlockedByOs）で案内する
+  // トグルは設定値のみを表す。OS許可の有無は別行で案内する
   const isActive = settings.enabled;
   const isBlockedByOs = !permission.granted && !permission.canAskAgain;
+  const canRequestPermission = isActive && !permission.granted && permission.canAskAgain;
 
   const handleToggle = async (value: boolean) => {
     if (!value) {
@@ -164,6 +165,23 @@ export function ReminderSettingsSection() {
         </Pressable>
       )}
 
+      {canRequestPermission && (
+        <Pressable
+          onPress={() => void handleToggle(true)}
+          className="flex-row items-center justify-between active:opacity-70"
+          style={borderedRow}
+          accessibilityRole="button"
+          accessibilityLabel="通知を許可する"
+        >
+          <Text className="text-body-md" style={{ color: colors.onSurfaceVariant, flex: 1 }}>
+            通知が許可されていません
+          </Text>
+          <Text className="text-body-md" style={{ color: colors.primary }}>
+            許可する
+          </Text>
+        </Pressable>
+      )}
+
       <View className="flex-row items-center justify-between" style={borderedRow}>
         <View
           style={{ flex: 1, paddingRight: 12 }}
@@ -218,13 +236,15 @@ export function ReminderSettingsSection() {
 
       <View style={rowPadding}>
         <Text className="text-caption" style={{ color: colors.onSurfaceVariant }}>
-          {isActive && nextPlan?.fireAt
-            ? `次回: ${formatFireAt(nextPlan.fireAt)}`
-            : isActive && nextPlan?.syncFailed
-              ? "予約に失敗しました。もう一度お試しください"
-              : isActive
-                ? "フレーズを保存すると予約されます"
-                : "リマインドはオフです"}
+          {isActive && !permission.granted
+            ? "端末の設定で通知がオフのため、リマインドは届きません"
+            : isActive && nextPlan?.fireAt
+              ? `次回: ${formatFireAt(nextPlan.fireAt)}`
+              : isActive && nextPlan?.syncFailed
+                ? "予約に失敗しました。もう一度お試しください"
+                : isActive
+                  ? "フレーズを保存すると予約されます"
+                  : "リマインドはオフです"}
         </Text>
       </View>
     </View>
