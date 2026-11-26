@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react-native";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 import { TodayPhraseRows } from "../TodayPhraseRows";
 import { AllPhrasesSheet } from "../AllPhrasesSheet";
+import { countNestedVerticalScrolls, isInsideVerticalScroll } from "@/shared/testing/sheetScroll";
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -70,5 +71,14 @@ describe("全件シートの読み上げ", () => {
     render(<AllPhrasesSheet visible onClose={jest.fn()} onStartPhrase={jest.fn()} />);
     expect(screen.getByRole("button", { name: /卒業済み、卒業フレーズ/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /^三本目、前回\d+、今日の目標\d+BPM/ })).toBeTruthy();
+  });
+});
+
+describe("全フレーズシートのスクロール", () => {
+  it("一覧は自前のスクロール1つの中に描き、シートのスクロールと二重にしない", () => {
+    render(<AllPhrasesSheet visible onClose={jest.fn()} onStartPhrase={jest.fn()} />);
+
+    expect(isInsideVerticalScroll(screen.getByRole("button", { name: /^三本目、/ }))).toBe(true);
+    expect(countNestedVerticalScrolls()).toBe(0);
   });
 });

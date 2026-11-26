@@ -115,6 +115,7 @@ export function PracticeMenuSheet({
     <BottomSheet
       visible={visible}
       onClose={onClose}
+      scrollable={false}
       title="メニューと道具"
       onDismissed={onDismissed}
     >

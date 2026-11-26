@@ -2,6 +2,7 @@ import { StyleSheet } from "react-native";
 import { fireEvent, render, screen, within } from "@testing-library/react-native";
 import { colors } from "@/shared/theme";
 import type { PracticePhrase } from "@/shared/types/models";
+import { isInsideVerticalScroll } from "@/shared/testing/sheetScroll";
 import { PhraseResultSheet } from "../PhraseResultSheet";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -164,5 +165,36 @@ describe("PhraseResultSheet の練習時間", () => {
   it("60分を超えると時:分:秒で表示する", () => {
     setup(jest.fn(), 2, true, 4500);
     expect(screen.getByText(/練習時間 1:15:00/)).toBeTruthy();
+  });
+});
+
+describe("PhraseResultSheet の文字を大きくしたときの記録ボタン", () => {
+  it("結果・回数・次回の目標はシートの縦スクロールの中に描く", () => {
+    setup();
+
+    expect(isInsideVerticalScroll(getResultGroup())).toBe(true);
+    expect(isInsideVerticalScroll(screen.getByRole("adjustable", { name: "回数" }))).toBe(true);
+    expect(isInsideVerticalScroll(screen.getByText("次回の目標（自動）"))).toBe(true);
+  });
+
+  it.each([
+    [true, ["記録して次の1本へ", "記録して今日は終わる"]],
+    [false, ["記録して今日は終わる"]],
+  ])("次のフレーズあり=%s でも、記録ボタンはスクロールの外（シート下端）にある", (hasNextPhrase, labels) => {
+    setup(jest.fn(), 2, hasNextPhrase);
+    const footer = screen.getByTestId("bottom-sheet-footer");
+
+    expect(screen.getAllByRole("button", { name: /^記録して/ })).toHaveLength(labels.length);
+    for (const label of labels) {
+      expect(isInsideVerticalScroll(within(footer).getByRole("button", { name: label }))).toBe(false);
+    }
+  });
+
+  it("下端のボタンから記録できる", () => {
+    const { onSubmit } = setup();
+
+    fireEvent.press(within(screen.getByTestId("bottom-sheet-footer")).getByRole("button", { name: "記録して今日は終わる" }));
+
+    expect(onSubmit).toHaveBeenCalledWith({ result: "ok" }, "finish");
   });
 });

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import type { Bookmark } from "@/shared/types/models";
+import { countNestedVerticalScrolls, isInsideVerticalScroll } from "@/shared/testing/sheetScroll";
 import { PracticeMenuSheet } from "../PracticeMenuSheet";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -131,5 +132,14 @@ describe("PracticeMenuSheet の見出し", () => {
     expect(screen.getByRole("header", { name: "今日のメニュー" })).toBeTruthy();
     expect(screen.getByRole("header", { name: /^ブックマーク/ })).toBeTruthy();
     expect(screen.getAllByRole("header")).toHaveLength(5);
+  });
+});
+
+describe("PracticeMenuSheet のスクロール", () => {
+  it("中身は自前のスクロール1つの中に描き、シートのスクロールと二重にしない", () => {
+    renderSheet(false);
+
+    expect(isInsideVerticalScroll(screen.getByRole("button", { name: "記録" }))).toBe(true);
+    expect(countNestedVerticalScrolls()).toBe(0);
   });
 });

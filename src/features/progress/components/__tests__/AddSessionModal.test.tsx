@@ -1,5 +1,6 @@
 import { AccessibilityInfo, Alert, Keyboard } from "react-native";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { isInsideVerticalScroll } from "@/shared/testing/sheetScroll";
 import { AddSessionModal } from "../AddSessionModal";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -164,5 +165,15 @@ describe("AddSessionModal のエラーの読み上げ", () => {
     fireEvent.press(screen.getByRole("button", { name: "記録する" }));
 
     expect(announceSpy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("AddSessionModal の文字を大きくしたとき", () => {
+  it("入力欄と「記録する」はシートの縦スクロールの中に描き、画面からはみ出しても届く", () => {
+    renderSheet();
+
+    expect(isInsideVerticalScroll(screen.getByLabelText("練習時間入力"))).toBe(true);
+    expect(isInsideVerticalScroll(screen.getByLabelText("メモ入力"))).toBe(true);
+    expect(isInsideVerticalScroll(screen.getByText("記録する"))).toBe(true);
   });
 });

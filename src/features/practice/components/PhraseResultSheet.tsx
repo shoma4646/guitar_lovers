@@ -91,7 +91,31 @@ export function PhraseResultSheet({
   const previousRatio = progress ? ratioOnBar(progress.currentBpm, progress) : 0;
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title={phrase.name}>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={phrase.name}
+      footer={
+        <View style={{ gap: 8, paddingTop: 8 }}>
+          {hasNextPhrase && (
+            <Button
+              label="記録して次の1本へ"
+              onPress={() => onSubmit({ result }, "next")}
+              variant="primary"
+              disabled={isSubmitting}
+              fullWidth
+            />
+          )}
+          <Button
+            label="記録して今日は終わる"
+            onPress={() => onSubmit({ result }, "finish")}
+            variant={hasNextPhrase ? "outline" : "primary"}
+            disabled={isSubmitting}
+            fullWidth
+          />
+        </View>
+      }
+    >
       <View style={{ gap: 14, paddingTop: 4, paddingBottom: 8 }}>
         <View style={{ gap: 4 }}>
           <Text style={{ fontSize: 20, fontWeight: "800", color: colors.onSurface, fontVariant: ["tabular-nums"] }}>
@@ -209,25 +233,6 @@ export function PhraseResultSheet({
           >
             {nextTargetBpm} BPM
           </Text>
-        </View>
-
-        <View style={{ gap: 8 }}>
-          {hasNextPhrase && (
-            <Button
-              label="記録して次の1本へ"
-              onPress={() => onSubmit({ result }, "next")}
-              variant="primary"
-              disabled={isSubmitting}
-              fullWidth
-            />
-          )}
-          <Button
-            label="記録して今日は終わる"
-            onPress={() => onSubmit({ result }, "finish")}
-            variant={hasNextPhrase ? "outline" : "primary"}
-            disabled={isSubmitting}
-            fullWidth
-          />
         </View>
       </View>
     </BottomSheet>

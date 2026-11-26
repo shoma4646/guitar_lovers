@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import { AccessibilityInfo, Alert, type AlertButton } from "react-native";
 import { usePracticeStore } from "@/stores/practice";
 import { describePlayerError } from "@/features/practice/lib/playerError";
+import { isInsideVerticalScroll } from "@/shared/testing/sheetScroll";
 import { AddVideoSheet } from "../AddVideoSheet";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -255,5 +256,18 @@ describe("AddVideoSheet: 保存していない区間・ブックマークがあ�
     expect(state.bookmarks).toHaveLength(1);
     expect(onClose).not.toHaveBeenCalled();
     alertSpy.mockRestore();
+  });
+});
+
+describe("AddVideoSheet の文字を大きくしたとき", () => {
+  beforeEach(() => {
+    usePracticeStore.setState(initialState, true);
+  });
+
+  it("URL入力と「読み込む」はシートの縦スクロールの中に描き、画面からはみ出しても届く", () => {
+    render(<AddVideoSheet visible onClose={jest.fn()} />);
+
+    expect(isInsideVerticalScroll(screen.getByLabelText("YouTube URL入力"))).toBe(true);
+    expect(isInsideVerticalScroll(screen.getByText("読み込む"))).toBe(true);
   });
 });

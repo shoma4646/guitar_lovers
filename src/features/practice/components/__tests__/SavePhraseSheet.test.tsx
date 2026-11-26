@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { Alert, Keyboard } from "react-native";
+import { isInsideVerticalScroll } from "@/shared/testing/sheetScroll";
 import { SavePhraseSheet } from "../SavePhraseSheet";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -120,5 +121,15 @@ describe("SavePhraseSheet", () => {
       expect(screen.getByLabelText("フレーズ名入力").props.value).toBe("サビのソロ");
       expect(screen.getByLabelText("目標BPM入力").props.value).toBe("140");
     });
+  });
+});
+
+describe("SavePhraseSheet の文字を大きくしたとき", () => {
+  it("入力欄と「保存する」はシートの縦スクロールの中に描き、画面からはみ出しても届く", () => {
+    setup(jest.fn());
+
+    expect(isInsideVerticalScroll(screen.getByLabelText("フレーズ名入力"))).toBe(true);
+    expect(isInsideVerticalScroll(screen.getByLabelText("目標BPM入力"))).toBe(true);
+    expect(isInsideVerticalScroll(screen.getByText("保存する"))).toBe(true);
   });
 });
