@@ -128,6 +128,7 @@ export function FavoritesTab() {
               >
                 <Image
                   source={{ uri: youtubeThumbnail(video.videoId) }}
+                  resizeMode="cover"
                   style={[styles.thumb, metrics.thumb]}
                 />
                 <View className="flex-1 min-w-0 pr-xl">
@@ -194,6 +195,7 @@ export function FavoritesTab() {
             >
               <Image
                 source={{ uri: youtubeThumbnail(video.videoId) }}
+                resizeMode="cover"
                 style={[styles.thumb, metrics.thumb]}
               />
               <View className="flex-1 min-w-0 pr-xl">

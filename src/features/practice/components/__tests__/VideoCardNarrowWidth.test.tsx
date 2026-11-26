@@ -37,7 +37,14 @@ jest.mock("@/features/practice/hooks/useConfirmPhraseSwitch", () => ({
   useConfirmPhraseSwitch: () => jest.fn(),
 }));
 
-type CardMetrics = { padding: unknown; gap: unknown; thumb: unknown; fontSize: unknown; lineHeight: unknown };
+type CardMetrics = {
+  padding: unknown;
+  gap: unknown;
+  thumb: unknown;
+  thumbHeight: unknown;
+  fontSize: unknown;
+  lineHeight: unknown;
+};
 
 /** 動画名から、そのカードの余白・間隔・サムネの幅・タイトルの文字サイズを読み取る */
 function cardMetrics(title: string): CardMetrics {
@@ -49,13 +56,14 @@ function cardMetrics(title: string): CardMetrics {
     padding: cardStyle.padding,
     gap: cardStyle.gap,
     thumb: thumbStyle.width,
+    thumbHeight: thumbStyle.height,
     fontSize: titleStyle.fontSize,
     lineHeight: titleStyle.lineHeight,
   };
 }
 
-const NARROW: CardMetrics = { padding: 12, gap: 12, thumb: 64, fontSize: 16, lineHeight: 20 };
-const REGULAR: CardMetrics = { padding: 16, gap: 16, thumb: 80, fontSize: 18, lineHeight: 22 };
+const NARROW: CardMetrics = { padding: 12, gap: 12, thumb: 80, thumbHeight: 45, fontSize: 16, lineHeight: 20 };
+const REGULAR: CardMetrics = { padding: 16, gap: 16, thumb: 96, thumbHeight: 54, fontSize: 18, lineHeight: 22 };
 
 describe.each([
   ["メニュー集", () => render(<PresetsTab />), ["初心者向けコード練習 - G, C, D chord"]],
@@ -68,12 +76,25 @@ describe.each([
     expect(cardMetrics(title)).toEqual(NARROW);
   });
 
-  it.each([360, 375, 390])("幅%iでは今までどおりの寸法", (width) => {
+  it.each([360, 375, 390])("幅%iでは通常の寸法", (width) => {
     mockWindow.width = width;
     renderTab();
 
     for (const title of titles) {
       expect(cardMetrics(title)).toEqual(REGULAR);
+    }
+  });
+
+  it.each([320, 375, 390])("幅%iでも、サムネは YouTubeのサムネと同じ16:9の枠で、切り抜かずに全体を出す", (width) => {
+    mockWindow.width = width;
+    renderTab();
+
+    for (const title of titles) {
+      const card = screen.getByRole("button", { name: new RegExp(`^${title}を再生`) });
+      const thumb = within(card).UNSAFE_getByType(Image);
+      const { width: thumbWidth, height: thumbHeight } = StyleSheet.flatten(thumb.props.style);
+      expect(Number(thumbWidth) / Number(thumbHeight)).toBeCloseTo(16 / 9, 2);
+      expect(thumb.props.resizeMode).toBe("cover");
     }
   });
 });
