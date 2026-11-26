@@ -47,7 +47,7 @@ export function AllPhrasesProgressSheet({
   ];
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="フレーズの上達">
+    <BottomSheet visible={visible} onClose={onClose} title="フレーズの上達" scrollable={false}>
       <SegmentedControl
         items={items}
         value={kind}

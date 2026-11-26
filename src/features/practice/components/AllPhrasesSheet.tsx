@@ -43,6 +43,7 @@ export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
     <BottomSheet
       visible={visible}
       onClose={onClose}
+      scrollable={false}
       title={readFailed ? "すべてのフレーズ" : `すべてのフレーズ（${menuItems.length}本）`}
     >
       <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>

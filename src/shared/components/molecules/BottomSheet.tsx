@@ -11,6 +11,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -39,6 +40,13 @@ type Props = {
    * （iOSは表示中のモーダルから2枚目を重ねて出せないため、閉じ終わるのを待つ必要がある）
    */
   onDismissed?: () => void;
+  /**
+   * 中身を縦スクロールで包む（既定 true）。高さの上限を超えた中身にも届くようにする。
+   * 中身が自前でスクロールを持つシートは false にして二重にしない
+   */
+  scrollable?: boolean;
+  /** スクロールの外、シートの下端に固定して出す中身（記録ボタンなど） */
+  footer?: ReactNode;
 };
 
 export function BottomSheet({
@@ -50,6 +58,8 @@ export function BottomSheet({
   titleNumberOfLines = 2,
   showCloseButton = true,
   onDismissed,
+  scrollable = true,
+  footer,
 }: Props) {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -171,7 +181,19 @@ export function BottomSheet({
                 />
               ) : null}
             </View>
-            {children}
+            {scrollable ? (
+              <ScrollView
+                testID="bottom-sheet-scroll"
+                style={{ flexShrink: 1 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {children}
+              </ScrollView>
+            ) : (
+              children
+            )}
+            {footer != null ? <View testID="bottom-sheet-footer">{footer}</View> : null}
           </Animated.View>
         </KeyboardAvoidingView>
       </View>

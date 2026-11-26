@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react-native";
 import type { PracticeSession } from "@/shared/types/models";
+import { countNestedVerticalScrolls, isInsideVerticalScroll } from "@/shared/testing/sheetScroll";
 import { RecentSessionsSheet } from "../RecentSessionsSheet";
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -28,5 +29,14 @@ describe("RecentSessionsSheet", () => {
     renderSheet([]);
     expect(screen.getByText("練習記録がありません")).toBeTruthy();
     expect(screen.queryByText("長押しで削除")).toBeNull();
+  });
+});
+
+describe("RecentSessionsSheet のスクロール", () => {
+  it("記録の一覧は自前のスクロール1つの中に描き、シートのスクロールと二重にしない", () => {
+    renderSheet([{ id: "s1", date: new Date(2026, 9, 20, 9).toISOString(), duration: 54000 }]);
+
+    expect(isInsideVerticalScroll(screen.getByText("長押しで削除"))).toBe(false);
+    expect(countNestedVerticalScrolls()).toBe(0);
   });
 });

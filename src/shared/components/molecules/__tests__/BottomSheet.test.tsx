@@ -1,5 +1,6 @@
 import { render, fireEvent, screen, act } from "@testing-library/react-native";
 import { Keyboard, Modal, Platform, StyleSheet, Text } from "react-native";
+import { isInsideVerticalScroll } from "@/shared/testing/sheetScroll";
 import { BottomSheet } from "../BottomSheet";
 
 const mockWindow = { width: 320, height: 568, scale: 2, fontScale: 1 };
@@ -199,6 +200,47 @@ describe("BottomSheet", () => {
       const sheet = StyleSheet.flatten(screen.getByTestId("bottom-sheet").props.style);
       expect(sheet.maxHeight).toBeCloseTo(568 * 0.5);
     });
+  });
+});
+
+describe("BottomSheet の中身のスクロール", () => {
+  it("既定では中身を縦スクロールの中に描き、上限の高さに合わせて縮める", () => {
+    setup(true);
+
+    expect(isInsideVerticalScroll(screen.getByText("中身"))).toBe(true);
+    const scroll = screen.getByTestId("bottom-sheet-scroll");
+    expect(StyleSheet.flatten(scroll.props.style).flexShrink).toBe(1);
+  });
+
+  it("入力欄にキーボードが出ていても、中のボタンは1回のタップで押せる", () => {
+    setup(true);
+
+    expect(screen.getByTestId("bottom-sheet-scroll").props.keyboardShouldPersistTaps).toBe("handled");
+  });
+
+  it("scrollable={false}なら中身をスクロールで包まない（中身が自前でスクロールを持つシート向け）", () => {
+    render(
+      <BottomSheet visible onClose={jest.fn()} title="t" scrollable={false}>
+        <Text>中身</Text>
+      </BottomSheet>,
+    );
+
+    expect(screen.queryByTestId("bottom-sheet-scroll")).toBeNull();
+    expect(isInsideVerticalScroll(screen.getByText("中身"))).toBe(false);
+  });
+
+  it("footerはスクロールの外、シートの下端に描く", () => {
+    render(
+      <BottomSheet visible onClose={jest.fn()} title="t" footer={<Text>下端のボタン</Text>}>
+        <Text>中身</Text>
+      </BottomSheet>,
+    );
+
+    expect(isInsideVerticalScroll(screen.getByText("中身"))).toBe(true);
+    expect(isInsideVerticalScroll(screen.getByText("下端のボタン"))).toBe(false);
+    const sheetChildren = screen.getByTestId("bottom-sheet").children;
+    const lastChild = sheetChildren[sheetChildren.length - 1];
+    expect(typeof lastChild === "string" ? null : lastChild.props.testID).toBe("bottom-sheet-footer");
   });
 });
 

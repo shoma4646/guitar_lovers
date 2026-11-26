@@ -34,6 +34,7 @@ export function RecentSessionsSheet({
     <BottomSheet
       visible={visible}
       onClose={onClose}
+      scrollable={false}
       title={`最近の記録（${sessions.length}件）`}
       onDismissed={onDismissed}
     >
