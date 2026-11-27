@@ -83,6 +83,8 @@ export interface PracticeStats {
   weeklyData: number[];
   /** 曜日別の練習有無（月〜日）。セッションまたはフレーズ練習結果があった日をtrueとする */
   weeklyPracticedDays: boolean[];
+  /** 集計の基準日（今日）の曜日番号（月曜=0〜日曜=6） */
+  todayWeekIndex: number;
 }
 
 /** メトロノームの設定 */

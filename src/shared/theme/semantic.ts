@@ -34,6 +34,8 @@ export const semantic = {
   weekDone: colors.primary,
   /** 週バー: 練習していない日 */
   weekTodo: colors.surfaceContainerHigh,
+  /** 週バー: 今日より後のまだ来ていない日（枠線の色。塗りはしない） */
+  weekUpcoming: colors.outline,
 
   /** 練習中バーの背景 */
   sessionBarSurface: colors.inverseSurface,

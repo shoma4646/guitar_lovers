@@ -20,8 +20,9 @@ export function calcStats(
   attempts: PhraseAttempt[],
   now: Date,
 ): PracticeStats {
+  const todayWeekIndex = (now.getDay() + 6) % 7;
   const monday = new Date(now);
-  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  monday.setDate(now.getDate() - todayWeekIndex);
   monday.setHours(0, 0, 0, 0);
   const nextMonday = new Date(monday);
   nextMonday.setDate(monday.getDate() + 7);
@@ -68,5 +69,6 @@ export function calcStats(
     totalSessions: sessions.length,
     weeklyData,
     weeklyPracticedDays,
+    todayWeekIndex,
   };
 }
