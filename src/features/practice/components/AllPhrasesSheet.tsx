@@ -5,22 +5,17 @@
  * 長押しでアーカイブ・削除できる（TodayPhraseRowsと同じ操作）。
  */
 
-import { ScrollView, View, Text, Pressable } from "react-native";
+import { ScrollView, View, Text } from "react-native";
 import { BottomSheet } from "@/shared/components/molecules/BottomSheet";
 import { ReadErrorCard } from "@/shared/components/molecules/ReadErrorCard";
 import { hasReadFailure, refetchAll } from "@/shared/lib/readFailure";
 import { colors } from "@/shared/theme";
-import { semantic } from "@/shared/theme/semantic";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { resolveCurrentBpm } from "@/features/practice/lib/progression";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
 import { useTodayMenu } from "@/features/practice/hooks/useTodayMenu";
-import {
-  buildPhraseRowLabel,
-  PHRASE_ROW_HINT,
-  phraseRowAccessibilityActionProps,
-} from "@/features/practice/lib/phraseRowLabel";
+import { PhraseMenuRow, needsLeadingIcon } from "./PhraseMenuRow";
 import type { PracticePhrase } from "@/shared/types/models";
 
 type Props = {
@@ -38,6 +33,7 @@ export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
 
   const allAttempts = attempts ?? [];
   const menuItems = useTodayMenu();
+  const hasLeadingIcon = menuItems.some((entry) => needsLeadingIcon(entry));
 
   return (
     <BottomSheet
@@ -62,42 +58,17 @@ export function AllPhrasesSheet({ visible, onClose, onStartPhrase }: Props) {
           ) : (
             menuItems.map((entry, index) => {
               const phraseAttempts = allAttempts.filter((a) => a.phraseId === entry.phrase.id);
-              const { targetBeforeToday } = entry.today;
-              const currentBpm = resolveCurrentBpm(entry.phrase.currentBpm, phraseAttempts);
               return (
-                <Pressable
+                <PhraseMenuRow
                   key={entry.phrase.id}
-                  onPress={() => onStartPhrase(entry.phrase, targetBeforeToday)}
+                  entry={entry}
+                  currentBpm={resolveCurrentBpm(entry.phrase.currentBpm, phraseAttempts)}
+                  isFirst={index === 0}
+                  reserveLeadingSlot={hasLeadingIcon}
+                  onPress={() => onStartPhrase(entry.phrase, entry.today.targetBeforeToday)}
                   onLongPress={() => handleLongPress(entry.phrase)}
-                  className="active:opacity-80"
-                  style={{
-                    height: 56,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 10,
-                    borderTopWidth: index === 0 ? 0 : 1,
-                    borderTopColor: colors.divider,
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={buildPhraseRowLabel(entry, currentBpm)}
-                  accessibilityHint={PHRASE_ROW_HINT}
-                  {...phraseRowAccessibilityActionProps((action) => handleLongPress(entry.phrase, action))}
-                >
-                  <Text
-                    style={{ flex: 1, fontSize: 15, fontWeight: "600", color: colors.onSurface }}
-                    numberOfLines={1}
-                  >
-                    {entry.priority === "graduated" && (
-                      <Text style={{ color: semantic.graduated }}>卒業・</Text>
-                    )}
-                    {entry.phrase.name}
-                  </Text>
-                  <Text
-                    style={{ fontSize: 13, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}
-                  >
-                    {currentBpm} → {targetBeforeToday}
-                  </Text>
-                </Pressable>
+                  onOrganize={(action) => handleLongPress(entry.phrase, action)}
+                />
               );
             })
           )}

@@ -20,16 +20,12 @@ import { colors, radius } from "@/shared/theme";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { buildTodayMenu, resolveCurrentBpm } from "@/features/practice/lib/progression";
-import {
-  buildPhraseRowLabel,
-  PHRASE_ROW_HINT,
-  phraseRowAccessibilityActionProps,
-} from "@/features/practice/lib/phraseRowLabel";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
 import { formatDuration, shouldShowHours } from "@/features/practice/lib/formatters";
 import { useLocalDay } from "@/shared/hooks/useLocalDay";
 import { localDayToDate } from "@/shared/lib/localDay";
 import { MetronomeControls } from "./MetronomeControls";
+import { PhraseMenuRow, needsLeadingIcon } from "./PhraseMenuRow";
 import type { Bookmark, PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
 type Props = {
@@ -110,6 +106,7 @@ export function PracticeMenuSheet({
     }
     return map;
   }, [attempts]);
+  const hasLeadingIcon = menuItems.some((entry) => needsLeadingIcon(entry, entry.phrase.id === activePhraseId));
 
   return (
     <BottomSheet
@@ -183,45 +180,21 @@ export function PracticeMenuSheet({
             ) : (
               menuItems.map((entry, index) => {
                 const phraseAttempts = attemptsByPhraseId.get(entry.phrase.id) ?? [];
-                const { targetBeforeToday } = entry.today;
-                const active = entry.phrase.id === activePhraseId;
-                const currentBpm = resolveCurrentBpm(entry.phrase.currentBpm, phraseAttempts);
                 return (
-                  <Pressable
+                  <PhraseMenuRow
                     key={entry.phrase.id}
+                    entry={entry}
+                    currentBpm={resolveCurrentBpm(entry.phrase.currentBpm, phraseAttempts)}
+                    isFirst={index === 0}
+                    active={entry.phrase.id === activePhraseId}
+                    reserveLeadingSlot={hasLeadingIcon}
                     onPress={() => {
-                      onSelectPhrase(entry.phrase, targetBeforeToday);
+                      onSelectPhrase(entry.phrase, entry.today.targetBeforeToday);
                       onClose();
                     }}
                     onLongPress={() => handleLongPress(entry.phrase)}
-                    className="active:opacity-80"
-                    style={{
-                      height: 52,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 8,
-                      borderTopWidth: index === 0 ? 0 : 1,
-                      borderTopColor: colors.divider,
-                      backgroundColor: active ? colors.surfaceContainerLow : "transparent",
-                      borderRadius: active ? radius.sm : 0,
-                      paddingHorizontal: active ? 8 : 0,
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={buildPhraseRowLabel(entry, currentBpm)}
-                    accessibilityHint={PHRASE_ROW_HINT}
-                    {...phraseRowAccessibilityActionProps((action) => handleLongPress(entry.phrase, action))}
-                  >
-                    {active ? <Icon name="check_circle" size={18} color={colors.primary} /> : <View style={{ width: 18 }} />}
-                    <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.onSurface }} numberOfLines={1}>
-                      {entry.priority === "graduated" && (
-                        <Text style={{ color: colors.secondary }}>卒業・</Text>
-                      )}
-                      {entry.phrase.name}
-                    </Text>
-                    <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, fontVariant: ["tabular-nums"] }}>
-                      {currentBpm} → {targetBeforeToday}
-                    </Text>
-                  </Pressable>
+                    onOrganize={(action) => handleLongPress(entry.phrase, action)}
+                  />
                 );
               })
             )}
