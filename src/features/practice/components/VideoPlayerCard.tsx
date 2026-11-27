@@ -88,6 +88,7 @@ export const VideoPlayerCard = memo(
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled
           domStorageEnabled
+          mediaCapturePermissionGrantType="deny"
           originWhitelist={PLAYER_ORIGIN_WHITELIST}
           onShouldStartLoadWithRequest={handlePlayerNavigationRequest}
           // iOSの長押しプレビューはonShouldStartLoadWithRequestを通らずにリンク先を読み込む

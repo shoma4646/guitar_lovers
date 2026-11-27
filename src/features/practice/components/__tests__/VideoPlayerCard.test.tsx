@@ -8,6 +8,7 @@ import { VideoPlayerCard } from "../VideoPlayerCard";
 type MockWebViewProps = {
   allowsLinkPreview?: boolean;
   onLoadStart?: (event: { nativeEvent: { url: string } }) => void;
+  mediaCapturePermissionGrantType?: string;
 };
 const mockWebView: { props: MockWebViewProps | null; stopLoading: jest.Mock } = {
   props: null,
@@ -119,5 +120,13 @@ describe("VideoPlayerCard の事後の遷移の守り", () => {
     const { ref } = renderCard();
 
     expect(ref.current?.stopLoading).toBe(mockWebView.stopLoading);
+  });
+});
+
+describe("VideoPlayerCard の端末機能の権限", () => {
+  it("プレイヤーのページからのマイク・カメラ要求を確認なしで拒否する", () => {
+    renderCard();
+
+    expect(mockWebView.props?.mediaCapturePermissionGrantType).toBe("deny");
   });
 });
