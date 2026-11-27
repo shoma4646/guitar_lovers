@@ -15,7 +15,6 @@ import {
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseResult";
-import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePracticePhrase";
 import { usePracticeSessions } from "@/features/progress/api/usePracticeSessions";
 import { ReminderBridge } from "@/features/reminder/components/ReminderBridge";
 import type { PracticePhrase } from "@/shared/types/models";
@@ -54,14 +53,13 @@ const PHRASE: PracticePhrase = {
 
 type Screen = {
   record: ReturnType<typeof useRecordPhraseResult>;
-  graduate: ReturnType<typeof useGraduatePracticePhrase>;
 };
 
 function PracticeScreenProbe({ onRender }: { onRender: (screen: Screen) => void }) {
   usePracticePhrases();
   usePhraseAttempts();
   usePracticeSessions();
-  onRender({ record: useRecordPhraseResult(), graduate: useGraduatePracticePhrase() });
+  onRender({ record: useRecordPhraseResult() });
   return null;
 }
 
@@ -150,7 +148,6 @@ describe("端末内の練習データの読み込み回数", () => {
         bpm: 120,
         result: "ok",
       });
-      screen.graduate.mutate({ id: "p1", graduatedAt: "2026-09-10T00:00:00.000Z" });
     });
     await settle(queryClient);
 

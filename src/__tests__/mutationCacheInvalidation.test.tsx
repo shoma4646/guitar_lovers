@@ -13,7 +13,6 @@ import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseResult";
 import { useArchivePracticePhrase } from "@/features/practice/api/useArchivePracticePhrase";
-import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePracticePhrase";
 import { useDeletePracticePhrase } from "@/features/practice/api/useDeletePracticePhrase";
 import { useUpdatePracticePhrase } from "@/features/practice/api/useUpdatePracticePhrase";
 import { usePracticeSessions } from "@/features/progress/api/usePracticeSessions";
@@ -52,7 +51,6 @@ function useScreenData() {
     saveSession: useSavePracticeSession(),
     deleteSession: useDeletePracticeSession(),
     archivePhrase: useArchivePracticePhrase(),
-    graduatePhrase: useGraduatePracticePhrase(),
     deletePhrase: useDeletePracticePhrase(),
     updatePhrase: useUpdatePracticePhrase(),
   };
@@ -64,8 +62,6 @@ const sessionIds = (h: ScreenData) => h.sessions.data?.map((s) => s.id);
 const phraseIds = (h: ScreenData) => h.phrases.data?.map((p) => p.id);
 const attemptIds = (h: ScreenData) => h.attempts.data?.map((a) => a.id);
 const phrase1 = (h: ScreenData) => h.phrases.data?.find((p) => p.id === "p1");
-
-const GRADUATED_AT = "2026-09-10T00:00:00.000Z";
 
 type WriteCase = {
   name: string;
@@ -110,13 +106,6 @@ const WRITE_CASES: WriteCase[] = [
     read: (h) => phrase1(h)?.archivedAt !== undefined,
     before: false,
     after: true,
-  },
-  {
-    name: "卒業: graduatedAt が付く",
-    write: (h) => h.graduatePhrase.mutateAsync({ id: "p1", graduatedAt: GRADUATED_AT }),
-    read: (h) => phrase1(h)?.graduatedAt,
-    before: undefined,
-    after: GRADUATED_AT,
   },
   {
     name: "フレーズ削除: フレーズの一覧とそのフレーズの結果から消える",
