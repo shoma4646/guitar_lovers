@@ -49,9 +49,6 @@ jest.mock("@/features/practice/api/useSavePracticePhrase", () => ({
 jest.mock("@/features/practice/api/useRecordPhraseResult", () => ({
   useRecordPhraseResult: () => ({ mutateAsync: jest.fn(async () => {}) }),
 }));
-jest.mock("@/features/practice/api/useGraduatePracticePhrase", () => ({
-  useGraduatePracticePhrase: () => ({ mutate: jest.fn() }),
-}));
 const mockAttempts: never[] = [];
 jest.mock("@/features/practice/api/usePhraseAttempts", () => ({
   usePhraseAttempts: () => ({ data: mockAttempts }),

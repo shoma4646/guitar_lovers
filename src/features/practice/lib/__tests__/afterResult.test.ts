@@ -39,50 +39,14 @@ function makeAttempt(overrides: Partial<PhraseAttempt> = {}): PhraseAttempt {
   };
 }
 
-function plan(phrase: PracticePhrase, attempts: PhraseAttempt[], attempt: PhraseAttempt, phrases = [phrase]) {
-  return planAfterResult({
-    phrase,
-    attempts,
-    attempt,
-    todayMenu: buildTodayMenu(phrases, attempts, NOW),
-  });
+function plan(phrase: PracticePhrase, attempts: PhraseAttempt[], phrases = [phrase]) {
+  return planAfterResult({ phrase, todayMenu: buildTodayMenu(phrases, attempts, NOW) });
 }
-
-describe("planAfterResult: 卒業日", () => {
-  it("目標ちょうどのBPMで弾けたら卒業日を返す", () => {
-    const phrase = makePhrase({ targetBpm: 120 });
-    const attempt = makeAttempt({ bpm: 120, date: sep(20, 20) });
-    expect(plan(phrase, [], attempt).graduatedAt).toBe(sep(20, 20));
-  });
-
-  it("目標未満のBPMやok以外では卒業日を返さない", () => {
-    const phrase = makePhrase({ targetBpm: 120 });
-    expect(plan(phrase, [], makeAttempt({ bpm: 119 })).graduatedAt).toBeUndefined();
-    expect(plan(phrase, [], makeAttempt({ bpm: 120, result: "partial" })).graduatedAt).toBeUndefined();
-    expect(plan(phrase, [], makeAttempt({ bpm: 120, result: "ng" })).graduatedAt).toBeUndefined();
-  });
-
-  it("卒業日が保存済みなら返さない", () => {
-    const phrase = makePhrase({ targetBpm: 120, graduatedAt: sep(10, 9) });
-    expect(plan(phrase, [], makeAttempt({ bpm: 125 })).graduatedAt).toBeUndefined();
-  });
-
-  it("卒業日が未保存で過去に目標以上のok記録があれば、その最初の日付を返す（今日へ前進しない）", () => {
-    const phrase = makePhrase({ targetBpm: 120 });
-    const past = [
-      makeAttempt({ id: "late", bpm: 121, date: sep(15, 20) }),
-      makeAttempt({ id: "first", bpm: 120, date: sep(12, 20) }),
-      makeAttempt({ id: "other", phraseId: "p2", bpm: 200, date: sep(5, 20) }),
-    ];
-    const attempt = makeAttempt({ id: "now", bpm: 122, date: sep(20, 20) });
-    expect(plan(phrase, past, attempt).graduatedAt).toBe(sep(12, 20));
-  });
-});
 
 describe("planAfterResult: 次の1本", () => {
   it("フレーズが1本だけなら次は無い", () => {
     const phrase = makePhrase();
-    expect(plan(phrase, [], makeAttempt()).next).toBeUndefined();
+    expect(plan(phrase, []).next).toBeUndefined();
   });
 
   it("記録した本人・卒業済み・本日達成済みを除いた先頭を返す", () => {
@@ -101,7 +65,7 @@ describe("planAfterResult: 次の1本", () => {
     expect(menu[0].phrase.id).toBe("reached");
     expect(menu.find((e) => e.phrase.id === "reached")?.today.reached).toBe(true);
 
-    const result = plan(self, attempts, makeAttempt({ phraseId: "self" }), phrases);
+    const result = plan(self, attempts, phrases);
     expect(result.next?.phrase.id).toBe("open");
   });
 
@@ -109,7 +73,7 @@ describe("planAfterResult: 次の1本", () => {
     const self = makePhrase({ id: "self" });
     const next = makePhrase({ id: "next", currentBpm: 100, initialBpm: 100 });
     const attempts = [makeAttempt({ id: "n1", phraseId: "next", bpm: 100, date: sep(19, 20) })];
-    const result = plan(self, attempts, makeAttempt({ phraseId: "self" }), [self, next]);
+    const result = plan(self, attempts, [self, next]);
     expect(result.next).toEqual({ phrase: next, startBpm: 105 });
   });
 
@@ -151,12 +115,7 @@ describe("planAfterResult: 次の1本", () => {
             );
           const self = phrases[selfIndexSeed % phrases.length];
           const menu = buildTodayMenu(phrases, attempts, NOW);
-          const result = planAfterResult({
-            phrase: self,
-            attempts,
-            attempt: makeAttempt({ id: "now", phraseId: self.id, date: sep(20, 21) }),
-            todayMenu: menu,
-          });
+          const result = planAfterResult({ phrase: self, todayMenu: menu });
 
           const expected = filterOpenMenuEntries(menu).find((e) => e.phrase.id !== self.id);
           if (!expected) {
@@ -239,12 +198,7 @@ describe("pickNextMenuEntry: 結果シートのボタン表示と遷移が共有
             );
           const self = phrases[selfIndexSeed % phrases.length];
           const menu = buildTodayMenu(phrases, attempts, NOW);
-          const planned = planAfterResult({
-            phrase: self,
-            attempts,
-            attempt: makeAttempt({ id: "now", phraseId: self.id, date: sep(20, 21) }),
-            todayMenu: menu,
-          });
+          const planned = planAfterResult({ phrase: self, todayMenu: menu });
 
           expect(planned.next?.phrase.id).toBe(pickNextMenuEntry(menu, self.id)?.phrase.id);
         },

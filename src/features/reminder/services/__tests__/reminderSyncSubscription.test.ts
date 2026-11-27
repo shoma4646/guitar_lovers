@@ -4,7 +4,6 @@ import { act, renderHook } from "@testing-library/react-native";
 import { createTestQueryClient } from "@/shared/testing/createTestQueryClient";
 import { useSavePracticePhrase } from "@/features/practice/api/useSavePracticePhrase";
 import { useUpdatePracticePhrase } from "@/features/practice/api/useUpdatePracticePhrase";
-import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePracticePhrase";
 import { useArchivePracticePhrase } from "@/features/practice/api/useArchivePracticePhrase";
 import { useDeletePracticePhrase } from "@/features/practice/api/useDeletePracticePhrase";
 import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseResult";
@@ -116,7 +115,6 @@ type AnyMutation = () => UseMutationResult<any, any, any, any>;
 const AFFECTS_REMINDER: [string, AnyMutation, unknown][] = [
   ["フレーズ保存", useSavePracticePhrase, PHRASE],
   ["フレーズ更新", useUpdatePracticePhrase, { id: "p1", patch: { name: "サビ" } }],
-  ["フレーズ卒業", useGraduatePracticePhrase, { id: "p1", graduatedAt: "2026-09-02T00:00:00.000Z" }],
   ["フレーズのアーカイブ", useArchivePracticePhrase, "p1"],
   ["フレーズ削除", useDeletePracticePhrase, "p1"],
   ["結果記録", useRecordPhraseResult, ATTEMPT],

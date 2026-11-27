@@ -33,9 +33,6 @@ jest.mock("@/features/practice/api/useSavePracticePhrase", () => ({
 jest.mock("@/features/practice/api/useRecordPhraseResult", () => ({
   useRecordPhraseResult: () => ({ mutateAsync: jest.fn() }),
 }));
-jest.mock("@/features/practice/api/useGraduatePracticePhrase", () => ({
-  useGraduatePracticePhrase: () => ({ mutate: jest.fn() }),
-}));
 jest.mock("@/features/practice/api/usePhraseAttempts", () => ({
   usePhraseAttempts: () => ({ data: [] }),
 }));

@@ -22,7 +22,6 @@ import { IconButton } from "@/shared/components/atoms/IconButton";
 import type { PracticePhrase } from "@/shared/types/models";
 import { useSavePracticePhrase } from "@/features/practice/api/useSavePracticePhrase";
 import { useRecordPhraseResult } from "@/features/practice/api/useRecordPhraseResult";
-import { useGraduatePracticePhrase } from "@/features/practice/api/useGraduatePracticePhrase";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { PhraseNotFoundError } from "@/shared/services/storage";
@@ -124,7 +123,6 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const router = useRouter();
   const { mutateAsync: savePhraseAsync } = useSavePracticePhrase();
   const { mutateAsync: recordResultAsync } = useRecordPhraseResult();
-  const { mutate: graduatePhrase } = useGraduatePracticePhrase();
   const { data: allPhraseAttempts = [] } = usePhraseAttempts();
   const { data: allPhrases = [] } = usePracticePhrases();
   const { data: presets = [] } = useVideoPresets();
@@ -380,10 +378,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           return;
         }
         const { phrase } = activePractice;
-        const plan = planAfterResult({ phrase, attempts: allPhraseAttempts, attempt, todayMenu });
-        if (plan.graduatedAt) {
-          graduatePhrase({ id: phrase.id, graduatedAt: plan.graduatedAt });
-        }
+        const plan = planAfterResult({ phrase, todayMenu });
         setShowResultSheet(false);
         // 保存済みなので、次のフレーズへ進む前に完了させる。先に完了させないと、直後の
         // 遷移がconfirmSwitchの「未保存の記録」として誤検知したり、再送時に同じattempt IDを
@@ -420,10 +415,8 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
       activePractice,
       pendingAttemptId,
       recordResultAsync,
-      graduatePhrase,
       setActivePractice,
       setMetronomeEnabled,
-      allPhraseAttempts,
       metronomeBpm,
       todayMenu,
       startPhraseDirectly,

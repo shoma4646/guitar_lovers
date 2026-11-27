@@ -27,7 +27,7 @@ export const practicePhraseSchema = z
     archivedAt: z.iso.datetime().optional(),
     /** 保存時のBPM（任意）。導入前に保存したフレーズには無い */
     initialBpm: z.number().int().min(BPM_MIN).max(BPM_MAX).optional(),
-    /** 目標BPMに到達した日時（任意）。卒業かどうかは到達BPMと目標BPMから判定し、この値単独では判定しない */
+    /** 目標BPMに到達した日時（任意）。新たには書き込まず、卒業日は記録から求める。以前に保存された値がある既存データでは表示に使う */
     graduatedAt: z.iso.datetime().optional(),
   })
   .refine((phrase) => phrase.startSec < phrase.endSec, {
