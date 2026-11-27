@@ -1,4 +1,5 @@
-import { act, render } from "@testing-library/react-native";
+import { act, render, screen } from "@testing-library/react-native";
+import * as Haptics from "expo-haptics";
 import { AccessibilityInfo, Alert } from "react-native";
 import { usePracticeStore } from "@/stores/practice";
 import type { PracticePhrase } from "@/shared/types/models";
@@ -28,6 +29,11 @@ jest.mock("react-native-safe-area-context", () => ({
 }));
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 jest.mock("expo-crypto", () => ({ randomUUID: () => "uuid" }));
+jest.mock("expo-haptics", () => ({
+  selectionAsync: jest.fn(async () => {}),
+  notificationAsync: jest.fn(async () => {}),
+  NotificationFeedbackType: { Success: "success", Warning: "warning", Error: "error" },
+}));
 jest.mock("@/features/practice/api/useSavePracticePhrase", () => ({
   useSavePracticePhrase: () => ({ mutateAsync: jest.fn() }),
 }));
@@ -144,5 +150,71 @@ describe("PracticeTab の結果記録後の「次の1本」", () => {
     expect(usePracticeStore.getState().activePhrasePractice).toBeNull();
     expect(alertSpy).not.toHaveBeenCalled();
     alertSpy.mockRestore();
+  });
+});
+
+describe("PracticeTab の「記録して次の1本へ」の知らせ", () => {
+  const NEXT_NOTICE = "記録しました。次は「Aメロ」、80 BPM";
+  let announceSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    mockPhrases = [PHRASE, SECOND];
+    announceSpy = jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => {});
+    announceSpy.mockClear();
+    jest.mocked(Haptics.notificationAsync).mockClear();
+  });
+
+  afterEach(() => {
+    announceSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  it("記録できたことと次のフレーズ名・BPMを1回読み上げ、成功の振動を返す", async () => {
+    const props = startAndRender();
+
+    await act(async () => {
+      await props.onSubmit({ result: "ok" }, "next");
+    });
+
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+    expect(announceSpy).toHaveBeenCalledWith(NEXT_NOTICE);
+    expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Success);
+  });
+
+  it("動画を読み込んだ後の画面に同じ文言の帯を出し、4秒後に消す", async () => {
+    jest.useFakeTimers();
+    const props = startAndRender();
+
+    await act(async () => {
+      await props.onSubmit({ result: "ok" }, "next");
+    });
+
+    expect(usePracticeStore.getState().loadedVideoId).not.toBeNull();
+    expect(screen.getByTestId("practice-video-header")).toBeTruthy();
+    expect(screen.getByTestId("practice-finish-notice")).toHaveTextContent(NEXT_NOTICE);
+
+    act(() => {
+      jest.advanceTimersByTime(4000);
+    });
+
+    expect(screen.queryByTestId("practice-finish-notice")).toBeNull();
+  });
+
+  it("読み上げるBPMは、メトロノームが実際に鳴らす範囲内の値", async () => {
+    mockPhrases = [PHRASE, { ...SECOND, currentBpm: 300, targetBpm: 320 }];
+    const props = startAndRender();
+
+    await act(async () => {
+      await props.onSubmit({ result: "ok" }, "next");
+    });
+
+    expect(usePracticeStore.getState().metronomeBpm).toBe(240);
+    expect(announceSpy).toHaveBeenCalledWith("記録しました。次は「Aメロ」、240 BPM");
+  });
+
+  it("練習を始めただけでは帯を出さない", () => {
+    startAndRender();
+
+    expect(screen.queryByTestId("practice-finish-notice")).toBeNull();
   });
 });
