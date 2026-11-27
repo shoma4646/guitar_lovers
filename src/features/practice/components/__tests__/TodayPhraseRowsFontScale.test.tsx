@@ -118,7 +118,7 @@ describe("名前の左のチェック用の枠", () => {
   it("今日完了した行があるときは、未完了の行にも20ptの枠を取って名前の位置を揃える", () => {
     mockAttempts = attemptsWithTodayCompleted;
     renderRows();
-    const placeholders = screen.getAllByTestId("today-phrase-check-placeholder");
+    const placeholders = screen.getAllByTestId("phrase-menu-row-leading-placeholder");
 
     expect(placeholders.length).toBeGreaterThan(0);
     placeholders.forEach((placeholder) => {

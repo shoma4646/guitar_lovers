@@ -5,12 +5,10 @@
  * 行タップで練習を再開し、長押しでアーカイブ・削除できる。全件は別シートへ逃がす。
  */
 
-import { View, Text, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 import { Card } from "@/shared/components/molecules/Card";
 import { Button } from "@/shared/components/atoms/Button";
-import { Icon } from "@/shared/components/atoms/Icon";
 import { colors } from "@/shared/theme";
-import { NUMERIC_MAX_FONT_SIZE_MULTIPLIER } from "@/shared/constants/layout";
 import { usePracticePhrases } from "@/features/practice/api/usePracticePhrases";
 import { usePhraseAttempts } from "@/features/practice/api/usePhraseAttempts";
 import {
@@ -20,11 +18,7 @@ import {
 } from "@/features/practice/lib/progression";
 import { usePhraseLongPressActions } from "@/features/practice/hooks/usePhraseLongPressActions";
 import { useTodayMenu } from "@/features/practice/hooks/useTodayMenu";
-import {
-  buildPhraseRowLabel,
-  PHRASE_ROW_HINT,
-  phraseRowAccessibilityActionProps,
-} from "@/features/practice/lib/phraseRowLabel";
+import { PhraseMenuRow, needsLeadingIcon } from "./PhraseMenuRow";
 import type { PhraseAttempt, PracticePhrase } from "@/shared/types/models";
 
 /** カード内に表示する行数。それ以上は「すべてのフレーズ」シートへ */
@@ -93,7 +87,7 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
   });
   const completedCount = rows.filter((row) => row.status.reached).length;
   const visibleRows = rows.slice(0, VISIBLE_COUNT);
-  const hasVisibleCompletedRow = visibleRows.some((row) => row.status.reached);
+  const hasVisibleLeadingIcon = visibleRows.some((row) => needsLeadingIcon(row.entry));
 
   return (
     <Card background={colors.surfaceContainerLow} style={{ gap: 8 }}>
@@ -122,64 +116,18 @@ export function TodayPhraseRows({ onStartPhrase, onOpenAllPhrases }: Props) {
       </View>
 
       <View>
-        {visibleRows.map(({ entry, currentBpm, status }, index) => {
-          const completed = status.reached;
-          return (
-            <Pressable
-              key={entry.phrase.id}
-              onPress={() => onStartPhrase(entry.phrase, status.targetBeforeToday)}
-              onLongPress={() => handleLongPress(entry.phrase)}
-              className="active:opacity-80"
-              style={{
-                minHeight: 56,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                borderTopWidth: index === 0 ? 0 : 1,
-                borderTopColor: colors.divider,
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={buildPhraseRowLabel(entry, currentBpm)}
-              accessibilityHint={PHRASE_ROW_HINT}
-              {...phraseRowAccessibilityActionProps((action) => handleLongPress(entry.phrase, action))}
-            >
-              {completed ? (
-                <Icon name="check_circle" size={20} color={colors.primary} />
-              ) : hasVisibleCompletedRow ? (
-                <View testID="today-phrase-check-placeholder" style={{ width: 20 }} />
-              ) : null}
-              <Text
-                style={{
-                  flex: 1,
-                  fontSize: 15,
-                  fontWeight: "600",
-                  color: completed ? colors.onSurfaceVariant : colors.onSurface,
-                }}
-                numberOfLines={1}
-              >
-                {entry.phrase.name}
-              </Text>
-              {completed ? (
-                <Text
-                  maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
-                  style={{ fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"], color: colors.primary }}
-                >
-                  {status.todayBestOkBpm}
-                  <Text style={{ fontSize: 12, fontWeight: "600" }}> 今日完了</Text>
-                </Text>
-              ) : (
-                <Text
-                  maxFontSizeMultiplier={NUMERIC_MAX_FONT_SIZE_MULTIPLIER}
-                  style={{ fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] }}
-                >
-                  <Text style={{ color: colors.onSurfaceVariant }}>{currentBpm}</Text>
-                  <Text style={{ color: colors.onSurfaceVariant }}> → </Text>
-                  <Text style={{ color: colors.primary }}>{status.targetBeforeToday}</Text>
-                </Text>
-              )}
-            </Pressable>
-          );
-        })}
+        {visibleRows.map(({ entry, currentBpm, status }, index) => (
+          <PhraseMenuRow
+            key={entry.phrase.id}
+            entry={entry}
+            currentBpm={currentBpm}
+            isFirst={index === 0}
+            reserveLeadingSlot={hasVisibleLeadingIcon}
+            onPress={() => onStartPhrase(entry.phrase, status.targetBeforeToday)}
+            onLongPress={() => handleLongPress(entry.phrase)}
+            onOrganize={(action) => handleLongPress(entry.phrase, action)}
+          />
+        ))}
       </View>
 
       {allPhrasesButton}
