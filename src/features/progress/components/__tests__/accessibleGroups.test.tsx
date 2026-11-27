@@ -39,7 +39,12 @@ describe("表示のみのまとまりを1つのアクセシビリティ要素と
   });
 
   it("週の練習日数のバーは1枚の画像として読まれる", () => {
-    render(<WeekBarChart weeklyPracticedDays={[true, false, false, false, false, false, false]} />);
+    render(
+      <WeekBarChart
+        weeklyPracticedDays={[true, false, false, false, false, false, false]}
+        todayIndex={0}
+      />,
+    );
     expect(screen.getByRole("image").props.accessible).toBe(true);
   });
 });

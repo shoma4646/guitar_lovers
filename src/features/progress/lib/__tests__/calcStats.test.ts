@@ -133,4 +133,11 @@ describe("calcStats", () => {
     expect(onMonday.weeklyDuration).toBe(0);
     expect(onMonday.weeklyPracticedDays).toEqual([false, false, false, false, false, false, false]);
   });
+
+  it("基準日の曜日を月曜起点の番号で返す", () => {
+    // 2026-11-23 は月曜、2026-11-29 は日曜
+    expect(calcStats([], [], new Date(2026, 10, 23, 12)).todayWeekIndex).toBe(0);
+    expect(calcStats([], [], new Date(2026, 10, 27, 12)).todayWeekIndex).toBe(4);
+    expect(calcStats([], [], new Date(2026, 10, 29, 12)).todayWeekIndex).toBe(6);
+  });
 });

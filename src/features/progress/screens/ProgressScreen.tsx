@@ -226,7 +226,10 @@ export function ProgressScreen() {
         {/* 今週のカード */}
         <Card elevation="low" padding={12}>
           <View style={styles.weekHeader}>
-            <View>
+            <View
+              accessible
+              accessibilityLabel={`今週の練習日数 ${stats.weeklyPracticeDays}日（7日中）`}
+            >
               <Text style={styles.weekLabel}>今週の練習日数</Text>
               <View style={styles.weekValueRow}>
                 <Text style={styles.weekValue} maxFontSizeMultiplier={1.2}>
@@ -247,7 +250,10 @@ export function ProgressScreen() {
             ) : null}
           </View>
           <View style={styles.weekChart}>
-            <WeekBarChart weeklyPracticedDays={stats.weeklyPracticedDays} />
+            <WeekBarChart
+              weeklyPracticedDays={stats.weeklyPracticedDays}
+              todayIndex={stats.todayWeekIndex}
+            />
           </View>
         </Card>
 
