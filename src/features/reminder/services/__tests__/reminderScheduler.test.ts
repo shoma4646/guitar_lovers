@@ -2,10 +2,12 @@
 import mockAsyncStorage from "@react-native-async-storage/async-storage/jest/async-storage-mock";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 import { savePracticePhrase, updateReminderSettings } from "@/shared/services/storage";
 import type { PracticePhrase } from "@/shared/types/models";
 import { isReminderNotificationData } from "../../lib/planReminder";
 import {
+  ensureReminderPermission,
   getLastSyncError,
   getScheduledReminderFireAt,
   REMINDER_NOTIFICATION_ID,
@@ -29,6 +31,8 @@ const getPermissionsAsync = Notifications.getPermissionsAsync as jest.Mock;
 const cancel = Notifications.cancelScheduledNotificationAsync as jest.Mock;
 const schedule = Notifications.scheduleNotificationAsync as jest.Mock;
 const getAllScheduled = Notifications.getAllScheduledNotificationsAsync as jest.Mock;
+const requestPermissionsAsync = Notifications.requestPermissionsAsync as jest.Mock;
+const setNotificationChannel = Notifications.setNotificationChannelAsync as jest.Mock;
 
 function permission(granted: boolean) {
   return { granted, canAskAgain: true, status: granted ? "granted" : "denied" };
@@ -225,4 +229,79 @@ describe("getScheduledReminderFireAt", () => {
 
     await expect(getScheduledReminderFireAt()).resolves.toBeNull();
   });
+});
+
+describe.each(["android", "ios"] as const)("%s での通知許可と予約のチャンネル", (os) => {
+  const originalOS = Platform.OS;
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    jest.clearAllMocks();
+    Platform.OS = os;
+    getPermissionsAsync.mockResolvedValue(permission(true));
+    await updateReminderSettings({ enabled: true });
+  });
+
+  afterEach(() => {
+    Platform.OS = originalOS;
+  });
+
+  const undetermined = { granted: false, canAskAgain: true, status: "undetermined" };
+
+  it("依頼して拒否されたら false を返す", async () => {
+    getPermissionsAsync.mockResolvedValue(undetermined);
+    requestPermissionsAsync.mockResolvedValue({ ...permission(false), canAskAgain: false });
+
+    await expect(ensureReminderPermission()).resolves.toBe(false);
+    expect(requestPermissionsAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("許可済みなら依頼せず true を返す", async () => {
+    await expect(ensureReminderPermission()).resolves.toBe(true);
+    expect(requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  if (os === "android") {
+    it("許可を依頼する前に「練習リマインド」チャンネルを作る", async () => {
+      getPermissionsAsync.mockResolvedValue(undetermined);
+      requestPermissionsAsync.mockResolvedValue(permission(true));
+
+      await expect(ensureReminderPermission()).resolves.toBe(true);
+
+      expect(setNotificationChannel).toHaveBeenCalledWith(
+        "practice-reminder",
+        expect.objectContaining({ name: "練習リマインド" }),
+      );
+      expect(requestPermissionsAsync).toHaveBeenCalledTimes(1);
+      expect(setNotificationChannel.mock.invocationCallOrder[0]).toBeLessThan(
+        requestPermissionsAsync.mock.invocationCallOrder[0],
+      );
+    });
+
+    it("予約は「練習リマインド」チャンネルを作ってからそのチャンネル宛てにする", async () => {
+      await savePracticePhrase(makePhrase("p1"));
+
+      await syncReminder();
+
+      expect(schedule).toHaveBeenCalledTimes(1);
+      expect(schedule.mock.calls[0][0].trigger.channelId).toBe("practice-reminder");
+      expect(setNotificationChannel).toHaveBeenCalledWith("practice-reminder", expect.anything());
+      expect(setNotificationChannel.mock.invocationCallOrder[0]).toBeLessThan(
+        schedule.mock.invocationCallOrder[0],
+      );
+    });
+  } else {
+    it("許可の依頼でも予約でもチャンネルを作らない", async () => {
+      getPermissionsAsync.mockResolvedValueOnce(undetermined);
+      requestPermissionsAsync.mockResolvedValue(permission(true));
+      await savePracticePhrase(makePhrase("p1"));
+
+      await ensureReminderPermission();
+      await syncReminder();
+
+      expect(requestPermissionsAsync).toHaveBeenCalledTimes(1);
+      expect(schedule).toHaveBeenCalledTimes(1);
+      expect(setNotificationChannel).not.toHaveBeenCalled();
+    });
+  }
 });
