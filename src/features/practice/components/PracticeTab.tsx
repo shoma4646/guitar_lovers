@@ -78,6 +78,11 @@ const FINISH_NOTICE = "記録しました";
 const NO_NEXT_PHRASE_MESSAGE = "今日のメニューで次に練習するフレーズはありません";
 const FINISH_NOTICE_VISIBLE_MS = 4000;
 
+/** 「記録して次の1本へ」で、記録できたことと次に始まるフレーズ・BPMを伝える文 */
+function nextPhraseNotice(phraseName: string, startBpm: number): string {
+  return `${FINISH_NOTICE}。次は「${phraseName}」、${startBpm} BPM`;
+}
+
 type Props = {
   /** ヘッダーメニューの「別の動画を開く」から呼ぶ。AddVideoSheetの開閉はPracticeScreen側で持つ */
   onOpenAddVideo: () => void;
@@ -405,6 +410,10 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           // 直前に保存が成功しており未保存の記録は無いため、確認ダイアログを経由せず開始する
           startPhraseDirectly(plan.next.phrase, plan.next.startBpm);
           setMetronomeEnabled(metronomeEnabledBeforeFinishRef.current);
+          const notice = nextPhraseNotice(plan.next.phrase.name, usePracticeStore.getState().metronomeBpm);
+          setFinishNotice(notice);
+          AccessibilityInfo.announceForAccessibility(notice);
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       } finally {
         isSubmittingResultRef.current = false;
@@ -521,6 +530,12 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
   const headerTitle = activePractice?.phrase.name ?? (videoTitle || "動画を再生中");
   const headerSubtitle = activePractice ? `今日の1本・残り${remainingCount}本` : null;
 
+  const finishNoticeBanner = finishNotice !== null && (
+    <View testID="practice-finish-notice" style={styles.finishNotice}>
+      <Text style={styles.finishNoticeText}>{finishNotice}</Text>
+    </View>
+  );
+
   const menuSheet = (
     <PracticeMenuSheet
       visible={showMenu}
@@ -561,11 +576,7 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
           showsVerticalScrollIndicator={false}
         >
           <View style={{ gap: 12 }}>
-            {finishNotice !== null && (
-              <View testID="practice-finish-notice" style={styles.finishNotice}>
-                <Text style={styles.finishNoticeText}>{finishNotice}</Text>
-              </View>
-            )}
+            {finishNoticeBanner}
             <TodayPickCard
               onStartPhrase={handleStartPhrase}
               onTryPreset={handleTryPreset}
@@ -612,6 +623,8 @@ export function PracticeTab({ onOpenAddVideo }: Props) {
             <IconButton name="tune" accessibilityLabel="チューナーを開く" onPress={() => router.push("/(tabs)/tuner")} />
             <IconButton name="settings" accessibilityLabel="設定を開く" onPress={() => router.push("/settings")} />
           </View>
+
+          {finishNoticeBanner}
 
           {playerError !== null ? (
             <VideoErrorCard
